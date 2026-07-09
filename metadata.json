@@ -1,0 +1,6 @@
+{
+  "name": "Uniweigh Admin Panel",
+  "description": "An enterprise-grade admin panel for Uniweigh weighbridge and transaction management platform, tailored for back-office users to manage transactions, customers, products, transport, reports, and administration with high-quality, split-pane navigation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

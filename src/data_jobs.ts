@@ -1,0 +1,102 @@
+import { Job } from "./types";
+
+export const INITIAL_JOBS: Job[] = [
+  {
+    id: "JOB-2026-01",
+    customerOrderRef: "PO-2026-01",
+    customerId: "C-401",
+    customerName: "Apex Infrastructure Group",
+    productId: "P-123",
+    productName: "Crushed Rock 20mm",
+    orderQty: 50000,
+    deliveredQty: 58.90, // Sum of matching approved transactions: TX-40912 (pending - 28.6t), TX-40914 (approved - 32.20t), TX-40917 (invoiced - 29.9t), TX-40918 (pending - 33.3t), TX-40924 (pending - 30.4t)
+    notes: "Primary arterial road base supply contract.",
+    status: "Active",
+    pricingType: "Default Product Price",
+    appliedRate: 22.80,
+    effectiveFrom: "2026-01-01",
+    effectiveTo: "2026-12-31"
+  },
+  {
+    id: "JOB-2026-02",
+    customerOrderRef: "PO-2026-02",
+    customerId: "C-402",
+    customerName: "Bayside Civil Construction",
+    productId: "P-124",
+    productName: "Crusher Dust",
+    orderQty: 20000,
+    deliveredQty: 0,
+    notes: "Subgrade fill for industrial estate.",
+    status: "Active",
+    pricingType: "Product Tier 2",
+    appliedRate: 17.50,
+    effectiveFrom: "2026-02-15",
+    effectiveTo: "2026-08-31"
+  },
+  {
+    id: "JOB-2026-C3",
+    customerOrderRef: "PO-2026-PINN",
+    customerId: "C-403",
+    customerName: "Pinnacle Concrete Solutions",
+    productId: "P-126",
+    productName: "Concrete Sand",
+    orderQty: 15000,
+    deliveredQty: 18.30,
+    notes: "Washed sand supply agreement.",
+    status: "Active",
+    pricingType: "Custom Contract Price",
+    customProductRate: 14.80,
+    appliedRate: 14.80,
+    pricingNotes: "Special volume-linked direct contract.",
+    effectiveFrom: "2026-03-01",
+    effectiveTo: "2026-11-30"
+  },
+  {
+    id: "JOB-2026-04",
+    customerOrderRef: "PO-2026-APEX4",
+    customerId: "C-401",
+    customerName: "Apex Infrastructure Group",
+    productId: "P-125",
+    productName: "Road Base 40mm",
+    orderQty: 30000,
+    deliveredQty: 0,
+    notes: "Interstate highway connector sub-base.",
+    status: "Active",
+    pricingType: "Product Tier 1",
+    appliedRate: 22.00,
+    effectiveFrom: "2026-04-10",
+    effectiveTo: "2026-10-15"
+  },
+  {
+    id: "JOB-2026-05",
+    customerOrderRef: "PO-2026-ECOY",
+    customerId: "C-405",
+    customerName: "Yarra Eco-landscaping",
+    productId: "P-123", // Using an existing aggregate
+    productName: "Crushed Rock 20mm",
+    orderQty: 10000,
+    deliveredQty: 10.20,
+    notes: "Direct top-up of site aggregates.",
+    status: "Active",
+    pricingType: "Product Tier 1",
+    appliedRate: 24.50,
+    effectiveFrom: "2026-05-01",
+    effectiveTo: "2026-11-30"
+  },
+  {
+    id: "JOB-2026-06",
+    customerOrderRef: "PO-2026-GIPP",
+    customerId: "C-406",
+    customerName: "Gippsland Earth Group",
+    productId: "P-124",
+    productName: "Crusher Dust",
+    orderQty: 25000,
+    deliveredQty: 0,
+    notes: "Site excavation backfill aggregates.",
+    status: "Suspended",
+    pricingType: "Product Tier 3",
+    appliedRate: 16.25,
+    effectiveFrom: "2026-05-15",
+    effectiveTo: "2026-12-15"
+  }
+];
