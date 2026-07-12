@@ -619,7 +619,7 @@ export default function ProductLotDetailView({
             </div>
 
             {parentProduct ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-xs">
+              <div className="grid grid-cols-1 gap-y-4 text-xs max-w-xl">
                 <div className="space-y-3.5">
                   <div className="flex justify-between items-center py-2 border-b border-border">
                     <span className="font-bold text-muted-foreground">Product ID</span>
@@ -635,33 +635,8 @@ export default function ProductLotDetailView({
                   </div>
                 </div>
 
-                <div className="space-y-3.5">
-                  <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="font-bold text-muted-foreground">Weighbridge Site</span>
-                    <span className="font-bold text-foreground">{parentProduct.site || "Melbourne Eastern Quarry"}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="font-bold text-muted-foreground">Default Catalog Price</span>
-                    <span className="font-mono font-bold text-foreground">
-                      ${(parentProduct.defaultPrice ?? parentProduct.basePrice ?? 0).toFixed(2)} / tonne
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="font-bold text-muted-foreground">Catalog Status</span>
-                    <span
-                      className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-bold border uppercase tracking-wide ${
-                        parentProduct.status === "Active"
-                          ? "bg-success/10 text-success border-success/25"
-                          : "bg-destructive/10 text-destructive border-destructive/25"
-                      }`}
-                    >
-                      {parentProduct.status}
-                    </span>
-                  </div>
-                </div>
-
                 {parentProduct.notes && (
-                  <div className="md:col-span-2 bg-muted border border-border rounded-md p-4 mt-2">
+                  <div className="bg-muted border border-border rounded-md p-4 mt-2">
                     <span className="text-xs font-bold text-muted-foreground block mb-1">Product Description / Notes</span>
                     <p className="text-muted-foreground font-medium italic">{parentProduct.notes}</p>
                   </div>

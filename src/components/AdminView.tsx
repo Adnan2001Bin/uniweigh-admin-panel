@@ -8,9 +8,6 @@ import {
   CheckCircle,
   HelpCircle,
   Wrench,
-  Info,
-  Scale,
-  RefreshCw,
   Plus,
   Trash,
   Edit3,
@@ -30,7 +27,7 @@ import { Checkbox } from "@/src/components/ui/checkbox";
 
 interface AdminViewProps {
   adminUser: AdminUser;
-  subView: "users" | "roles" | "preferences" | "sites" | "docket";
+  subView: "users" | "roles" | "sites" | "docket";
   sites: Site[];
   onUpdateSites: (updatedSites: Site[]) => void;
   siteLimit: number;
@@ -49,11 +46,9 @@ export default function AdminView({
   docketConfig,
   onUpdateDocketConfig
 }: AdminViewProps) {
-  const [activeTab, setActiveTab] = useState<"users" | "roles" | "preferences" | "sites" | "docket">(
+  const [activeTab, setActiveTab] = useState<"users" | "roles" | "sites" | "docket">(
     subView === "roles"
       ? "roles"
-      : subView === "preferences"
-      ? "preferences"
       : subView === "sites"
       ? "sites"
       : subView === "docket"
@@ -74,30 +69,6 @@ export default function AdminView({
   const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
   const [editingSiteName, setEditingSiteName] = useState("");
   const [editingSiteSupervisor, setEditingSiteSupervisor] = useState("");
-
-  // Scale bed calibration states
-  const [scalesState, setScalesState] = useState([
-    { id: "Scale-A1", name: "Quarry scale A1 (Inbound)", status: "Active", calibrating: false },
-    { id: "Scale-A2", name: "Quarry scale A2 (Inbound)", status: "Active", calibrating: false },
-    { id: "Scale-B1", name: "Quarry scale B1 (Outbound)", status: "Active", calibrating: false },
-    { id: "Scale-C1", name: "Coastal scale C1 (Combined)", status: "Active", calibrating: false },
-    { id: "Scale-W1", name: "Recycle scale W1 (Combined)", status: "Maintenance", calibrating: false }
-  ]);
-
-  const calibrateScale = (id: string) => {
-    setScalesState(sc => sc.map(s => s.id === id ? { ...s, calibrating: true } : s));
-    setTimeout(() => {
-      setScalesState(sc => sc.map(s => s.id === id ? { ...s, calibrating: false, status: "Active" } : s));
-      toast.success(`Scale bed ${id} calibration certified successfully! Calibration stamps renewed raw.`);
-    }, 1500);
-  };
-
-  const toggleStatus = (id: string) => {
-    setScalesState(sc => sc.map(s => s.id === id ? {
-      ...s,
-      status: s.status === "Active" ? "Maintenance" : "Active"
-    } : s));
-  };
 
   const mockBackOfficeUsers = [
     { name: "John Davis", email: "john.davis@uniweigh.com", role: "Weighbridge Operator", station: "Melbourne Eastern Quarry", active: "Scale-A2 active" },
@@ -131,14 +102,6 @@ export default function AdminView({
           }`}
         >
           Roles
-        </button>
-        <button
-          onClick={() => setActiveTab("preferences")}
-          className={`flex-1 min-w-[100px] py-1.5 text-center font-semibold rounded-md transition ${
-            activeTab === "preferences" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Scale Settings
         </button>
         <button
           onClick={() => setActiveTab("sites")}
@@ -216,81 +179,6 @@ export default function AdminView({
                   <p className="text-xs text-muted-foreground leading-normal">{role.description}</p>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* SCALE BED SYSTEM SETTINGS */}
-        {activeTab === "preferences" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Physical Weighbridge Configuration</h3>
-                <p className="text-xs text-muted-foreground">Recalibrate, lock, or place physical scale loadbeds in maintenance mode.</p>
-              </div>
-            </div>
-
-            <div className="divide-y divide-border">
-              {scalesState.map((scale) => (
-                <div key={scale.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-4">
-                  <div className="flex gap-3">
-                    <div className="h-8 w-8 rounded-md bg-info/10 text-info flex items-center justify-center shrink-0">
-                      <Scale className="h-4.5 w-4.5" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-foreground">{scale.name}</div>
-                      <div className="font-mono text-xs text-muted-foreground">UUID ID: {scale.id}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 self-end">
-                    <span className={`inline-flex rounded-sm px-2.5 py-0.5 text-xs font-bold leading-normal border uppercase tracking-wider ${
-                      scale.status === "Active" ? "bg-success/10 text-success border-success/25" : "bg-warning/10 text-warning border-warning/30 border-warning/30"
-                    }`}>
-                      {scale.status}
-                    </span>
-
-                    <button
-                      onClick={() => toggleStatus(scale.id)}
-                      className={`text-xs font-bold rounded-md px-2.5 py-1.5 transition select-none ${
-                        scale.status === "Active"
-                          ? "border border-warning/30 bg-card text-warning hover:bg-warning/10"
-                          : "bg-primary text-white hover:bg-primary/90"
-                      }`}
-                    >
-                      {scale.status === "Active" ? "Toggle Maintenance" : "Bridge to Active"}
-                    </button>
-
-                    <button
-                      onClick={() => calibrateScale(scale.id)}
-                      disabled={scale.calibrating}
-                      className="rounded-md bg-primary text-white hover:bg-primary/90 text-xs font-bold px-3 py-1.5 flex items-center gap-1 cursor-pointer disabled:bg-secondary"
-                    >
-                      {scale.calibrating ? (
-                        <>
-                          <RefreshCw className="h-3 w-3 animate-spin" />
-                          <span>taring...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Wrench className="h-3 w-3" />
-                          <span>Tar Zero</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-md bg-info/10 border border-info/25 p-4 font-normal flex gap-2 text-xs">
-              <Info className="h-4 w-4 text-info shrink-0 mt-0.5" />
-              <div className="text-info leading-normal space-y-1">
-                <span className="font-bold">Scale digital calibration protocol:</span>
-                <p>
-                  Weighbridges are regulated by legal weight licensing standards. Off-line maintenance blocks tickets submissions on that specific Scale ID automatically to protect operator audit history.
-                </p>
-              </div>
             </div>
           </div>
         )}

@@ -958,7 +958,7 @@ export default function VehiclesView({
 
       {/* Add / Edit Form Modal */}
       {isFormOpen && (
-        <div className="fixed inset-0 bg-foreground flex items-center justify-center p-4 z-50 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center p-4 z-50 backdrop-blur-xs">
           <div className="bg-card rounded-md border border-border max-w-3xl w-full shadow-lg overflow-hidden animate-zoom-in">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-border bg-muted flex items-center justify-between">

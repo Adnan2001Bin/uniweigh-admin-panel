@@ -1343,7 +1343,7 @@ export default function JobsView({
       {/* ====================== EXPORT UTILITY MODAL (DIALOG) ==================== */}
       {/* ========================================================================= */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-primary backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-foreground/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-border rounded-md max-w-md w-full p-6 shadow-lg space-y-4 animate-fade-in text-xs text-foreground">
 
             <div className="flex items-center justify-between border-b border-border pb-3">

@@ -39,7 +39,7 @@ export default function ProductsView({
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filters state
-  const [filterSite, setFilterSite] = useState("All");
+  const [filterSite, setFilterSite] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterProduct, setFilterProduct] = useState("All");
   const [filterProductCode, setFilterProductCode] = useState("All");
@@ -85,6 +85,8 @@ export default function ProductsView({
     return Array.from(new Set(sites));
   }, [products]);
 
+  const activeFilterSite = filterSite ?? distinctSites[0] ?? "";
+
   const distinctNames = useMemo(() => {
     return Array.from(new Set(products.map((p) => p.name)));
   }, [products]);
@@ -108,14 +110,14 @@ export default function ProductsView({
         codeToMatch.includes(q) ||
         (p.site || "").toLowerCase().includes(q);
 
-      const matchesSite = filterSite === "All" || (p.site || "Unknown") === filterSite;
+      const matchesSite = (p.site || "Unknown") === activeFilterSite;
       const matchesStatus = filterStatus === "All" || p.status === filterStatus;
       const matchesProduct = filterProduct === "All" || p.name === filterProduct;
       const matchesProductCode = filterProductCode === "All" || (p.productCode || p.id) === filterProductCode;
 
       return matchesSearch && matchesSite && matchesStatus && matchesProduct && matchesProductCode;
     });
-  }, [products, activeSearchQuery, filterSite, filterStatus, filterProduct, filterProductCode, refreshKey]);
+  }, [products, activeSearchQuery, activeFilterSite, filterStatus, filterProduct, filterProductCode, refreshKey]);
 
   // Refresh trigger
   const handleRefresh = () => {
@@ -289,16 +291,16 @@ export default function ProductsView({
             <button
               onClick={() => setIsFilterExpanded(!isFilterExpanded)}
               className={`rounded-md border px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 select-none ${
-                isFilterExpanded || filterSite !== "All" || filterStatus !== "All" || filterProduct !== "All" || filterProductCode !== "All"
+                isFilterExpanded || filterStatus !== "All" || filterProduct !== "All" || filterProductCode !== "All"
                   ? "bg-info/10 border-info/25 text-info hover:bg-info/10"
                   : "bg-card border-border text-foreground hover:bg-muted"
               }`}
             >
               <Filter className="h-3.5 w-3.5" />
               Filters
-              {(filterSite !== "All" || filterStatus !== "All" || filterProduct !== "All" || filterProductCode !== "All") && (
+              {(filterStatus !== "All" || filterProduct !== "All" || filterProductCode !== "All") && (
                 <span className="bg-primary text-white font-mono text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                  {[filterSite !== "All", filterStatus !== "All", filterProduct !== "All", filterProductCode !== "All"].filter(Boolean).length}
+                  {[filterStatus !== "All", filterProduct !== "All", filterProductCode !== "All"].filter(Boolean).length}
                 </span>
               )}
             </button>
@@ -402,16 +404,15 @@ export default function ProductsView({
         </div>
 
         {/* Expanded Filters Drawer */}
-        {(isFilterExpanded || filterSite !== "All" || filterStatus !== "All" || filterProduct !== "All" || filterProductCode !== "All") && (
+        {(isFilterExpanded || filterStatus !== "All" || filterProduct !== "All" || filterProductCode !== "All") && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-muted border border-border p-3.5 rounded-md text-xs">
             <div className="space-y-1">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Weighbridge Site</label>
               <SelectBox
-                value={filterSite}
+                value={activeFilterSite}
                 onChange={(e) => setFilterSite(e.target.value)}
                 className="w-full rounded-md border border-border bg-card p-1 text-xs font-semibold focus:outline-none"
               >
-                <option value="All">All Sites</option>
                 {distinctSites.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -462,7 +463,7 @@ export default function ProductsView({
             <div className="sm:col-span-2 md:col-span-4 flex justify-end gap-1.5 pt-2 border-t border-border">
               <button
                 onClick={() => {
-                  setFilterSite("All");
+                  setFilterSite(null);
                   setFilterStatus("All");
                   setFilterProduct("All");
                   setFilterProductCode("All");

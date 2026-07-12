@@ -967,7 +967,7 @@ export default function CarterDetailView({
 
       {/* Driver Detail Dialog Modal */}
       {selectedDriverDetails && (
-        <div className="fixed inset-0 bg-foreground flex items-center justify-center p-4 z-50 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center p-4 z-50 backdrop-blur-xs">
           <div className="bg-card rounded-md border border-border max-w-md w-full shadow-lg p-6 relative">
             <h3 className="text-sm font-bold text-foreground uppercase tracking-wider border-b pb-3 mb-4 flex items-center gap-2">
               <User className="h-4 w-4 text-info" />
@@ -1021,7 +1021,7 @@ export default function CarterDetailView({
 
       {/* Vehicle Detail Dialog Modal */}
       {selectedVehicleDetails && (
-        <div className="fixed inset-0 bg-foreground flex items-center justify-center p-4 z-50 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center p-4 z-50 backdrop-blur-xs">
           <div className="bg-card rounded-md border border-border max-w-md w-full shadow-lg p-6 relative">
             <h3 className="text-sm font-bold text-foreground uppercase tracking-wider border-b pb-3 mb-4 flex items-center gap-2">
               <Truck className="h-4 w-4 text-info" />

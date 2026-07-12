@@ -1044,7 +1044,7 @@ export default function CustomersView({
 
       {/* MODAL 1: ADD NEW CUSTOMER */}
       {showAddCustomerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground backdrop-blur-xs p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="w-full max-w-2xl bg-card rounded-md border border-border shadow-lg relative my-8 flex flex-col max-h-[90vh]">
             {/* Header */}
             <div className="p-6 border-b border-border flex items-center justify-between">
@@ -1294,7 +1294,7 @@ export default function CustomersView({
 
       {/* MODAL 2: EDIT CUSTOMER DETAILS */}
       {showEditCustomerModal && customerToEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground backdrop-blur-xs p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="w-full max-w-2xl bg-card rounded-md border border-border shadow-lg relative my-8 flex flex-col max-h-[90vh]">
             {/* Header */}
             <div className="p-6 border-b border-border flex items-center justify-between">
@@ -1522,7 +1522,7 @@ export default function CustomersView({
 
       {/* MODAL 3: EXPORT REPORTS DIALOG */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-4">
           <div className="w-full max-w-md bg-card rounded-md border border-border shadow-lg p-6 relative animate-zoom-in">
             <button onClick={() => setShowExportModal(false)} className="absolute top-4 right-4 p-1.5 rounded-md text-muted-foreground hover:bg-muted transition">
               <X className="h-4.5 w-4.5" />

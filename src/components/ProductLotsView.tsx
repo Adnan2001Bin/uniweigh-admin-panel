@@ -823,7 +823,7 @@ export default function ProductLotsView({
 
       {/* Add / Edit Product Lot Modal Dialog */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-primary backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-foreground/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-card rounded-md shadow-lg border border-border w-full max-w-lg overflow-hidden my-8">
             <div className="bg-muted border-b border-border px-6 py-4 flex items-center justify-between">
               <div>

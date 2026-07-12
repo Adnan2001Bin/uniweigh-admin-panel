@@ -592,7 +592,7 @@ export default function TransactionsView({
 
       {/* 3. Export Dialog Modal overlay */}
       {exportScope && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-4">
           <div className="w-full max-w-md bg-card rounded-md border border-border shadow-lg p-6 relative animate-zoom-in">
             <button
               onClick={() => setExportScope(null)}
@@ -656,7 +656,7 @@ export default function TransactionsView({
 
       {/* Export Loading/Generating Progress Overlay */}
       {isExporting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs">
           <div className="bg-card rounded-md border border-border shadow-lg p-6 max-w-sm w-full text-center space-y-4">
             <div className="flex justify-center">
               <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
@@ -1607,7 +1607,7 @@ export default function TransactionsView({
 
       {/* Bulk Comment Dialog Modal */}
       {showBulkCommentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-4">
           <div className="w-full max-w-md bg-card rounded-md border border-border shadow-lg p-6 relative animate-zoom-in">
             <button
               onClick={() => {

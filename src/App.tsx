@@ -754,19 +754,6 @@ export default function App() {
             onUpdateDocketConfig={setDocketConfig}
           />
         );
-      case "admin-preferences":
-        return (
-          <AdminView
-            adminUser={MOCK_ADMIN_USER}
-            subView="preferences"
-            sites={sites}
-            onUpdateSites={setSites}
-            siteLimit={siteLimit}
-            onUpdateSiteLimit={setSiteLimit}
-            docketConfig={docketConfig}
-            onUpdateDocketConfig={setDocketConfig}
-          />
-        );
       case "admin-sites":
         return (
           <AdminView

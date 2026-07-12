@@ -104,7 +104,6 @@ export default function Sidebar({
       items: [
         { id: "admin-users", name: "Users" },
         { id: "admin-roles", name: "Roles" },
-        { id: "admin-preferences", name: "Preferences" },
         { id: "admin-sites", name: "Sites & Locking" },
         { id: "admin-docket", name: "Docket Customization" }
       ]
