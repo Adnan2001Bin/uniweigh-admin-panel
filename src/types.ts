@@ -239,7 +239,7 @@ export interface Job {
   deliveredQty: number; // Calculated dynamically from completed/approved transactions
   notes: string;
   status: "Active" | "Completed" | "Suspended";
-  pricingType: "Default Product Price" | "Product Tier 1" | "Product Tier 2" | "Product Tier 3" | "Custom Contract Price" | "Use Customer Pricing Tier";
+  pricingType: "Default Product Price" | "Product Tier 1" | "Product Tier 2" | "Product Tier 3" | "Custom Contract Price";
   customProductRate?: number; // Custom Contract Price rate per Tonne
   appliedRate: number; // The final rate stored on Job creation/edit
   pricingNotes?: string;
@@ -272,9 +272,6 @@ export interface ProductLot {
   status: "Active" | "Completed" | "Pending";
   notes?: string;
   createdDate?: string;
-  lotNumber?: string;
-  usedQuantity?: number;
-  remainingQuantity?: number;
   datasheets?: {
     name: string;
     size: string;
