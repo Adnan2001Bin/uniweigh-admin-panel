@@ -875,8 +875,58 @@ export const MOCK_ADMIN_USER: AdminUser = {
   email: "admin.user@uniweigh.com",
   lastActive: "Active Now",
   avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop",
-  sites: ["All Sites", "Melbourne Eastern Quarry", "Bayside Coastal Sands", "Western Eco-Recycling Depot"]
+  sites: ["Melbourne Eastern Quarry", "Bayside Coastal Sands", "Western Eco-Recycling Depot"]
 };
+
+export interface DemoLoginAccount {
+  role: string;
+  name: string;
+  email: string;
+  password: string;
+}
+
+export const DEMO_LOGIN_ACCOUNTS: DemoLoginAccount[] = [
+  {
+    role: "Administrator",
+    name: "Admin User",
+    email: "admin.user@uniweigh.com",
+    password: "admin123"
+  },
+  {
+    role: "Weighbridge Operator",
+    name: "John Davis",
+    email: "john.davis@uniweigh.com",
+    password: "operator123"
+  },
+  {
+    role: "Billing Auditor",
+    name: "Sarah Jenkins",
+    email: "sarah.k@uniweigh.com",
+    password: "auditor123"
+  }
+];
+
+export function authenticateDemoUser(email: string, password: string): AdminUser | null {
+  const account = DEMO_LOGIN_ACCOUNTS.find(
+    (entry) => entry.email.toLowerCase() === email.trim().toLowerCase() && entry.password === password
+  );
+  if (!account) return null;
+
+  return {
+    id:
+      account.role === "Administrator"
+        ? "AD-01"
+        : account.role === "Weighbridge Operator"
+        ? "OP-01"
+        : "AU-01",
+    name: account.name,
+    role: account.role,
+    email: account.email,
+    lastActive: "Active Now",
+    avatarUrl: MOCK_ADMIN_USER.avatarUrl,
+    sites: MOCK_ADMIN_USER.sites
+  };
+}
 
 export const MOCK_ROLES = [
   { name: "Administrator", description: "Full system administration access, user setup, database configuration, locking override, billing triggers.", usersCount: 2 },
@@ -898,7 +948,6 @@ export const DEFAULT_DOCKET_CONFIG: DocketConfig = {
   themeColor: "#0f172a",
   weighbridgeLocation: "Iron Knob",
   showLogo: true,
-  logoUrl: "",
   invoiceTitle: "Commercial Tax Invoice",
   cashInvoiceNotes: "Thank you for your business. For cash/card sales, EFT payments are processed prior to vehicle dispatch.",
   accountInvoiceNotes: "Tax Invoice raised directly against approved credit ledger. Contract Terms apply. Do not pay this document.",

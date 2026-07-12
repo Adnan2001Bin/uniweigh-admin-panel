@@ -21,6 +21,7 @@ import VehicleDetailView from "./components/VehicleDetailView";
 import DriversView from "./components/DriversView";
 import DriverDetailView from "./components/DriverDetailView";
 import ClerkView from "./components/ClerkView";
+import LoginView from "./components/LoginView";
 import { Toaster } from "./components/ui/sonner";
 import { DialogHost } from "./components/shared/dialog-service";
 
@@ -31,11 +32,12 @@ import {
   INITIAL_DRIVERS,
   INITIAL_VEHICLES,
   INITIAL_TRANSACTIONS,
-  MOCK_ADMIN_USER,
   DEFAULT_DOCKET_CONFIG
 } from "./data";
 import { INITIAL_JOBS } from "./data_jobs";
-import { Transaction, Product, Customer, Site, Job, ProductLot, Carrier, Driver, Vehicle, DocketConfig } from "./types";
+import { Transaction, Product, Customer, Site, Job, ProductLot, Carrier, Driver, Vehicle, DocketConfig, AdminUser } from "./types";
+import { canAccessView, canEnterClerkMode, getDefaultViewForRole } from "./lib/role-access";
+import { loadTextSize, saveTextSize, type TextSize } from "./lib/text-size";
 
 
 export default function App() {
@@ -45,6 +47,17 @@ export default function App() {
   // Clerk operator mode switcher state
   const [isClerkMode, setIsClerkMode] = useState<boolean>(false);
 
+  // Demo authentication session
+  const [authUser, setAuthUser] = useState<AdminUser | null>(() => {
+    const saved = localStorage.getItem("uniweigh_auth_user");
+    if (!saved) return null;
+    try {
+      return JSON.parse(saved) as AdminUser;
+    } catch {
+      return null;
+    }
+  });
+
   // Active view router state
   const [activeView, setActiveView] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -53,6 +66,38 @@ export default function App() {
     }
     return "dashboard";
   });
+
+  useEffect(() => {
+    if (authUser) {
+      localStorage.setItem("uniweigh_auth_user", JSON.stringify(authUser));
+    } else {
+      localStorage.removeItem("uniweigh_auth_user");
+    }
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    if (!canAccessView(authUser.role, activeView)) {
+      setActiveView(getDefaultViewForRole(authUser.role));
+    }
+  }, [authUser, activeView]);
+
+  const handleLogin = (user: AdminUser) => {
+    setAuthUser(user);
+    setActiveView(getDefaultViewForRole(user.role));
+    setIsClerkMode(false);
+  };
+
+  const handleClerkExit = () => {
+    setIsClerkMode(false);
+    setAuthUser(null);
+  };
+
+  const handleLogout = () => {
+    setIsClerkMode(false);
+    setAuthUser(null);
+    setActiveView("dashboard");
+  };
 
   // Cross-tab Synchronization Listener for Live Database Updates
   useEffect(() => {
@@ -78,8 +123,14 @@ export default function App() {
   // Global search queried from header
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Site filtered state - can be "All Sites" or specific stations
-  const [selectedSite, setSelectedSite] = useState<string>("All Sites");
+  const [textSize, setTextSize] = useState<TextSize>(() => loadTextSize());
+
+  useEffect(() => {
+    saveTextSize(textSize);
+  }, [textSize]);
+
+  // Site filtered state — defaults to the first operational site
+  const [selectedSite, setSelectedSite] = useState<string>("Melbourne Eastern Quarry");
 
   // Dynamic Sites list and Developer system access limit
   const [sites, setSites] = useState<Site[]>(() => {
@@ -299,14 +350,8 @@ export default function App() {
   // Handle site selection fallback when active developer lock constraints or site lock states change
   useEffect(() => {
     if (selectedSite === "All Sites") {
-      // If siteLimit is limiting accessible sites, "All Sites" view is disabled/locked in the Header selector.
-      // We force a fallback to the first operational site under the limit.
-      if (siteLimit < sites.length) {
-        const firstActive = sites.find((s, idx) => idx < siteLimit && s.status === "Active");
-        if (firstActive) {
-          setSelectedSite(firstActive.name);
-        }
-      }
+      const fallbackSite = sites.find((s, idx) => idx < siteLimit && s.status === "Active") ?? sites[0];
+      if (fallbackSite) setSelectedSite(fallbackSite.name);
       return;
     }
 
@@ -320,9 +365,8 @@ export default function App() {
       const fallbackSite = sites.find((s, idx) => idx < siteLimit && s.status === "Active");
       if (fallbackSite) {
         setSelectedSite(fallbackSite.name);
-      } else {
-        // If literally nothing is operational or allowed, revert to first site
-        setSelectedSite(sites[0]?.name || "All Sites");
+      } else if (sites[0]) {
+        setSelectedSite(sites[0].name);
       }
     }
   }, [sites, siteLimit, selectedSite]);
@@ -388,7 +432,6 @@ export default function App() {
 
   // Filter Transactions and entities by Selected Site globally before sending to views (if desired)
   const getFilteredTransactions = () => {
-    if (selectedSite === "All Sites") return transactions;
     return transactions.filter((t) => t.siteName === selectedSite);
   };
 
@@ -404,6 +447,8 @@ export default function App() {
             products={products}
             customers={customers}
             onViewChange={setActiveView}
+            userRole={authUser.role}
+            onEnterClerkMode={canEnterClerkMode(authUser.role) ? () => setIsClerkMode(true) : undefined}
           />
         );
 
@@ -731,7 +776,7 @@ export default function App() {
       case "admin-users":
         return (
           <AdminView
-            adminUser={MOCK_ADMIN_USER}
+            adminUser={authUser}
             subView="users"
             sites={sites}
             onUpdateSites={setSites}
@@ -744,7 +789,7 @@ export default function App() {
       case "admin-roles":
         return (
           <AdminView
-            adminUser={MOCK_ADMIN_USER}
+            adminUser={authUser}
             subView="roles"
             sites={sites}
             onUpdateSites={setSites}
@@ -757,7 +802,7 @@ export default function App() {
       case "admin-sites":
         return (
           <AdminView
-            adminUser={MOCK_ADMIN_USER}
+            adminUser={authUser}
             subView="sites"
             sites={sites}
             onUpdateSites={setSites}
@@ -770,7 +815,7 @@ export default function App() {
       case "admin-docket":
         return (
           <AdminView
-            adminUser={MOCK_ADMIN_USER}
+            adminUser={authUser}
             subView="docket"
             sites={sites}
             onUpdateSites={setSites}
@@ -790,13 +835,22 @@ export default function App() {
     }
   };
 
+  if (!authUser) {
+    return (
+      <>
+        <Toaster />
+        <LoginView onLogin={handleLogin} />
+      </>
+    );
+  }
+
   if (isClerkMode) {
     return (
       <>
         <Toaster />
         <DialogHost />
         <ClerkView
-        adminUser={MOCK_ADMIN_USER}
+        adminUser={authUser}
         customers={customers}
         onUpdateCustomer={handleUpdateCustomer}
         jobs={jobs}
@@ -813,7 +867,7 @@ export default function App() {
         vehicles={vehicles}
         onAddVehicle={(newV) => setVehicles((prev) => [...prev, newV])}
         onAddTransaction={(newTx) => setTransactions((prev) => [newTx, ...prev])}
-        onExit={() => setIsClerkMode(false)}
+        onExit={handleClerkExit}
           transactions={transactions}
           docketConfig={docketConfig}
         />
@@ -844,20 +898,22 @@ export default function App() {
       <Sidebar
         activeView={activeView}
         onViewChange={(viewId) => {
+          if (authUser && !canAccessView(authUser.role, viewId)) return;
           setActiveView(viewId);
           // Auto clear search results when changing view context
           setSearchQuery("");
         }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onEnterClerkMode={() => setIsClerkMode(true)}
+        onEnterClerkMode={canEnterClerkMode(authUser.role) ? () => setIsClerkMode(true) : undefined}
+        userRole={authUser.role}
       />
 
       {/* Main Workspace Frame container */}
       <div className="relative flex flex-1 flex-col overflow-hidden">
         {/* Top Header bar with search & location profiles */}
         <Header
-          adminUser={MOCK_ADMIN_USER}
+          adminUser={authUser}
           selectedSite={selectedSite}
           onSiteChange={setSelectedSite}
           searchQuery={searchQuery}
@@ -865,7 +921,10 @@ export default function App() {
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           sites={sites}
           siteLimit={siteLimit}
-          onEnterClerkMode={() => setIsClerkMode(true)}
+          onEnterClerkMode={canEnterClerkMode(authUser.role) ? () => setIsClerkMode(true) : undefined}
+          onLogout={handleLogout}
+          textSize={textSize}
+          onTextSizeChange={setTextSize}
         />
 
         {/* Scrollable primary content canvas */}

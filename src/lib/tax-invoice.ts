@@ -1,46 +1,109 @@
-import { DocketConfig, Transaction } from "../types";
-import { DEFAULT_DOCKET_CONFIG } from "../data";
+import { DocketConfig, Job, Transaction } from "../types";
 import { MODAL_PREVIEW_CSS, previewBodyClass } from "./print-preview";
+import { resolveDocketConfig } from "./delivery-docket";
 import { hasDocketLogo } from "./docket-logo";
 
-export { DEFAULT_DOCKET_CONFIG };
-
-export function resolveDocketConfig(config?: DocketConfig): DocketConfig {
-  return config ?? DEFAULT_DOCKET_CONFIG;
+export interface TaxInvoiceContext {
+  linkedJob?: Job | null;
+  transactions: Transaction[];
 }
 
-export interface DeliveryDocketPrintOptions {
+export interface TaxInvoicePrintOptions {
   reprintCopy?: boolean;
   autoPrint?: boolean;
 }
 
-export function buildDeliveryDocketHtml(
+function buildLogoMarkup(config: DocketConfig): string {
+  const accentColor = config.logoColor || "#2563eb";
+  if (!config.showLogo) return "";
+  if (hasDocketLogo(config.logoUrl)) {
+    return `<img src="${config.logoUrl}" alt="Logo" style="max-height: 55px; max-width: 100px; object-fit: contain;" />`;
+  }
+  return `<svg width="50" height="50" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 5L90 35L75 90L25 90L10 35L50 5Z" fill="${accentColor}" opacity="0.15" />
+    <path d="M50 15L80 40H20L50 15Z" fill="${accentColor}" />
+    <path d="M45 40H55V85H45V40Z" fill="${accentColor}" />
+    <path d="M30 55L50 45L70 55L50 65L30 55Z" fill="#fff" opacity="0.9" />
+    <path d="M50 5L95 38L78 92H22L5 38L50 5ZM50 10L10 40L25 87H75L90 40L50 10Z" fill="${accentColor}" />
+  </svg>`;
+}
+
+function buildContractHtml(
+  transaction: Transaction,
+  linkedJob: Job | null | undefined,
+  allTransactions: Transaction[],
+  accentColor: string
+): string {
+  if (transaction.type !== "Account" || !linkedJob) return "";
+
+  const totalDeliveredForJob = allTransactions
+    .filter(
+      (tx) =>
+        tx.jobOrder === linkedJob.id &&
+        (tx.status === "Approved" ||
+          tx.status === "Invoiced" ||
+          tx.status === "Committed" ||
+          tx.id === transaction.id)
+    )
+    .reduce((sum, tx) => sum + tx.netWeight, 0);
+  const orderQty = linkedJob.orderQty || 10000;
+  const remainingQty = Math.max(0, orderQty - totalDeliveredForJob);
+  const deliveredPercent = Math.min(100, Number(((totalDeliveredForJob / orderQty) * 100).toFixed(1)));
+
+  return `
+    <div style="margin: 15px 0; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; background-color: #f8fafc;">
+      <div style="font-size: 10px; font-weight: 800; color: #1e293b; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between;">
+        <span>Account Contract Verification (PO Progress)</span>
+        <span style="color: ${accentColor};">PO: ${linkedJob.customerOrderRef || "PO-" + linkedJob.id}</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 10px; margin-bottom: 8px; font-family: monospace;">
+        <div>Contract Ordered: <strong>${orderQty.toLocaleString()} t</strong></div>
+        <div>Delivered to Date: <strong>${totalDeliveredForJob.toFixed(2)} t</strong></div>
+        <div>Remaining PO Balance: <strong style="color: #b45309;">${remainingQty.toFixed(2)} t</strong></div>
+      </div>
+      <div style="height: 6px; width: 100%; border-radius: 9999px; overflow: hidden; display: flex; background: #e2e8f0;">
+        <div style="width: ${deliveredPercent}%; background: ${accentColor}; height: 100%;"></div>
+      </div>
+      <div style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: right; font-weight: bold;">
+        ${deliveredPercent}% of Contract PO Quantity delivered. Balance remaining: ${remainingQty.toFixed(2)} tonnes.
+      </div>
+    </div>
+  `;
+}
+
+export function buildTaxInvoiceHtml(
   transaction: Transaction,
   config: DocketConfig,
-  options: DeliveryDocketPrintOptions = {}
+  context: TaxInvoiceContext,
+  options: TaxInvoicePrintOptions = {}
 ): string {
   const { reprintCopy = false, autoPrint = true } = options;
-  const driverComments =
-    transaction.comments?.trim() ||
-    `Own Driver. Wear appropriate high-vis PPE, safety glasses, and steel caps at all times. Follow strict 20 km/h quarry limits. Weighbridge certified under scale ID ${transaction.scaleIdInbound}.`;
-  const weighbridgeSite = config.weighbridgeLocation || transaction.siteName;
+  const linkedJob = context.linkedJob;
   const accentColor = config.logoColor || "#2563eb";
-  const logoMarkup = config.showLogo
-    ? hasDocketLogo(config.logoUrl)
-      ? `<img src="${config.logoUrl}" alt="Logo" style="max-height: 50px; max-width: 80px; object-fit: contain;" />`
-      : `<svg width="50" height="50" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M50 5L90 35L75 90L25 90L10 35L50 5Z" fill="${accentColor}" opacity="0.15" />
-                    <path d="M50 15L80 40H20L50 15Z" fill="${accentColor}" />
-                    <path d="M45 40H55V85H45V40Z" fill="${accentColor}" />
-                    <path d="M30 55L50 45L70 55L50 65L30 55Z" fill="#fff" opacity="0.9" />
-                    <path d="M50 5L95 38L78 92H22L5 38L50 5ZM50 10L10 40L25 87H75L90 40L50 10Z" fill="${accentColor}" />
-                  </svg>`
-    : "";
+  const weighbridgeSite = config.weighbridgeLocation || transaction.siteName;
+  const unitPrice = transaction.basePrice || 24.5;
+  const netWeight = transaction.netWeight;
+  const totalExGst = netWeight * unitPrice;
+  const gstValue = totalExGst * 0.1;
+  const totalIncGst = totalExGst + gstValue;
+  const invoiceTitleText = config.invoiceTitle || "Tax Invoice";
+  const paymentNotes =
+    transaction.type === "Account"
+      ? config.accountInvoiceNotes ||
+        "Tax Invoice raised directly against approved credit ledger. Contract Terms apply. Do not pay this document."
+      : config.cashInvoiceNotes ||
+        "Thank you for your business. For cash/card sales, EFT payments are processed prior to vehicle dispatch.";
+  const watermarkHtml =
+    transaction.type === "Account"
+      ? `<div style="position: absolute; top: 40%; left: 10%; right: 10%; transform: rotate(-15deg); font-size: 50px; font-weight: 900; color: rgba(148, 163, 184, 0.08); border: 8px solid rgba(148, 163, 184, 0.08); padding: 12px; border-radius: 16px; text-align: center; pointer-events: none; text-transform: uppercase;">CHARGED TO ACCOUNT</div>`
+      : `<div style="position: absolute; top: 40%; left: 10%; right: 10%; transform: rotate(-15deg); font-size: 55px; font-weight: 900; color: rgba(16, 185, 129, 0.08); border: 8px solid rgba(16, 185, 129, 0.08); padding: 12px; border-radius: 16px; text-align: center; pointer-events: none; text-transform: uppercase;">PAID / RECEIVED</div>`;
+  const logoHtml = buildLogoMarkup(config);
+  const contractHtml = buildContractHtml(transaction, linkedJob, context.transactions, accentColor);
 
   return `
     <html>
       <head>
-        <title>Weighbridge Ticket - ${transaction.ticketNo}</title>
+        <title>Tax Invoice - ${transaction.ticketNo}</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;700;900&display=swap');
           ${autoPrint ? "" : MODAL_PREVIEW_CSS}
@@ -67,6 +130,7 @@ export function buildDeliveryDocketHtml(
             flex-direction: column;
             justify-content: space-between;
             background: #fff;
+            position: relative;
           }
           .header-table {
             width: 100%;
@@ -164,82 +228,40 @@ export function buildDeliveryDocketHtml(
             color: #0f172a;
             width: 25%;
           }
-          .weights-box {
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            background-color: #f8fafc;
-            padding: 12px;
-            margin: 15px 0;
-          }
-          .weights-table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-          .weights-table th {
-            text-align: center;
-            font-size: 9px;
-            font-weight: 800;
-            color: #475569;
-            text-transform: uppercase;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #cbd5e1;
-          }
-          .weights-table td {
-            text-align: center;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            font-weight: 800;
-            color: #0f172a;
-            padding-top: 8px;
-          }
-          .comments-box {
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 9px;
-            color: #475569;
-            margin-bottom: 15px;
-          }
-          .comments-title {
-            font-weight: 800;
-            color: #0f172a;
-            text-transform: uppercase;
-            margin-bottom: 3px;
-          }
           .pricing-section {
-            border-top: 1.5px dashed #cbd5e1;
-            padding-top: 12px;
-            margin-top: 12px;
+            margin-top: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            background-color: #f8fafc;
           }
           .pricing-table {
             width: 100%;
             border-collapse: collapse;
           }
           .pricing-table td {
+            padding: 4px 0;
             font-size: 11px;
-            padding: 5px 0;
           }
           .pricing-total {
-            font-size: 13px;
-            font-weight: 900;
-            color: #0f172a;
-            border-top: 2px solid #0f172a;
-            padding-top: 6px;
+            border-top: 2px solid #cbd5e1;
+            font-weight: bold;
+          }
+          .pricing-total td {
+            padding-top: 8px;
+            font-size: 12px;
           }
           .eft-box {
             border: 1px solid #cbd5e1;
-            background-color: #f8fafc;
             border-radius: 6px;
             padding: 10px;
+            background: #f8fafc;
+            margin-top: 15px;
             font-size: 9px;
-            color: #475569;
-            margin-bottom: 15px;
           }
           .eft-title {
-            font-weight: 800;
-            color: #0f172a;
-            text-transform: uppercase;
+            font-weight: 900;
+            color: #475569;
             font-size: 8px;
             margin-bottom: 3px;
             letter-spacing: 0.5px;
@@ -281,30 +303,27 @@ export function buildDeliveryDocketHtml(
               background: none;
             }
             .page {
-                width: 21cm;
-                height: 29.7cm;
-                padding: 1.5cm;
-                margin: 0;
-                box-shadow: none;
-                page-break-after: always;
-                transform: none !important;
-              }
+              width: 21cm;
+              height: 29.7cm;
+              padding: 1.5cm;
+              margin: 0;
+              box-shadow: none;
+              page-break-after: always;
+              transform: none !important;
+            }
           }
         </style>
       </head>
       <body class="${previewBodyClass(autoPrint)}">
         <div class="page">
+          ${watermarkHtml}
           <div>
             <table class="header-table">
               <tr>
-                ${config.showLogo ? `
-                <td class="logo-cell">
-                  ${logoMarkup}
-                </td>
-                ` : ""}
+                <td class="logo-cell">${logoHtml}</td>
                 <td class="brand-cell">
                   <h1 class="brand-name">${config.eftAccountName}</h1>
-                  <div class="brand-subtitle">Certified Weighbridge Material Record</div>
+                  <div class="brand-subtitle">Commercial Tax Invoice Record</div>
                 </td>
                 <td class="contact-cell">
                   <div class="contact-name">${config.businessName}</div>
@@ -318,8 +337,8 @@ export function buildDeliveryDocketHtml(
             </table>
 
             <div class="docket-title-container">
-              <h2 class="docket-title">DELIVERY DOCKET</h2>
-              ${reprintCopy ? '<div class="reprint-badge">REPRINT / DUPLICATE COPY</div>' : ""}
+              <h2 class="docket-title">${invoiceTitleText}</h2>
+              ${reprintCopy ? '<div class="reprint-badge">DUPLICATE TAX INVOICE COPY</div>' : ""}
             </div>
 
             <table class="details-table">
@@ -327,13 +346,13 @@ export function buildDeliveryDocketHtml(
                 <td class="label-col">DATE & TIME IN:</td>
                 <td class="val-col">${transaction.firstWeighTime}</td>
                 <td class="label-col">DATE & TIME OUT:</td>
-                <td class="val-col">${transaction.secondWeighTime || "PENDING OUTBOUND"}</td>
+                <td class="val-col">${transaction.secondWeighTime || "COMPLETED"}</td>
               </tr>
               <tr>
                 <td class="label-col">CUSTOMER / DEBTOR:</td>
                 <td class="val-col" style="font-size: 11px; font-weight: 900;">${transaction.customerName}</td>
-                <td class="label-col">JOB / REFERENCE:</td>
-                <td class="val-col">${transaction.jobOrder || "N/A"}</td>
+                <td class="label-col">WEIGHBRIDGE SITE:</td>
+                <td class="val-col">${weighbridgeSite}</td>
               </tr>
               <tr>
                 <td class="label-col">CARRIER / TRANSPORT:</td>
@@ -344,8 +363,8 @@ export function buildDeliveryDocketHtml(
               <tr>
                 <td class="label-col">DRIVER NAME:</td>
                 <td class="val-col">${transaction.driverName}</td>
-                <td class="label-col">DOCKET NUMBER:</td>
-                <td class="val-col" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 900; color: #1e293b;">${transaction.ticketNo}</td>
+                <td class="label-col">INVOICE NO:</td>
+                <td class="val-col" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 900; color: #1e293b;">INV-${transaction.ticketNo.replace("WB-", "")}</td>
               </tr>
               <tr>
                 <td class="label-col">MATERIAL PRODUCT:</td>
@@ -353,67 +372,56 @@ export function buildDeliveryDocketHtml(
                 <td class="label-col">LOT NUMBER:</td>
                 <td class="val-col" style="font-family: 'JetBrains Mono', monospace; font-weight: 700;">${transaction.lotNo || "N/A"}</td>
               </tr>
-              <tr>
-                <td class="label-col">INBOUND SCALE:</td>
-                <td class="val-col" style="font-family: 'JetBrains Mono', monospace;">${transaction.scaleIdInbound}</td>
-                <td class="label-col">WEIGHBRIDGE SITE:</td>
-                <td class="val-col">${weighbridgeSite}</td>
-              </tr>
             </table>
 
-            <div class="weights-box">
-              <table class="weights-table">
+            ${contractHtml}
+
+            <div style="margin-top: 15px;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
                 <thead>
-                  <tr>
-                    <th>Gross Weight (t)</th>
-                    <th>Tare Weight (t)</th>
-                    <th>Net Product Weight (t)</th>
+                  <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1; font-weight: 800; color: #475569; text-transform: uppercase;">
+                    <th style="padding: 6px; text-align: left;">Item Description</th>
+                    <th style="padding: 6px; text-align: center;">Net Weight (t)</th>
+                    <th style="padding: 6px; text-align: right;">Unit Rate ($/t)</th>
+                    <th style="padding: 6px; text-align: right;">Total (Ex. GST)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>${transaction.grossWeight.toFixed(2)}</td>
-                    <td>${transaction.tareWeight.toFixed(2)}</td>
-                    <td style="font-size: 16px; font-weight: 900; color: #1e293b;">${transaction.netWeight.toFixed(2)}</td>
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 8px; font-weight: 700;">${transaction.productName}</td>
+                    <td style="padding: 8px; text-align: center; font-family: monospace;">${netWeight.toFixed(2)} t</td>
+                    <td style="padding: 8px; text-align: right; font-family: monospace;">$${unitPrice.toFixed(2)}</td>
+                    <td style="padding: 8px; text-align: right; font-family: monospace; font-weight: 700;">$${totalExGst.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <div class="comments-box">
-              <div class="comments-title">Driver Comments & Special Site Instructions</div>
-              <p style="margin: 0;">${driverComments}</p>
-            </div>
-
-            ${transaction.type !== "Account" ? `
             <div class="pricing-section">
               <table class="pricing-table">
                 <tr>
-                  <td style="font-weight: 700; color: #475569;">BILLING CLASS / PAYMENT TYPE:</td>
-                  <td style="text-align: right; font-weight: 800; color: #0f172a;">${transaction.type} sale</td>
+                  <td style="font-weight: 700; color: #475569;">BILLING METHOD / ACCOUNT TYPE:</td>
+                  <td style="text-align: right; font-weight: 800; color: #0f172a; text-transform: uppercase;">${transaction.type} Basis</td>
                 </tr>
                 <tr>
-                  <td style="color: #475569;">Material Unit Base Rate:</td>
-                  <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">$${transaction.basePrice.toFixed(2)} / t</td>
+                  <td style="color: #475569;">Gross Goods Value (Ex. GST):</td>
+                  <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">$${totalExGst.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
                 <tr>
-                  <td style="color: #475569;">Gross Billable Value (Ex. GST):</td>
-                  <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">$${transaction.totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style="color: #475569;">10% GST Taxes:</td>
+                  <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">$${gstValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
                 <tr class="pricing-total">
-                  <td style="font-weight: 900;">TOTAL DUE (EX. GST):</td>
-                  <td style="text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 900; color: ${accentColor};">$${transaction.totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style="font-weight: 900; color: #0f172a;">TOTAL AMOUNT DUE (INC. GST):</td>
+                  <td style="text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 900; color: ${accentColor};">$${totalIncGst.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
               </table>
             </div>
-            ` : `
-            <div class="pricing-section" style="text-align: center; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 6px; background-color: #f8fafc;">
-              <span style="font-size: 10px; font-weight: 900; color: #64748b; letter-spacing: 1px; text-transform: uppercase;">
-                ACCOUNT CLIENT TRANSACTION - PRICING EXCLUDED FROM DOCKET
-              </span>
-              <p style="font-size: 8px; color: #94a3b8; margin: 3px 0 0 0;">Pricing information is suppressed. Total value is compiled and raised directly in the commercial accounting system as a monthly tax invoice.</p>
+
+            <div style="margin-top: 15px; padding: 10px; border-left: 3px solid #64748b; background-color: #f8fafc; font-size: 9px; color: #475569; border-radius: 0 4px 4px 0; line-height: 1.4;">
+              <div style="font-weight: 800; text-transform: uppercase; color: #1e293b; margin-bottom: 2px;">Billing Terms & Instructions</div>
+              ${paymentNotes}
             </div>
-            `}
           </div>
 
           <div>
@@ -437,11 +445,11 @@ export function buildDeliveryDocketHtml(
               <tr>
                 <td>
                   <div class="signature-line"></div>
-                  <div>Operator Authorized Signature (ID: ${transaction.operatorId})</div>
+                  <div>Authorized Audit Officer Signature</div>
                 </td>
                 <td>
                   <div class="signature-line"></div>
-                  <div>Driver Authorized Receipt Signature</div>
+                  <div>Debtor Acceptance / Recipient Signature</div>
                 </td>
               </tr>
             </table>
@@ -463,17 +471,18 @@ export function buildDeliveryDocketHtml(
   `;
 }
 
-export function openDeliveryDocketPrint(
+export function openTaxInvoicePrint(
   transaction: Transaction,
+  context: TaxInvoiceContext,
   docketConfig?: DocketConfig,
-  options: DeliveryDocketPrintOptions = {}
+  options: TaxInvoicePrintOptions = {}
 ): boolean {
   const printWindow = window.open("", "_blank");
   if (!printWindow) return false;
 
   const config = resolveDocketConfig(docketConfig);
   printWindow.document.open();
-  printWindow.document.write(buildDeliveryDocketHtml(transaction, config, options));
+  printWindow.document.write(buildTaxInvoiceHtml(transaction, config, context, options));
   printWindow.document.close();
   return true;
 }

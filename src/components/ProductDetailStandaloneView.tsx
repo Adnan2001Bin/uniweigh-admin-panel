@@ -1141,7 +1141,7 @@ export default function ProductDetailStandaloneView({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             onClick={() => setIsAddLotOpen(false)}
-            className="absolute inset-0 bg-primary backdrop-blur-xs"
+            className="absolute inset-0 bg-foreground/50 backdrop-blur-xs"
           />
           <div className="relative bg-card rounded-md border border-border p-6 shadow-lg max-w-sm w-full space-y-4 z-10">
             <div className="flex items-center justify-between border-b border-border pb-3">
@@ -1204,7 +1204,7 @@ export default function ProductDetailStandaloneView({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             onClick={() => setIsExportOpen(false)}
-            className="absolute inset-0 bg-primary backdrop-blur-xs"
+            className="absolute inset-0 bg-foreground/50 backdrop-blur-xs"
           />
           <div className="relative bg-card rounded-md border border-border p-6 shadow-lg max-w-md w-full space-y-4 z-10 text-xs">
             <div className="flex items-center justify-between border-b border-border pb-3">

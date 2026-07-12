@@ -136,6 +136,19 @@ html, body {
   overflow-x: hidden;
 }
 
+/* Global admin panel text scale — rem-based Tailwind sizes follow html font-size */
+html {
+  font-size: 100%;
+}
+
+html[data-text-size="small"] {
+  font-size: 87.5%;
+}
+
+html[data-text-size="large"] {
+  font-size: 112.5%;
+}
+
 /* LED-style glow for operator-terminal weight readouts */
 .glow-accent {
   text-shadow: 0 0 14px oklch(0.795 0.155 78 / 0.55);

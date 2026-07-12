@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/src/lib/utils";
+import { canAccessSidebarSection, canEnterClerkMode } from "@/src/lib/role-access";
 
 interface SidebarProps {
   activeView: string;
@@ -21,6 +22,7 @@ interface SidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onEnterClerkMode?: () => void;
+  userRole: string;
 }
 
 export default function Sidebar({
@@ -28,7 +30,8 @@ export default function Sidebar({
   onViewChange,
   collapsed,
   onToggleCollapse,
-  onEnterClerkMode
+  onEnterClerkMode,
+  userRole
 }: SidebarProps) {
   // We keep track of which enterprise accordion is expanded
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -110,6 +113,9 @@ export default function Sidebar({
     }
   ];
 
+  const visibleSections = sections.filter((section) => canAccessSidebarSection(userRole, section.id));
+  const showClerkEntry = onEnterClerkMode && canEnterClerkMode(userRole);
+
   return (
     <aside
       className={cn(
@@ -142,7 +148,7 @@ export default function Sidebar({
       {/* Main navigation with scroll area */}
       <div className="flex-1 overflow-y-auto py-4 px-2 scrollbar-none space-y-1">
         {/* Switch to Clerk View Button — the amber hazard CTA */}
-        {onEnterClerkMode && (
+        {showClerkEntry && (
           <div className="px-1 mb-3">
             <button
               onClick={onEnterClerkMode}
@@ -180,7 +186,7 @@ export default function Sidebar({
         </div>
 
         {/* Accordion Sections */}
-        {sections.map((section) => {
+        {visibleSections.map((section) => {
           const SectionIcon = section.icon;
           const isExpanded = expandedSections[section.id];
           const hasActiveItem = section.items.some((item) => item.id === activeView);

@@ -16,7 +16,10 @@ import {
   Building,
   AlertOctagon,
   Save,
-  X
+  X,
+  Upload,
+  Trash2,
+  Image as ImageIcon
 } from "lucide-react";
 import { AdminUser, Site, DocketConfig } from "../types";
 import { MOCK_ROLES } from "../data";
@@ -24,6 +27,7 @@ import { toast } from "sonner";
 import { confirmDialog } from "@/src/components/shared/dialog-service";
 import { SelectBox } from "@/src/components/ui/select";
 import { Checkbox } from "@/src/components/ui/checkbox";
+import { readDocketLogo, hasDocketLogo } from "@/src/lib/docket-logo";
 
 interface AdminViewProps {
   adminUser: AdminUser;
@@ -63,12 +67,37 @@ export default function AdminView({
   // States for adding site
   const [newSiteName, setNewSiteName] = useState("");
   const [newSiteSupervisor, setNewSiteSupervisor] = useState("");
-  const [newSiteScales, setNewSiteScales] = useState(2);
+  const [newSiteScales, setNewSiteScales] = useState("");
 
   // States for editing site
   const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
   const [editingSiteName, setEditingSiteName] = useState("");
   const [editingSiteSupervisor, setEditingSiteSupervisor] = useState("");
+  const [isLogoUploading, setIsLogoUploading] = useState(false);
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setIsLogoUploading(true);
+    try {
+      const logoUrl = await readDocketLogo(file);
+      onUpdateDocketConfig({ ...docketConfig, logoUrl, showLogo: true });
+      toast.success(`Logo "${file.name}" uploaded successfully.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to upload logo.";
+      toast.error(message);
+    } finally {
+      setIsLogoUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    const { logoUrl: _removed, ...rest } = docketConfig;
+    onUpdateDocketConfig(rest);
+    toast.success("Logo removed from docket configuration.");
+  };
 
   const mockBackOfficeUsers = [
     { name: "John Davis", email: "john.davis@uniweigh.com", role: "Weighbridge Operator", station: "Melbourne Eastern Quarry", active: "Scale-A2 active" },
@@ -193,7 +222,7 @@ export default function AdminView({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-12">
               {/* Form panel */}
               <div className="lg:col-span-5 space-y-6 bg-muted p-5 rounded-md border border-border">
                 <div className="space-y-4">
@@ -319,62 +348,117 @@ export default function AdminView({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-muted-foreground uppercase">Logo Brand Color</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="color"
-                          value={docketConfig.logoColor}
-                          onChange={(e) => onUpdateDocketConfig({ ...docketConfig, logoColor: e.target.value })}
-                          className="w-8 h-8 rounded border border-border cursor-pointer p-0 bg-transparent"
-                        />
-                        <input
-                          type="text"
-                          value={docketConfig.logoColor}
-                          onChange={(e) => onUpdateDocketConfig({ ...docketConfig, logoColor: e.target.value })}
-                          className="flex-1 rounded border border-border bg-card px-2 py-1 text-xs text-foreground font-mono focus:outline-none"
-                        />
-                      </div>
-                    </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-muted-foreground uppercase">Company Logo</label>
 
-                    <div className="flex items-center gap-2 pt-4">
-                      <Checkbox id="showLogoCheckbox" checked={docketConfig.showLogo} onCheckedChange={(checked) => (((e) => onUpdateDocketConfig({ ...docketConfig, showLogo: e.target.checked })) as any)({ target: { checked } })} className="h-4 w-4 text-info rounded border-input focus:ring-ring" />
-                      <label htmlFor="showLogoCheckbox" className="text-xs font-bold text-foreground cursor-pointer">
-                        Display Logo on Docket
-                      </label>
+                    <div className="rounded-md border border-border bg-card p-3 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted">
+                          {hasDocketLogo(docketConfig.logoUrl) ? (
+                            <img
+                              src={docketConfig.logoUrl}
+                              alt="Uploaded company logo"
+                              className="max-h-full max-w-full object-contain p-1"
+                            />
+                          ) : (
+                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <p className="text-xs font-semibold text-foreground">
+                            {hasDocketLogo(docketConfig.logoUrl) ? "Logo ready for print" : "No logo uploaded yet"}
+                          </p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            PNG, JPG, WebP, or SVG up to 2 MB.
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-muted px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary transition">
+                              <Upload className="h-3.5 w-3.5" />
+                              <span>
+                                {isLogoUploading
+                                  ? "Uploading..."
+                                  : hasDocketLogo(docketConfig.logoUrl)
+                                  ? "Replace logo"
+                                  : "Upload logo"}
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/svg+xml,.png,.jpg,.jpeg,.webp,.svg"
+                                onChange={handleLogoUpload}
+                                disabled={isLogoUploading}
+                                className="hidden"
+                              />
+                            </label>
+                            {hasDocketLogo(docketConfig.logoUrl) && (
+                              <button
+                                type="button"
+                                onClick={handleRemoveLogo}
+                                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/25 transition cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Remove</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 border-t border-border pt-3">
+                        <Checkbox
+                          id="showLogoCheckbox"
+                          checked={docketConfig.showLogo}
+                          onCheckedChange={(checked) =>
+                            onUpdateDocketConfig({ ...docketConfig, showLogo: Boolean(checked) })
+                          }
+                          className="h-4 w-4 text-info rounded border-input focus:ring-ring"
+                        />
+                        <label htmlFor="showLogoCheckbox" className="text-xs font-bold text-foreground cursor-pointer">
+                          Display Logo on Docket
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Interactive preview panel */}
-              <div className="lg:col-span-7 flex flex-col items-center">
+              <div className="lg:col-span-7 flex min-w-0 flex-col items-center">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1">
                   <span className="h-2 w-2 rounded-full bg-success animate-ping"></span>
                   Live A4 Docket Preview (Scale Adjusted)
                 </span>
 
-                <div className="w-full bg-muted p-8 rounded-md border border-border flex justify-center shadow-inner overflow-x-auto">
+                <div className="w-full rounded-md border border-border bg-muted p-8 shadow-inner flex justify-center overflow-x-auto">
                   {/* Miniature A4 Sheet Aspect Ratio (roughly 1:1.41) */}
-                  <div className="w-[520px] min-h-[730px] bg-card border border-input shadow-lg p-8 text-foreground flex flex-col justify-between font-sans text-xs leading-relaxed relative select-none">
+                  <div className="w-[520px] min-h-[730px] shrink-0 bg-card border border-input shadow-lg p-8 text-foreground flex flex-col justify-between font-sans text-xs leading-relaxed relative select-none">
                     <div>
                       {/* Top Branding Section */}
                       <div className="flex justify-between items-start border-b border-border pb-4 mb-4">
                         {/* Custom SVG dynamic logo */}
                         <div className="flex items-center gap-3">
                           {docketConfig.showLogo && (
-                            <div className="flex flex-col items-center shrink-0">
-                              <svg width="45" height="45" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M50 5L90 35L75 90L25 90L10 35L50 5Z" fill={docketConfig.logoColor} opacity="0.15" />
-                                <path d="M50 15L80 40H20L50 15Z" fill={docketConfig.logoColor} />
-                                <path d="M45 40H55V85H45V40Z" fill={docketConfig.logoColor} />
-                                <path d="M30 55L50 45L70 55L50 65L30 55Z" fill="#fff" opacity="0.9" />
-                                <path d="M50 5L95 38L78 92H22L5 38L50 5ZM50 10L10 40L25 87H75L90 40L50 10Z" fill={docketConfig.logoColor} />
-                              </svg>
-                              <span className="text-xs font-bold tracking-widest uppercase mt-1" style={{ color: docketConfig.logoColor }}>
-                                BLACK OAK
-                              </span>
+                            <div className="flex h-14 w-[72px] shrink-0 items-center justify-center">
+                              {hasDocketLogo(docketConfig.logoUrl) ? (
+                                <img
+                                  src={docketConfig.logoUrl}
+                                  alt="Company logo"
+                                  className="max-h-12 max-w-[72px] object-contain"
+                                />
+                              ) : (
+                                <div className="flex flex-col items-center">
+                                  <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M50 5L90 35L75 90L25 90L10 35L50 5Z" fill={docketConfig.logoColor} opacity="0.15" />
+                                    <path d="M50 15L80 40H20L50 15Z" fill={docketConfig.logoColor} />
+                                    <path d="M45 40H55V85H45V40Z" fill={docketConfig.logoColor} />
+                                    <path d="M30 55L50 45L70 55L50 65L30 55Z" fill="#fff" opacity="0.9" />
+                                    <path d="M50 5L95 38L78 92H22L5 38L50 5ZM50 10L10 40L25 87H75L90 40L50 10Z" fill={docketConfig.logoColor} />
+                                  </svg>
+                                  <span className="text-[10px] font-bold tracking-widest uppercase mt-0.5" style={{ color: docketConfig.logoColor }}>
+                                    BLACK OAK
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           )}
                           <div className="max-w-[180px]">
@@ -853,7 +937,7 @@ export default function AdminView({
                   </p>
                 </div>
 
-                <div className="md:col-span-8 grid gap-4 sm:grid-cols-3">
+                <div className="md:col-span-8 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
                       New Site Name
@@ -863,7 +947,7 @@ export default function AdminView({
                       value={newSiteName}
                       onChange={(e) => setNewSiteName(e.target.value)}
                       placeholder="e.g. Northern Silica Quarry"
-                      className="w-full rounded border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full h-9 rounded-md border border-border bg-card px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </div>
 
@@ -876,37 +960,41 @@ export default function AdminView({
                       value={newSiteSupervisor}
                       onChange={(e) => setNewSiteSupervisor(e.target.value)}
                       placeholder="e.g. Marcus Vance"
-                      className="w-full rounded border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full h-9 rounded-md border border-border bg-card px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </div>
 
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1">
-                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
-                        Scales count
-                      </label>
-                      <SelectBox
-                        value={newSiteScales}
-                        onChange={(e) => setNewSiteScales(Number(e.target.value))}
-                        className="w-full rounded border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                      >
-                        <option value={1}>1 Scale Bed</option>
-                        <option value={2}>2 Scale Beds</option>
-                        <option value={3}>3 Scale Beds</option>
-                      </SelectBox>
-                    </div>
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
+                      Scales count
+                    </label>
+                    <SelectBox
+                      value={newSiteScales}
+                      onChange={(e) => setNewSiteScales(e.target.value)}
+                      className="h-9 w-full text-xs"
+                    >
+                      <option value="">Select scale count…</option>
+                      <option value={1}>1 Scale Bed</option>
+                      <option value={2}>2 Scale Beds</option>
+                      <option value={3}>3 Scale Beds</option>
+                    </SelectBox>
+                  </div>
 
-                    <button
-                      onClick={() => {
+                  <button
+                    onClick={() => {
                         if (!newSiteName.trim()) {
                           toast.info("Please specify a site name.");
+                          return;
+                        }
+                        if (!newSiteScales) {
+                          toast.info("Please select a scales count.");
                           return;
                         }
                         const newSiteObj: Site = {
                           id: `site-${Date.now().toString().slice(-4)}`,
                           name: newSiteName.trim(),
                           status: "Active",
-                          scaleCount: newSiteScales,
+                          scaleCount: Number(newSiteScales),
                           operatorName: newSiteSupervisor.trim() || "Unassigned"
                         };
                         const updated = [...sites, newSiteObj];
@@ -924,14 +1012,13 @@ export default function AdminView({
                         // reset form
                         setNewSiteName("");
                         setNewSiteSupervisor("");
-                        setNewSiteScales(2);
-                      }}
-                      className="rounded bg-primary hover:bg-primary/90 text-xs font-bold text-white px-4 py-2 shrink-0 flex items-center gap-1.5 transition cursor-pointer h-[34px]"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Site
-                    </button>
-                  </div>
+                        setNewSiteScales("");
+                    }}
+                    className="h-9 shrink-0 rounded-md bg-primary hover:bg-primary/90 text-xs font-bold text-white px-4 flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Site
+                  </button>
                 </div>
               </div>
             </div>

@@ -15,12 +15,19 @@ import {
   Calendar,
   Tag,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  Upload,
+  Trash2
 } from "lucide-react";
 import { ProductLot, Product, Transaction, TransactionStatus } from "../types";
 import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
 import { Checkbox } from "@/src/components/ui/checkbox";
+import {
+  type LotCertificate,
+  readPdfCertificate,
+  downloadLotCertificate,
+} from "@/src/lib/lot-certificate";
 
 interface ProductLotsViewProps {
   productLots: ProductLot[];
@@ -82,6 +89,8 @@ export default function ProductLotsView({
   const [formOrderQuantity, setFormOrderQuantity] = useState("");
   const [formStatus, setFormStatus] = useState<"Active" | "Completed" | "Pending">("Active");
   const [formNotes, setFormNotes] = useState("");
+  const [formCertificates, setFormCertificates] = useState<LotCertificate[]>([]);
+  const [isCertificateUploading, setIsCertificateUploading] = useState(false);
 
   // Helpers for calculations
   const getUsedQuantity = (lotId: string) => {
@@ -197,6 +206,7 @@ export default function ProductLotsView({
       setFormOrderQuantity(lot.orderQuantity.toString());
       setFormStatus(lot.status as any);
       setFormNotes(lot.notes || "");
+      setFormCertificates(lot.datasheets ? [...lot.datasheets] : []);
     } else {
       setEditingLot(null);
       setFormName("");
@@ -205,8 +215,31 @@ export default function ProductLotsView({
       setFormOrderQuantity("");
       setFormStatus("Active");
       setFormNotes("");
+      setFormCertificates([]);
     }
     setIsModalOpen(true);
+  };
+
+  const handleCertificateUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setIsCertificateUploading(true);
+    try {
+      const certificate = await readPdfCertificate(file);
+      setFormCertificates((prev) => [certificate, ...prev]);
+      toast.success(`Certificate "${certificate.name}" attached.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to upload certificate.";
+      toast.error(message);
+    } finally {
+      setIsCertificateUploading(false);
+    }
+  };
+
+  const handleRemoveCertificate = (index: number) => {
+    setFormCertificates((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Handle saving product lot from form
@@ -223,9 +256,12 @@ export default function ProductLotsView({
     }
     const orderQty = parseFloat(formOrderQuantity);
     if (isNaN(orderQty) || orderQty <= 0) {
-      toast.success("Please enter a valid Order Quantity in Tonnes.");
+      toast.error("Please enter a valid Order Quantity in Tonnes.");
       return;
     }
+
+    const certificatePayload =
+      formCertificates.length > 0 ? formCertificates : undefined;
 
     if (editingLot) {
       const updated: ProductLot = {
@@ -235,7 +271,8 @@ export default function ProductLotsView({
         orderQuantity: orderQty,
         status: formStatus,
         notes: formNotes.trim(),
-        createdDate: editingLot.createdDate || new Date().toISOString().split("T")[0]
+        createdDate: editingLot.createdDate || new Date().toISOString().split("T")[0],
+        datasheets: certificatePayload,
       };
       onUpdateProductLot(updated);
     } else {
@@ -251,7 +288,8 @@ export default function ProductLotsView({
         orderQuantity: orderQty,
         status: formStatus,
         notes: formNotes.trim(),
-        createdDate: new Date().toISOString().split("T")[0]
+        createdDate: new Date().toISOString().split("T")[0],
+        datasheets: certificatePayload,
       };
       onAddProductLot(newLot);
     }
@@ -261,6 +299,7 @@ export default function ProductLotsView({
       setFormName("");
       setFormOrderQuantity("");
       setFormNotes("");
+      setFormCertificates([]);
       toast.success("Product Lot saved successfully. Feel free to add another!");
     } else {
       setIsModalOpen(false);
@@ -924,6 +963,72 @@ export default function ProductLotsView({
                     onChange={(e) => setFormNotes(e.target.value)}
                     className="w-full bg-muted border border-border focus:bg-card rounded-md px-3 py-2 font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block">
+                    PDF Certificates
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Attach quality or lab certificates for this lot. PDF only, up to 5 MB each.
+                  </p>
+
+                  {formCertificates.length > 0 && (
+                    <div className="space-y-2">
+                      {formCertificates.map((certificate, index) => (
+                        <div
+                          key={`${certificate.name}-${certificate.uploadedAt}-${index}`}
+                          className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted px-3 py-2"
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="rounded-md bg-warning/10 p-1.5 text-warning shrink-0">
+                              <FileText className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate font-semibold text-foreground" title={certificate.name}>
+                                {certificate.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {certificate.size} • Uploaded {certificate.uploadedAt}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {certificate.url && (
+                              <button
+                                type="button"
+                                onClick={() => downloadLotCertificate(certificate)}
+                                className="rounded-md border border-border bg-card p-1.5 text-muted-foreground hover:text-info hover:border-info/25 transition cursor-pointer"
+                                title="Preview download"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCertificate(index)}
+                              className="rounded-md border border-border bg-card p-1.5 text-muted-foreground hover:text-destructive hover:border-destructive/25 transition cursor-pointer"
+                              title="Remove certificate"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted px-3 py-3 text-xs font-semibold text-muted-foreground hover:bg-card hover:text-foreground transition">
+                    <Upload className="h-4 w-4" />
+                    <span>{isCertificateUploading ? "Uploading PDF..." : "Upload PDF certificate"}</span>
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={handleCertificateUpload}
+                      disabled={isCertificateUploading}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
 
                 {/* System Calculated Fields (Display only when editing) */}

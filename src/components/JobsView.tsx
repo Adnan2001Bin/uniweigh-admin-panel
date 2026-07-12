@@ -423,17 +423,6 @@ export default function JobsView({
         {currentMode === "list" && (
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => {
-                setExportScope("current");
-                setShowExportModal(true);
-              }}
-              className="px-4 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
-              title="Export job ledger reports"
-            >
-              <Download className="h-3.8 w-3.8 text-muted-foreground" />
-              <span>Export</span>
-            </button>
-            <button
               onClick={handleOpenAddForm}
               className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
             >
@@ -505,23 +494,36 @@ export default function JobsView({
                 </div>
               </div>
 
-              {/* Selection actions showing context actions */}
-              {checkedJobIds.length > 0 && (
-                <div className="flex items-center gap-2 bg-info/10 border border-info/25 px-3 py-1.5 rounded-md text-xs font-semibold text-info animate-fade-in">
-                  <span>{checkedJobIds.length} Job(s) selected</span>
-                  <div className="h-4 w-px bg-info/10 mx-1"></div>
-                  <button
-                    onClick={() => {
-                      setExportScope("selected");
-                      setShowExportModal(true);
-                    }}
-                    className="text-info hover:text-info font-bold hover:underline flex items-center gap-1 transition"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Export Selected</span>
-                  </button>
-                </div>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {checkedJobIds.length > 0 && (
+                  <div className="flex items-center gap-2 bg-info/10 border border-info/25 px-3 py-1.5 rounded-md text-xs font-semibold text-info animate-fade-in">
+                    <span>{checkedJobIds.length} Job(s) selected</span>
+                    <div className="h-4 w-px bg-info/10 mx-1"></div>
+                    <button
+                      onClick={() => {
+                        setExportScope("selected");
+                        setShowExportModal(true);
+                      }}
+                      className="text-info hover:text-info font-bold hover:underline flex items-center gap-1 transition"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Export Selected</span>
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setExportScope("filtered");
+                    setShowExportModal(true);
+                  }}
+                  className="rounded-md border border-border bg-card text-xs font-bold text-foreground px-4 py-2.5 hover:bg-muted transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  title="Export job ledger reports"
+                >
+                  <Download className="h-4 w-4 text-info" />
+                  <span>Export Reports</span>
+                </button>
+              </div>
             </div>
 
             {/* MAIN TABLE CANVAS */}

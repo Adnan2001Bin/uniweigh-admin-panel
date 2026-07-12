@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { ProductLot, Product, Transaction, TransactionStatus } from "../types";
 import { toast } from "sonner";
+import { downloadLotCertificate } from "@/src/lib/lot-certificate";
 
 interface ProductLotDetailViewProps {
   lotId: string;
@@ -83,24 +84,10 @@ export default function ProductLotDetailView({
     return selectedLot.status;
   }, [selectedLot, remainingQuantity]);
 
-  const currentLotRecentLotObj = useMemo(() => {
-    if (!parentProduct || !selectedLot) return null;
-    return (parentProduct.recentLots || []).find(l => l.lotNumber === selectedLot.lotNumber) || null;
-  }, [parentProduct, selectedLot]);
-
   const lotDatasheets = useMemo(() => {
     if (!selectedLot) return [];
-    if (currentLotRecentLotObj && currentLotRecentLotObj.datasheets) {
-      return currentLotRecentLotObj.datasheets;
-    }
-    return [
-      {
-        name: `SGS_Quality_Certificate_Lot_${selectedLot.lotNumber}.pdf`,
-        size: "450 KB",
-        uploadedAt: "2026-06-15 09:00"
-      }
-    ];
-  }, [currentLotRecentLotObj, selectedLot]);
+    return selectedLot.datasheets ?? [];
+  }, [selectedLot]);
 
   if (!selectedLot) {
     return (
@@ -654,7 +641,7 @@ export default function ProductLotDetailView({
               <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center justify-between">
                 <span>Lot Quality Certifications & Lab Specifications</span>
                 <span className="bg-warning/10 text-warning text-xs font-bold px-2 py-0.5 rounded-full font-mono">
-                  {selectedLot.lotNumber}
+                  {selectedLot.id}
                 </span>
               </h3>
               <p className="text-xs text-muted-foreground font-bold mt-1">
@@ -687,10 +674,14 @@ export default function ProductLotDetailView({
                     <button
                       type="button"
                       onClick={() => {
-                        toast.info(`Downloading certificate: ${ds.name}. In a production environment, this serves the real lab certified document.`);
+                        if (ds.url) {
+                          downloadLotCertificate(ds);
+                          return;
+                        }
+                        toast.error("Certificate file is not available for download.");
                       }}
                       className="p-1.5 text-muted-foreground hover:text-info hover:bg-card border border-transparent hover:border-border rounded-md transition shrink-0 cursor-pointer"
-                      title="Download Cert"
+                      title="Download certificate"
                     >
                       <Download className="h-4 w-4" />
                     </button>
@@ -704,7 +695,7 @@ export default function ProductLotDetailView({
               <div>
                 <span className="font-bold text-info block text-xs uppercase tracking-wider">Need to Register a New Certificate?</span>
                 <p className="text-xs text-info leading-normal mt-0.5 font-medium">
-                  New laboratory analysis and quality certificates can be registered, named, and uploaded directly through the main <strong>Product Specifications Panel &rsaquo; Data Sheets & Certs</strong> tab.
+                  Upload PDF certificates when creating or editing a product lot from the <strong>Product Lots</strong> listing screen.
                 </p>
               </div>
             </div>
