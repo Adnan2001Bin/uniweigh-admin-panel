@@ -549,6 +549,7 @@ export default function App() {
             onUpdateJob={handleUpdateJob}
             onViewTicketDetails={handleViewTicketDetails}
             searchQuery={searchQuery}
+            currentUserName={authUser.name}
           />
         );
       case "customers-destinations":

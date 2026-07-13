@@ -803,7 +803,7 @@ export default function ClerkView({
 
         {/* SCREEN 1: Home Action Card Selection */}
         {screenMode === "home" && (
-          <div className="flex-1 flex flex-col justify-center items-center p-8 max-w-4xl mx-auto w-full">
+          <div className="flex-1 flex flex-col justify-center items-center p-8 max-w-7xl mx-auto w-full">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold text-foreground tracking-tight">Select Transaction Workflow</h2>
               <p className="text-muted-foreground text-sm mt-1.5 max-w-md mx-auto">
@@ -896,7 +896,7 @@ export default function ClerkView({
                             </span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="font-bold text-foreground block truncate max-w-[200px]" title={tx.customerName}>
+                            <span className="font-bold text-foreground block truncate max-w-[280px]" title={tx.customerName}>
                               {tx.customerName}
                             </span>
                             <span className="font-mono text-xs text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded inline-block mt-1">
@@ -930,10 +930,10 @@ export default function ClerkView({
                             <button
                               type="button"
                               onClick={() => handlePrintTransaction(tx)}
-                              className="inline-flex items-center gap-1.5 text-xs font-bold text-info hover:text-info hover:bg-info/10 bg-muted border border-border hover:border-info/40 px-3 py-1.5 rounded-md transition-all cursor-pointer"
+                              className="inline-flex items-center gap-2 text-xs font-bold text-info hover:text-info hover:bg-info/10 bg-muted border border-border hover:border-info/40 px-3.5 py-2 rounded-md transition-all cursor-pointer"
                               title="Print copy of this docket"
                             >
-                              <Printer className="h-3.5 w-3.5" />
+                              <Printer className="h-5 w-5 shrink-0" />
                               <span>Reprint Docket</span>
                             </button>
                           </td>

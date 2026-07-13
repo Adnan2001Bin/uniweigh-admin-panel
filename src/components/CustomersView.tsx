@@ -46,6 +46,14 @@ import { Customer, Transaction, TransactionStatus } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
+import { Input } from "@/src/components/ui/input";
+
+const CUSTOMER_FORM_INPUT_CLASS = "h-9 text-xs";
+const CUSTOMER_FORM_SELECT_CLASS = "w-full text-xs";
+const CUSTOMER_FORM_TEXTAREA_CLASS =
+  "w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring focus:outline-none resize-y min-h-[80px]";
+const CUSTOMER_MODAL_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer";
 
 interface CustomersViewProps {
   customers: Customer[];
@@ -1068,72 +1076,72 @@ export default function CustomersView({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Customer Name *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       placeholder="e.g. Acme Roadworks Ltd"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Customer Code (Optional)</label>
-                    <input
+                    <Input
                       type="text"
                       value={formCode}
                       onChange={(e) => setFormCode(e.target.value)}
                       placeholder="e.g. ACMEROAD"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Contact Person *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formContact}
                       onChange={(e) => setFormContact(e.target.value)}
                       placeholder="e.g. John Doe"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Email address *</label>
-                    <input
+                    <Input
                       type="email"
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
                       placeholder="e.g. billing@acme.com"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Phone *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formPhone}
                       onChange={(e) => setFormPhone(e.target.value)}
                       placeholder="e.g. +61 3 9988 7766"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Mobile Phone</label>
-                    <input
+                    <Input
                       type="text"
                       value={formMobile}
                       onChange={(e) => setFormMobile(e.target.value)}
                       placeholder="e.g. +61 400 999 888"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Fax</label>
-                    <input
+                    <Input
                       type="text"
                       value={formFax}
                       onChange={(e) => setFormFax(e.target.value)}
                       placeholder="e.g. +61 3 9988 7767"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                 </div>
@@ -1147,32 +1155,32 @@ export default function CustomersView({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Address Line 1</label>
-                    <input
+                    <Input
                       type="text"
                       value={formAddress1}
                       onChange={(e) => setFormAddress1(e.target.value)}
                       placeholder="e.g. 100 Industrial Parkway"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Address Line 2</label>
-                    <input
+                    <Input
                       type="text"
                       value={formAddress2}
                       onChange={(e) => setFormAddress2(e.target.value)}
                       placeholder="e.g. Warehouse B"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Suburb</label>
-                    <input
+                    <Input
                       type="text"
                       value={formSuburb}
                       onChange={(e) => setFormSuburb(e.target.value)}
                       placeholder="e.g. Dandenong"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
@@ -1180,7 +1188,7 @@ export default function CustomersView({
                     <SelectBox
                       value={formState}
                       onChange={(e) => setFormState(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     >
                       <option value="VIC">Victoria (VIC)</option>
                       <option value="NSW">New South Wales (NSW)</option>
@@ -1192,12 +1200,12 @@ export default function CustomersView({
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Postcode</label>
-                    <input
+                    <Input
                       type="text"
                       value={formPostcode}
                       onChange={(e) => setFormPostcode(e.target.value)}
                       placeholder="e.g. 3175"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                 </div>
@@ -1211,12 +1219,12 @@ export default function CustomersView({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Client Since (Year)</label>
-                    <input
+                    <Input
                       type="text"
                       value={formClientSince}
                       onChange={(e) => setFormClientSince(e.target.value)}
                       placeholder="e.g. 2026"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
@@ -1224,7 +1232,7 @@ export default function CustomersView({
                     <SelectBox
                       value={formPricingTier}
                       onChange={(e) => setFormPricingTier(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     >
                       <option value="Tier 1 - Standard Rate">Tier 1 - Standard Rate</option>
                       <option value="Tier 2 - Volume Pricing">Tier 2 - Volume Pricing</option>
@@ -1234,12 +1242,12 @@ export default function CustomersView({
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Initial Account Balance ($)</label>
-                    <input
+                    <Input
                       type="number"
                       value={formBalance}
                       onChange={(e) => setFormBalance(parseFloat(e.target.value) || 0)}
                       placeholder="0.00"
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
@@ -1247,7 +1255,7 @@ export default function CustomersView({
                     <SelectBox
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value as any)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     >
                       <option value="Active">Active</option>
                       <option value="Suspended">Suspended</option>
@@ -1260,7 +1268,7 @@ export default function CustomersView({
                       onChange={(e) => setFormNotes(e.target.value)}
                       placeholder="Enter internal dispatch caveats or credit override rules."
                       rows={3}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring focus:outline-none"
+                      className={CUSTOMER_FORM_TEXTAREA_CLASS}
                     />
                   </div>
                 </div>
@@ -1268,22 +1276,26 @@ export default function CustomersView({
             </div>
 
             {/* Footer buttons */}
-            <div className="p-6 border-t border-border flex flex-wrap gap-2 justify-end bg-muted rounded-b-2xl">
+            <div className="p-6 border-t border-border flex flex-wrap items-center justify-end gap-2 bg-muted rounded-b-2xl">
               <button
+                type="button"
                 onClick={() => setShowAddCustomerModal(false)}
-                className="px-4 py-2 border border-border text-muted-foreground rounded-md font-bold text-xs hover:bg-muted cursor-pointer transition"
+                className={`${CUSTOMER_MODAL_ACTION_CLASS} border border-border bg-card px-4 text-muted-foreground hover:bg-muted`}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => handleSaveCustomer(true)}
-                className="px-4 py-2 bg-secondary text-foreground rounded-md font-bold text-xs hover:bg-input cursor-pointer transition"
+                className={`${CUSTOMER_MODAL_ACTION_CLASS} gap-1 border border-info/25 bg-info/10 px-5 text-info hover:bg-info/10`}
               >
-                Save & Add Another
+                <Plus className="h-4 w-4 shrink-0" />
+                <span>Save & Add Another</span>
               </button>
               <button
+                type="button"
                 onClick={() => handleSaveCustomer(false)}
-                className="px-5 py-2 bg-primary hover:bg-primary/90 text-white rounded-md font-bold text-xs shadow-sm cursor-pointer transition"
+                className={`${CUSTOMER_MODAL_ACTION_CLASS} bg-primary px-5 text-white hover:bg-primary/90 shadow-sm`}
               >
                 Save Customer
               </button>
@@ -1316,65 +1328,65 @@ export default function CustomersView({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Customer Name *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Customer Code</label>
-                    <input
+                    <Input
                       type="text"
                       value={formCode}
                       onChange={(e) => setFormCode(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Contact Person *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formContact}
                       onChange={(e) => setFormContact(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Email Address *</label>
-                    <input
+                    <Input
                       type="email"
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Phone *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formPhone}
                       onChange={(e) => setFormPhone(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Mobile Phone</label>
-                    <input
+                    <Input
                       type="text"
                       value={formMobile}
                       onChange={(e) => setFormMobile(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Fax</label>
-                    <input
+                    <Input
                       type="text"
                       value={formFax}
                       onChange={(e) => setFormFax(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                 </div>
@@ -1388,29 +1400,29 @@ export default function CustomersView({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Address Line 1</label>
-                    <input
+                    <Input
                       type="text"
                       value={formAddress1}
                       onChange={(e) => setFormAddress1(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Address Line 2</label>
-                    <input
+                    <Input
                       type="text"
                       value={formAddress2}
                       onChange={(e) => setFormAddress2(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Suburb</label>
-                    <input
+                    <Input
                       type="text"
                       value={formSuburb}
                       onChange={(e) => setFormSuburb(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
@@ -1418,7 +1430,7 @@ export default function CustomersView({
                     <SelectBox
                       value={formState}
                       onChange={(e) => setFormState(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     >
                       <option value="VIC">Victoria (VIC)</option>
                       <option value="NSW">New South Wales (NSW)</option>
@@ -1430,11 +1442,11 @@ export default function CustomersView({
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Postcode</label>
-                    <input
+                    <Input
                       type="text"
                       value={formPostcode}
                       onChange={(e) => setFormPostcode(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                 </div>
@@ -1448,11 +1460,11 @@ export default function CustomersView({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Client Since (Year)</label>
-                    <input
+                    <Input
                       type="text"
                       value={formClientSince}
                       onChange={(e) => setFormClientSince(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
@@ -1460,7 +1472,7 @@ export default function CustomersView({
                     <SelectBox
                       value={formPricingTier}
                       onChange={(e) => setFormPricingTier(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     >
                       <option value="Tier 1 - Standard Rate">Tier 1 - Standard Rate</option>
                       <option value="Tier 2 - Volume Pricing">Tier 2 - Volume Pricing</option>
@@ -1470,11 +1482,11 @@ export default function CustomersView({
                   </div>
                   <div className="space-y-1">
                     <label className="block text-xs font-bold uppercase text-muted-foreground">Account Balance ($)</label>
-                    <input
+                    <Input
                       type="number"
                       value={formBalance}
                       onChange={(e) => setFormBalance(parseFloat(e.target.value) || 0)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
@@ -1482,7 +1494,7 @@ export default function CustomersView({
                     <SelectBox
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value as any)}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring"
+                      className={CUSTOMER_FORM_INPUT_CLASS}
                     >
                       <option value="Active">Active</option>
                       <option value="Suspended">Suspended</option>
@@ -1494,7 +1506,7 @@ export default function CustomersView({
                       value={formNotes}
                       onChange={(e) => setFormNotes(e.target.value)}
                       rows={3}
-                      className="w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring focus:outline-none"
+                      className={CUSTOMER_FORM_TEXTAREA_CLASS}
                     />
                   </div>
                 </div>
@@ -1502,16 +1514,18 @@ export default function CustomersView({
             </div>
 
             {/* Footer */}
-            <div className="p-6 border-t border-border flex gap-2 justify-end bg-muted rounded-b-2xl">
+            <div className="p-6 border-t border-border flex items-center justify-end gap-2 bg-muted rounded-b-2xl">
               <button
+                type="button"
                 onClick={() => setShowEditCustomerModal(false)}
-                className="px-4 py-2 border border-border text-muted-foreground rounded-md font-bold text-xs hover:bg-muted cursor-pointer transition"
+                className={`${CUSTOMER_MODAL_ACTION_CLASS} border border-border bg-card px-4 text-muted-foreground hover:bg-muted`}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => handleSaveCustomer(false)}
-                className="px-5 py-2 bg-primary hover:bg-primary/90 text-white rounded-md font-bold text-xs shadow-sm cursor-pointer transition"
+                className={`${CUSTOMER_MODAL_ACTION_CLASS} bg-primary px-5 text-white hover:bg-primary/90 shadow-sm`}
               >
                 Save Changes
               </button>

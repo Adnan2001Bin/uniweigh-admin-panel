@@ -20,12 +20,26 @@ import {
   FileCheck2,
   Clock,
   Shield,
-  FileText
+  FileText,
+  ArrowLeft
 } from "lucide-react";
 import { Job, Customer, Product, Transaction, TransactionStatus } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
+import { Input } from "@/src/components/ui/input";
+
+const JOB_FORM_INPUT_CLASS = "h-9 text-xs font-semibold bg-muted";
+const JOB_FORM_SELECT_CLASS = "w-full text-xs font-semibold bg-muted";
+const JOB_FORM_TEXTAREA_CLASS =
+  "w-full min-h-[72px] resize-y rounded-md border border-border bg-muted px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+const JOB_FORM_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer";
+import {
+  buildJobCreationAuditLog,
+  buildJobUpdateAuditLog,
+  getJobAuditLog,
+} from "@/src/lib/job-audit";
 
 interface JobsViewProps {
   jobs: Job[];
@@ -36,6 +50,7 @@ interface JobsViewProps {
   onUpdateJob: (updatedJob: Job) => void;
   onViewTicketDetails: (ticketId: string) => void;
   searchQuery: string;
+  currentUserName?: string;
 }
 
 // Simulated static destinations for each Job
@@ -70,7 +85,8 @@ export default function JobsView({
   onAddJob,
   onUpdateJob,
   onViewTicketDetails,
-  searchQuery
+  searchQuery,
+  currentUserName = "Admin User",
 }: JobsViewProps) {
   // Navigation modes: 'list' | 'add' | 'edit' | 'detail'
   const [currentMode, setCurrentMode] = useState<"list" | "add" | "edit" | "detail">("list");
@@ -79,8 +95,8 @@ export default function JobsView({
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [checkedJobIds, setCheckedJobIds] = useState<string[]>([]);
 
-  // Tabs in Detail view: 'destinations' | 'transactions' | 'pricing'
-  const [detailTab, setDetailTab] = useState<"destinations" | "transactions" | "pricing">("destinations");
+  // Tabs in Detail view: 'destinations' | 'transactions' | 'pricing' | 'logs'
+  const [detailTab, setDetailTab] = useState<"destinations" | "transactions" | "pricing" | "logs">("destinations");
 
   // Search & Status filters for Jobs
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -113,6 +129,11 @@ export default function JobsView({
   const activeJob = useMemo(() => {
     return jobs.find((j) => j.id === selectedJobId) || null;
   }, [jobs, selectedJobId]);
+
+  const activeJobAuditLog = useMemo(() => {
+    if (!activeJob) return [];
+    return getJobAuditLog(activeJob, products);
+  }, [activeJob, products]);
 
   // Helper: Retrieve rates from product
   const getProductTiers = (prodId: string) => {
@@ -288,12 +309,15 @@ export default function JobsView({
         appliedRate: Number(computedAppliedRate.toFixed(2)),
         pricingNotes: formPricingNotes || undefined,
         effectiveFrom: formEffectiveFrom || undefined,
-        effectiveTo: formEffectiveTo || undefined
+        effectiveTo: formEffectiveTo || undefined,
+        auditLog: [],
       };
+      newJob.auditLog = buildJobCreationAuditLog(newJob, currentUserName, products);
       onAddJob(newJob);
       toast.error(`Job "${nextId}" saved successfully with contract pricing locked at $${computedAppliedRate.toFixed(2)}/t.`);
     } else {
       // Edit mode
+      const previousJob = jobs.find((j) => j.id === selectedJobId) || null;
       const updatedJob: Job = {
         id: selectedJobId!,
         customerOrderRef: formOrderRef,
@@ -310,8 +334,13 @@ export default function JobsView({
         appliedRate: Number(computedAppliedRate.toFixed(2)),
         pricingNotes: formPricingNotes || undefined,
         effectiveFrom: formEffectiveFrom || undefined,
-        effectiveTo: formEffectiveTo || undefined
+        effectiveTo: formEffectiveTo || undefined,
+        auditLog: previousJob?.auditLog || [],
       };
+      const updateEntries = previousJob
+        ? buildJobUpdateAuditLog(previousJob, updatedJob, currentUserName, products)
+        : [];
+      updatedJob.auditLog = [...(previousJob?.auditLog || []), ...updateEntries];
       onUpdateJob(updatedJob);
       toast.success(`Job "${selectedJobId}" update successfully written. Contract pricing updated to $${computedAppliedRate.toFixed(2)}/t.`);
     }
@@ -434,13 +463,14 @@ export default function JobsView({
 
         {currentMode !== "list" && (
           <button
+            type="button"
             onClick={() => {
               setCurrentMode("list");
               setSelectedJobId(null);
             }}
-            className="px-3 py-1.8 bg-card border border-border hover:bg-muted text-foreground rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+            className={`${JOB_FORM_ACTION_CLASS} gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted`}
           >
-            <X className="h-4 w-4 text-muted-foreground" />
+            <ArrowLeft className="h-4 w-4 shrink-0" />
             <span>Back to Listing</span>
           </button>
         )}
@@ -712,13 +742,13 @@ export default function JobsView({
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Customer Order Reference <span className="text-destructive">*</span>
                     </label>
-                    <input
+                    <Input
                       type="text"
                       required
                       placeholder="e.g. PO-2026-APEX"
                       value={formOrderRef}
                       onChange={(e) => setFormOrderRef(e.target.value)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={JOB_FORM_INPUT_CLASS}
                     />
                   </div>
 
@@ -730,7 +760,7 @@ export default function JobsView({
                     <SelectBox
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value as any)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={JOB_FORM_SELECT_CLASS}
                     >
                       <option value="Active">Active</option>
                       <option value="Completed">Completed</option>
@@ -747,7 +777,7 @@ export default function JobsView({
                       value={formCustomerId}
                       onChange={(e) => setFormCustomerId(e.target.value)}
                       disabled={currentMode === "edit"} // Locked on edit as requested: standard practice
-                      className="w-full bg-muted border border-border text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring disabled:bg-muted disabled:text-muted-foreground"
+                      className={`${JOB_FORM_SELECT_CLASS} disabled:bg-muted disabled:text-muted-foreground`}
                     >
                       {customers.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -766,7 +796,7 @@ export default function JobsView({
                       value={formProductId}
                       onChange={(e) => setFormProductId(e.target.value)}
                       disabled={currentMode === "edit"} // Locked on edit
-                      className="w-full bg-muted border border-border text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring disabled:bg-muted disabled:text-muted-foreground"
+                      className={`${JOB_FORM_SELECT_CLASS} disabled:bg-muted disabled:text-muted-foreground`}
                     >
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -782,15 +812,17 @@ export default function JobsView({
                       Order Quantity quota (Tonnes) <span className="text-destructive">*</span>
                     </label>
                     <div className="relative">
-                      <input
+                      <Input
                         type="number"
                         min="1"
                         required
                         value={formOrderQty}
                         onChange={(e) => setFormOrderQty(Number(e.target.value))}
-                        className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                        className={`${JOB_FORM_INPUT_CLASS} pr-8`}
                       />
-                      <span className="absolute right-3 top-2 text-xs font-bold text-muted-foreground uppercase">t</span>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold uppercase text-muted-foreground">
+                        t
+                      </span>
                     </div>
                   </div>
 
@@ -804,7 +836,7 @@ export default function JobsView({
                       placeholder="e.g. Delivery sites, access codes, project limits..."
                       value={formNotes}
                       onChange={(e) => setFormNotes(e.target.value)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-medium text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={JOB_FORM_TEXTAREA_CLASS}
                     />
                   </div>
                 </div>
@@ -855,7 +887,7 @@ export default function JobsView({
                     <SelectBox
                       value={formPricingType}
                       onChange={(e) => setFormPricingType(e.target.value as any)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={JOB_FORM_SELECT_CLASS}
                     >
                       <option value="Default Product Price">Default Product Price (${availableRates.basePrice.toFixed(2)}/t)</option>
                       <option value="Product Tier 1">Product Tier 1 (${availableRates.tier1.toFixed(2)}/t)</option>
@@ -872,14 +904,16 @@ export default function JobsView({
                         Custom Contract Rate ($/Tonne) <span className="text-destructive">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-xs font-bold text-muted-foreground">$</span>
-                        <input
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                          $
+                        </span>
+                        <Input
                           type="number"
                           step="0.01"
                           min="0.10"
                           value={formCustomRate}
                           onChange={(e) => setFormCustomRate(parseFloat(e.target.value) || 0)}
-                          className="w-full bg-muted border border-border text-xs font-bold text-foreground rounded-md pl-6 pr-3 py-2 focus:ring-1 focus:ring-ring"
+                          className={`${JOB_FORM_INPUT_CLASS} pl-6 font-bold`}
                         />
                       </div>
                     </div>
@@ -888,11 +922,11 @@ export default function JobsView({
                       <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                         Applied Rate (Auto calculated)
                       </label>
-                      <input
+                      <Input
                         type="text"
                         readOnly
                         value={`$${computedAppliedRate.toFixed(2)} / tonne`}
-                        className="w-full bg-muted border border-border text-xs font-bold text-muted-foreground rounded-md px-3 py-2 select-none"
+                        className={`${JOB_FORM_INPUT_CLASS} font-bold text-muted-foreground select-none`}
                       />
                     </div>
                   )}
@@ -904,12 +938,12 @@ export default function JobsView({
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Pricing Notes / Reason
                     </label>
-                    <input
+                    <Input
                       type="text"
                       placeholder="e.g. Contract rate override, winter promo"
                       value={formPricingNotes}
                       onChange={(e) => setFormPricingNotes(e.target.value)}
-                      className="w-full bg-muted border border-border text-xs text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={JOB_FORM_INPUT_CLASS}
                     />
                   </div>
 
@@ -917,11 +951,11 @@ export default function JobsView({
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Effective From
                     </label>
-                    <input
+                    <Input
                       type="date"
                       value={formEffectiveFrom}
                       onChange={(e) => setFormEffectiveFrom(e.target.value)}
-                      className="w-full bg-muted border border-border text-xs text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={JOB_FORM_INPUT_CLASS}
                     />
                   </div>
 
@@ -929,11 +963,11 @@ export default function JobsView({
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Effective To
                     </label>
-                    <input
+                    <Input
                       type="date"
                       value={formEffectiveTo}
                       onChange={(e) => setFormEffectiveTo(e.target.value)}
-                      className="w-full bg-muted border border-border text-xs text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={JOB_FORM_INPUT_CLASS}
                     />
                   </div>
                 </div>
@@ -965,13 +999,13 @@ export default function JobsView({
                   setCurrentMode("list");
                   setSelectedJobId(null);
                 }}
-                className="px-4 py-2 bg-card border border-border text-foreground hover:bg-muted rounded-md text-xs font-semibold shadow-xs transition"
+                className={`${JOB_FORM_ACTION_CLASS} border border-border bg-card px-4 text-foreground shadow-xs hover:bg-muted`}
               >
                 Cancel Changes
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-primary text-white hover:bg-primary/90 rounded-md text-xs font-bold shadow-sm flex items-center gap-1.5 transition"
+                className={`${JOB_FORM_ACTION_CLASS} gap-1.5 bg-primary px-5 text-white shadow-sm hover:bg-primary/90`}
               >
                 <FileCheck2 className="h-4.5 w-4.5" />
                 <span>Save Supply Job Contract</span>
@@ -1014,10 +1048,11 @@ export default function JobsView({
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => handleOpenEditForm(activeJob)}
-                  className="px-2.5 py-1.2 bg-muted hover:bg-secondary text-foreground text-xs font-bold rounded-md flex items-center gap-1 transition"
+                  className={`${JOB_FORM_ACTION_CLASS} gap-1.5 border border-border bg-card px-4 text-foreground shadow-xs hover:bg-muted`}
                 >
-                  <Edit2 className="h-3 w-3" />
+                  <Edit2 className="h-4 w-4 shrink-0" />
                   <span>Edit Contract</span>
                 </button>
               </div>
@@ -1084,7 +1119,8 @@ export default function JobsView({
                 {[
                   { id: "destinations", label: "Destinations", count: activeJobDestinations.length },
                   { id: "transactions", label: "Transactions", count: activeJobTransactions.length },
-                  { id: "pricing", label: "Pricing" }
+                  { id: "pricing", label: "Pricing" },
+                  { id: "logs", label: "Logs", count: activeJobAuditLog.length },
                 ].map((t) => (
                   <button
                     key={t.id}
@@ -1329,6 +1365,70 @@ export default function JobsView({
                       </div>
                     </div>
 
+                  </div>
+                )}
+
+                {/* ======================= TAB 4: LOGS ======================= */}
+                {detailTab === "logs" && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
+                      <h4 className="font-bold text-foreground flex items-center gap-1.5">
+                        <FileText className="h-4.5 w-4.5 text-info" />
+                        <span>Job Contract Change Log</span>
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        Creation events and all field updates recorded for this job.
+                      </p>
+                    </div>
+
+                    {activeJobAuditLog.length === 0 ? (
+                      <div className="py-10 text-center text-muted-foreground font-medium">
+                        No audit history recorded for this job yet.
+                      </div>
+                    ) : (
+                      <div className="border border-border rounded-md overflow-hidden">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-border bg-muted text-xs font-bold text-muted-foreground uppercase tracking-wider select-none">
+                              <th className="px-4 py-3 w-[170px]">Date / Time</th>
+                              <th className="px-4 py-3 w-[120px]">User</th>
+                              <th className="px-4 py-3 w-[110px]">Category</th>
+                              <th className="px-4 py-3 w-[220px]">Field</th>
+                              <th className="px-4 py-3">Previous Value</th>
+                              <th className="px-4 py-3">Updated Value</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border text-foreground text-xs">
+                            {activeJobAuditLog.map((entry) => (
+                              <tr key={entry.id} className="hover:bg-muted transition align-top">
+                                <td className="px-4 py-3 font-mono text-muted-foreground whitespace-nowrap">
+                                  {entry.timestamp}
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-foreground">{entry.user}</td>
+                                <td className="px-4 py-3">
+                                  <span
+                                    className={`inline-block px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${
+                                      entry.category === "Pricing"
+                                        ? "bg-success/10 text-success border border-success/25"
+                                        : "bg-info/10 text-info border border-info/25"
+                                    }`}
+                                  >
+                                    {entry.category}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 font-bold text-foreground">{entry.field}</td>
+                                <td className="px-4 py-3 text-muted-foreground max-w-xs">
+                                  <span className="block break-words">{entry.previousValue}</span>
+                                </td>
+                                <td className="px-4 py-3 text-foreground max-w-xs">
+                                  <span className="block break-words font-semibold">{entry.newValue}</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
 

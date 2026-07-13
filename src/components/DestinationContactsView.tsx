@@ -34,8 +34,14 @@ import { motion, AnimatePresence } from "motion/react";
 import { DestinationContact, Customer, Transaction } from "../types";
 import { confirmDialog } from "@/src/components/shared/dialog-service";
 import { SelectBox } from "@/src/components/ui/select";
+import { Input } from "@/src/components/ui/input";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { RadioBox } from "@/src/components/ui/radio-group";
+
+const CONTACT_FORM_INPUT_CLASS = "h-9 text-xs";
+const CONTACT_FORM_SELECT_CLASS = "w-full text-xs";
+const CONTACT_FORM_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer";
 
 interface DestinationContactsViewProps {
   customers: Customer[];
@@ -1190,7 +1196,7 @@ export default function DestinationContactsView({
                   <SelectBox
                     value={formCustomer}
                     onChange={(e) => setFormCustomer(e.target.value)}
-                    className="w-full border border-border bg-card rounded-md p-2 focus:outline-none"
+                    className={CONTACT_FORM_SELECT_CLASS}
                     required
                   >
                     {customers.map(c => (
@@ -1202,12 +1208,12 @@ export default function DestinationContactsView({
                 {/* Name */}
                 <div className="space-y-1.5">
                   <label className="block font-bold text-foreground">Contact Full Name *</label>
-                  <input
+                  <Input
                     type="text"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="e.g. Alistair Cooke"
-                    className="w-full border border-border rounded-md p-2 focus:outline-none"
+                    className={CONTACT_FORM_INPUT_CLASS}
                     required
                   />
                 </div>
@@ -1215,11 +1221,11 @@ export default function DestinationContactsView({
                 {/* Contact Code */}
                 <div className="space-y-1.5">
                   <label className="block font-bold text-foreground">Contact Code</label>
-                  <input
+                  <Input
                     type="text"
                     value={formCode}
                     onChange={(e) => setFormCode(e.target.value)}
-                    className="w-full border border-border rounded-md p-2 focus:outline-none font-mono"
+                    className={`${CONTACT_FORM_INPUT_CLASS} font-mono`}
                     placeholder="e.g. CON-APX-05"
                   />
                 </div>
@@ -1227,48 +1233,48 @@ export default function DestinationContactsView({
                 {/* Role */}
                 <div className="space-y-1.5">
                   <label className="block font-bold text-foreground">Role / Position Title</label>
-                  <input
+                  <Input
                     type="text"
                     value={formRole}
                     onChange={(e) => setFormRole(e.target.value)}
                     placeholder="e.g. HSE Manager"
-                    className="w-full border border-border rounded-md p-2 focus:outline-none"
+                    className={CONTACT_FORM_INPUT_CLASS}
                   />
                 </div>
 
                 {/* Phone */}
                 <div className="space-y-1.5">
                   <label className="block font-bold text-foreground">Office Direct Phone</label>
-                  <input
+                  <Input
                     type="text"
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
                     placeholder="e.g. +61 3 9999 1111"
-                    className="w-full border border-border rounded-md p-2 focus:outline-none font-mono"
+                    className={`${CONTACT_FORM_INPUT_CLASS} font-mono`}
                   />
                 </div>
 
                 {/* Mobile */}
                 <div className="space-y-1.5">
                   <label className="block font-bold text-foreground">Mobile Dispatch Contact</label>
-                  <input
+                  <Input
                     type="text"
                     value={formMobile}
                     onChange={(e) => setFormMobile(e.target.value)}
                     placeholder="e.g. +61 412 345 678"
-                    className="w-full border border-border rounded-md p-2 focus:outline-none font-mono"
+                    className={`${CONTACT_FORM_INPUT_CLASS} font-mono`}
                   />
                 </div>
 
                 {/* Email */}
                 <div className="space-y-1.5">
                   <label className="block font-bold text-foreground">Email Address</label>
-                  <input
+                  <Input
                     type="email"
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
                     placeholder="e.g. a.cooke@apex.com"
-                    className="w-full border border-border rounded-md p-2 focus:outline-none font-mono"
+                    className={`${CONTACT_FORM_INPUT_CLASS} font-mono`}
                   />
                 </div>
 
@@ -1278,7 +1284,7 @@ export default function DestinationContactsView({
                   <SelectBox
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value as any)}
-                    className="w-full border border-border bg-card rounded-md p-2 focus:outline-none"
+                    className={CONTACT_FORM_SELECT_CLASS}
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -1290,21 +1296,25 @@ export default function DestinationContactsView({
                   <label className="block font-bold text-foreground">Profile Picture / Avatar</label>
                   <div className="flex items-center gap-3">
                     {formPhoto ? (
-                      <div className="relative h-11 w-11 rounded-full border border-border overflow-hidden shrink-0">
+                      <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-border">
                         <img src={formPhoto} alt="Upload preview" className="h-full w-full object-cover" />
                         <button
+                          type="button"
                           onClick={() => setFormPhoto("")}
-                          className="absolute inset-0 bg-foreground text-white opacity-0 hover:opacity-100 transition flex items-center justify-center font-bold text-xs"
+                          className="absolute inset-0 flex items-center justify-center bg-foreground text-xs font-bold text-white opacity-0 transition hover:opacity-100"
                         >
                           REMOVE
                         </button>
                       </div>
                     ) : (
-                      <div className="h-11 w-11 rounded-full bg-muted border border-input flex items-center justify-center font-bold text-muted-foreground text-xs shrink-0">
-                        No Photo
+                      <div
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-input bg-muted"
+                        title="No photo uploaded"
+                      >
+                        <User className="h-5 w-5 text-muted-foreground" />
                       </div>
                     )}
-                    <label className="border border-dashed border-input rounded-md p-2 cursor-pointer bg-muted hover:bg-muted transition flex items-center gap-1">
+                    <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-input bg-muted px-3 text-xs font-semibold text-foreground transition hover:bg-muted/80">
                       <Upload className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>Upload JPG/PNG</span>
                       <input
@@ -1365,37 +1375,35 @@ export default function DestinationContactsView({
                 {/* PPE list */}
                 <div className="space-y-1.5">
                   <label className="block font-bold text-foreground">PPE Requirements (comma-separated list)</label>
-                  <input
+                  <Input
                     type="text"
                     value={formPPE}
                     onChange={(e) => setFormPPE(e.target.value)}
                     placeholder="e.g. Hi-Vis Vest, Steel Cap Boots, Hard Hat, Protective Glasses"
-                    className="w-full border border-border rounded-md p-2 focus:outline-none"
+                    className={CONTACT_FORM_INPUT_CLASS}
                   />
                 </div>
 
                 {/* Induction toggle & date */}
-                <div className="grid grid-cols-2 gap-3.5">
-                  <div className="space-y-1.5">
-                    <label className="block font-bold text-foreground">Induction Required?</label>
-                    <SelectBox
-                      value={formInduction ? "Yes" : "No"}
-                      onChange={(e) => setFormInduction(e.target.value === "Yes")}
-                      className="w-full border border-border bg-card rounded-md p-2 focus:outline-none"
-                    >
-                      <option value="No">No</option>
-                      <option value="Yes">Yes (Mandatory)</option>
-                    </SelectBox>
-                  </div>
-                  
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-foreground">Induction Required?</label>
+                  <SelectBox
+                    value={formInduction ? "Yes" : "No"}
+                    onChange={(e) => setFormInduction(e.target.value === "Yes")}
+                    className={CONTACT_FORM_SELECT_CLASS}
+                  >
+                    <option value="No">No</option>
+                    <option value="Yes">Yes (Mandatory)</option>
+                  </SelectBox>
+
                   {formInduction && (
-                    <div className="space-y-1.5 animate-fade-in">
+                    <div className="space-y-1.5 pt-1 animate-fade-in">
                       <label className="block font-bold text-foreground">Induction Expiry Date</label>
-                      <input
+                      <Input
                         type="date"
                         value={formInductionExpiry}
                         onChange={(e) => setFormInductionExpiry(e.target.value)}
-                        className="w-full border border-border rounded-md p-2 focus:outline-none font-mono"
+                        className={`${CONTACT_FORM_INPUT_CLASS} font-mono`}
                       />
                     </div>
                   )}
@@ -1428,7 +1436,7 @@ export default function DestinationContactsView({
                 onClick={() => {
                   setCurrentMode(isEditing ? "detail" : "list");
                 }}
-                className="rounded-md border border-border bg-card text-xs font-bold text-foreground px-5 py-2.5 hover:bg-muted transition cursor-pointer"
+                className={`${CONTACT_FORM_ACTION_CLASS} border border-border bg-card px-5 text-foreground hover:bg-muted`}
               >
                 Cancel
               </button>
@@ -1437,9 +1445,9 @@ export default function DestinationContactsView({
                 <button
                   type="button"
                   onClick={() => handleSaveContact(true)}
-                  className="rounded-md border border-info/25 bg-info/10 text-xs font-bold text-info px-5 py-2.5 hover:bg-info/10 transition cursor-pointer flex items-center gap-1"
+                  className={`${CONTACT_FORM_ACTION_CLASS} gap-1 border border-info/25 bg-info/10 px-5 text-info hover:bg-info/10`}
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 shrink-0" />
                   <span>Save & Add Another</span>
                 </button>
               )}
@@ -1447,9 +1455,9 @@ export default function DestinationContactsView({
               <button
                 type="button"
                 onClick={() => handleSaveContact(false)}
-                className="rounded-md bg-primary text-xs font-bold text-white px-6 py-2.5 hover:bg-primary/90 transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                className={`${CONTACT_FORM_ACTION_CLASS} gap-1.5 bg-primary px-6 text-white hover:bg-primary/90 shadow-sm`}
               >
-                <Save className="h-4 w-4" />
+                <Save className="h-4 w-4 shrink-0" />
                 <span>Save Contact Details</span>
               </button>
             </div>

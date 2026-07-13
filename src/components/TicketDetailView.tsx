@@ -30,6 +30,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { promptDialog } from "@/src/components/shared/dialog-service";
 import { buildDeliveryDocketHtml, openDeliveryDocketPrint, resolveDocketConfig } from "@/src/lib/delivery-docket";
+import { getPreviewIframeHeight } from "@/src/lib/print-preview";
+
+const DOCKET_PREVIEW_WIDTH_PX = 728;
 
 interface TicketDetailViewProps {
   transaction: Transaction;
@@ -244,9 +247,9 @@ export default function TicketDetailView({
               setIsReprint(printedBefore);
               setShowPrintModal(true);
             }}
-            className="rounded-md border border-info/25 bg-info/10 hover:bg-info/10 text-xs font-bold text-info px-4 py-2 transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-info/25 bg-info/10 hover:bg-info/10 text-xs font-bold text-info px-4 transition cursor-pointer shadow-xs"
           >
-            <Printer className="h-4 w-4" />
+            <Printer className="h-4 w-4 shrink-0" />
             <span>{transaction.auditHistory.some(h => h.action.toLowerCase().includes("print")) ? "Reprint Docket" : "Print Docket"}</span>
           </button>
 
@@ -254,15 +257,15 @@ export default function TicketDetailView({
             <>
               <button
                 onClick={holdTx}
-                className="rounded-md border border-destructive/25 bg-card text-xs font-bold text-destructive px-4 py-2 hover:bg-muted transition cursor-pointer"
+                className="inline-flex h-9 items-center justify-center rounded-md border border-destructive/25 bg-card text-xs font-bold text-destructive px-4 hover:bg-muted transition cursor-pointer"
               >
                 Hold Ticket
               </button>
               <button
                 onClick={approveTx}
-                className="rounded-md bg-primary text-xs font-bold text-white px-4 py-2 hover:bg-primary/90 transition cursor-pointer flex items-center gap-1.5"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-primary text-xs font-bold text-white px-4 hover:bg-primary/90 transition cursor-pointer"
               >
-                <Check className="h-4 w-4" />
+                <Check className="h-4 w-4 shrink-0" />
                 Approve & Release Load
               </button>
             </>
@@ -363,88 +366,6 @@ export default function TicketDetailView({
                   <div className="text-xs text-muted-foreground font-semibold mb-0.5 font-medium">Site Dispatch Station</div>
                   <div className="font-medium text-foreground">{transaction.siteName}</div>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Transaction Billing Type Card */}
-          <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-4">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest border-b pb-2 flex items-center justify-between">
-              <span>Billing / Transaction Type</span>
-              <span
-                className={`inline-flex items-center rounded-xs px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider ${
-                  transaction.type === "Account"
-                    ? "bg-muted text-foreground border border-border"
-                    : "bg-warning/10 text-warning border border-warning/30"
-                }`}
-              >
-                {transaction.type}
-              </span>
-            </h3>
-
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground leading-normal">
-                Choose the transaction class recorded for this load. This routes billing to client accounts or cash registers.
-              </p>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (transaction.type !== "Account") {
-                      const updated: Transaction = {
-                        ...transaction,
-                        type: "Account",
-                        auditHistory: [
-                          ...transaction.auditHistory,
-                          {
-                            timestamp: new Date().toLocaleString(),
-                            action: "Transaction Type Recorded",
-                            user: "Admin User",
-                            details: "Billing type updated and recorded as: Account"
-                          }
-                        ]
-                      };
-                      onUpdateTransaction(updated);
-                    }
-                  }}
-                  className={`px-3 py-2 text-xs font-bold rounded-md border transition text-center cursor-pointer ${
-                    transaction.type === "Account"
-                      ? "bg-info/10 border-info/25 text-info font-bold shadow-inner"
-                      : "bg-card border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  Account
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (transaction.type !== "Cash") {
-                      const updated: Transaction = {
-                        ...transaction,
-                        type: "Cash",
-                        auditHistory: [
-                          ...transaction.auditHistory,
-                          {
-                            timestamp: new Date().toLocaleString(),
-                            action: "Transaction Type Recorded",
-                            user: "Admin User",
-                            details: "Billing type updated and recorded as: Cash"
-                          }
-                        ]
-                      };
-                      onUpdateTransaction(updated);
-                    }
-                  }}
-                  className={`px-3 py-2 text-xs font-bold rounded-md border transition text-center cursor-pointer ${
-                    transaction.type === "Cash"
-                      ? "bg-warning/10 border-warning/30 text-warning font-bold shadow-inner"
-                      : "bg-card border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  Cash
-                </button>
               </div>
             </div>
           </div>
@@ -610,7 +531,7 @@ export default function TicketDetailView({
                   title="Delivery docket preview"
                   srcDoc={docketPreviewHtml}
                   className="w-full border-0 block"
-                  style={{ height: "calc(29.7cm + 12px)", minHeight: "100%" }}
+                  style={{ height: getPreviewIframeHeight(DOCKET_PREVIEW_WIDTH_PX) }}
                 />
               </div>
 

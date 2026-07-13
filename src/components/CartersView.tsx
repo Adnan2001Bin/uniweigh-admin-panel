@@ -22,6 +22,13 @@ import { Carrier } from "../types";
 import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
 import { Checkbox } from "@/src/components/ui/checkbox";
+import { Input } from "@/src/components/ui/input";
+
+const CARTER_FORM_INPUT_CLASS = "h-9 text-xs";
+const CARTER_FORM_TEXTAREA_CLASS =
+  "w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring focus:outline-none resize-y min-h-[80px]";
+const CARTER_MODAL_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md px-4 text-xs font-bold transition select-none";
 
 interface CartersViewProps {
   carriers: Carrier[];
@@ -731,12 +738,12 @@ export default function CartersView({
               {/* Carter Name */}
               <div className="space-y-1.5">
                 <label className="font-bold text-muted-foreground block">Carter Name *</label>
-                <input
+                <Input
                   type="text"
                   placeholder="Enter company/provider name..."
                   value={fieldName}
                   onChange={(e) => setFieldName(e.target.value)}
-                  className="w-full bg-muted border border-border rounded-md p-2.5 font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:bg-card transition"
+                  className={`${CARTER_FORM_INPUT_CLASS} font-bold`}
                 />
               </div>
 
@@ -744,13 +751,13 @@ export default function CartersView({
               <div className="space-y-1.5">
                 <label className="font-bold text-muted-foreground block">Physical Address</label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input
+                  <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
                     type="text"
                     placeholder="E.g., 12 Industrial Parkway, Somerton VIC"
                     value={fieldAddress}
                     onChange={(e) => setFieldAddress(e.target.value)}
-                    className="w-full bg-muted border border-border rounded-md pl-9 pr-4 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring focus:bg-card transition"
+                    className={`${CARTER_FORM_INPUT_CLASS} pl-9 font-semibold`}
                   />
                 </div>
               </div>
@@ -760,25 +767,25 @@ export default function CartersView({
                 <div className="space-y-1.5">
                   <label className="font-bold text-muted-foreground block">Phone Number</label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <input
+                    <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
                       type="text"
                       placeholder="E.g., 1300 551 229"
                       value={fieldPhone}
                       onChange={(e) => setFieldPhone(e.target.value)}
-                      className="w-full bg-muted border border-border rounded-md pl-9 pr-4 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring focus:bg-card transition"
+                      className={`${CARTER_FORM_INPUT_CLASS} pl-9 font-semibold`}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="font-bold text-muted-foreground block">Email Address</label>
-                  <input
+                  <Input
                     type="email"
                     placeholder="dispatch@company.com"
                     value={fieldEmail}
                     onChange={(e) => setFieldEmail(e.target.value)}
-                    className="w-full bg-muted border border-border rounded-md p-2.5 font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:bg-card transition font-mono"
+                    className={`${CARTER_FORM_INPUT_CLASS} font-mono font-semibold`}
                   />
                 </div>
               </div>
@@ -788,14 +795,14 @@ export default function CartersView({
                 <div className="space-y-1.5">
                   <label className="font-bold text-muted-foreground block">Transport Rate ($ / Tonne)</label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <input
+                    <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
                       type="number"
                       step="0.01"
                       placeholder="12.50"
                       value={fieldRate}
                       onChange={(e) => setFieldRate(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-muted border border-border rounded-md pl-9 pr-4 py-2 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:bg-card transition font-mono"
+                      className={`${CARTER_FORM_INPUT_CLASS} pl-9 font-mono font-bold`}
                     />
                   </div>
                 </div>
@@ -805,7 +812,7 @@ export default function CartersView({
                   <SelectBox
                     value={fieldStatus}
                     onChange={(e) => setFieldStatus(e.target.value as "Active" | "Inactive")}
-                    className="w-full bg-muted border border-border rounded-md p-2.5 font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:bg-card transition"
+                    className={CARTER_FORM_INPUT_CLASS}
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -821,7 +828,7 @@ export default function CartersView({
                   value={fieldNotes}
                   onChange={(e) => setFieldNotes(e.target.value)}
                   rows={3}
-                  className="w-full bg-muted border border-border rounded-md p-2.5 font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:bg-card transition"
+                  className={CARTER_FORM_TEXTAREA_CLASS}
                 />
               </div>
             </div>
@@ -829,8 +836,9 @@ export default function CartersView({
             {/* Modal Actions */}
             <div className="px-6 py-4 border-t border-border bg-muted flex flex-wrap items-center justify-between gap-2.5">
               <button
+                type="button"
                 onClick={() => setIsFormOpen(false)}
-                className="rounded-md border border-border bg-card hover:bg-muted px-4 py-2 text-xs font-bold text-foreground transition select-none"
+                className={`${CARTER_MODAL_ACTION_CLASS} border border-border bg-card text-foreground hover:bg-muted`}
               >
                 Cancel
               </button>
@@ -838,15 +846,18 @@ export default function CartersView({
               <div className="flex items-center gap-2">
                 {formMode === "add" && (
                   <button
+                    type="button"
                     onClick={() => handleSaveCarter(true)}
-                    className="rounded-md border border-info/25 bg-info/10 hover:bg-info/10 px-4 py-2 text-xs font-bold text-info transition select-none"
+                    className={`${CARTER_MODAL_ACTION_CLASS} gap-1 border border-info/25 bg-info/10 text-info hover:bg-info/10`}
                   >
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
                     Save & Add Another
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={() => handleSaveCarter(false)}
-                  className="rounded-md bg-primary hover:bg-primary/90 active:scale-95 text-white px-5 py-2 text-xs font-bold transition shadow-xs select-none"
+                  className={`${CARTER_MODAL_ACTION_CLASS} bg-primary px-5 text-white hover:bg-primary/90 shadow-xs active:scale-95`}
                 >
                   Save Carter
                 </button>

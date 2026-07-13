@@ -228,6 +228,16 @@ export interface DestinationContact {
   notes?: string;
 }
 
+export interface JobAuditEntry {
+  id: string;
+  timestamp: string;
+  user: string;
+  category: "General" | "Pricing";
+  field: string;
+  previousValue: string;
+  newValue: string;
+}
+
 export interface Job {
   id: string; // e.g. JOB-2026-01
   customerOrderRef: string; // e.g. PO-2024-991
@@ -245,6 +255,7 @@ export interface Job {
   pricingNotes?: string;
   effectiveFrom?: string; // YYYY-MM-DD
   effectiveTo?: string; // YYYY-MM-DD
+  auditLog?: JobAuditEntry[];
 }
 
 export interface Destination {

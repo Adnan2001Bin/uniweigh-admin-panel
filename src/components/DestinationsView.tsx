@@ -22,8 +22,16 @@ import { Destination, Customer, Job, Transaction, TransactionStatus } from "../t
 import { INITIAL_DESTINATIONS } from "../data_destinations";
 import { motion, AnimatePresence } from "motion/react";
 import { SelectBox } from "@/src/components/ui/select";
+import { Input } from "@/src/components/ui/input";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { RadioBox } from "@/src/components/ui/radio-group";
+
+const DESTINATION_FORM_INPUT_CLASS = "h-9 text-xs font-semibold bg-muted";
+const DESTINATION_FORM_SELECT_CLASS = "w-full text-xs font-semibold bg-muted";
+const DESTINATION_FORM_TEXTAREA_CLASS =
+  "w-full min-h-[80px] resize-y rounded-md border border-border bg-muted px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+const DESTINATION_FORM_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer";
 
 interface DestinationsViewProps {
   customers: Customer[];
@@ -521,14 +529,15 @@ Notes:     ${d.notes || "None registered"}
 
         {currentMode !== "list" && (
           <button
+            type="button"
             onClick={() => {
               setCurrentMode("list");
               setSelectedDestId(null);
             }}
-            className="px-3 py-1.8 bg-card border border-border hover:bg-muted text-foreground rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+            className={`${DESTINATION_FORM_ACTION_CLASS} gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted`}
             id="btn-back-to-listing"
           >
-            <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+            <ArrowLeft className="h-4 w-4 shrink-0" />
             <span>Back to Listing</span>
           </button>
         )}
@@ -815,13 +824,13 @@ Notes:     ${d.notes || "None registered"}
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Destination Name <span className="text-destructive">*</span>
                     </label>
-                    <input
+                    <Input
                       type="text"
                       required
                       placeholder="e.g. Altona North Aggregate Plant"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={DESTINATION_FORM_INPUT_CLASS}
                     />
                   </div>
 
@@ -833,7 +842,7 @@ Notes:     ${d.notes || "None registered"}
                     <SelectBox
                       value={formCustomerId}
                       onChange={(e) => setFormCustomerId(e.target.value)}
-                      className="w-full bg-muted border border-border text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring cursor-pointer"
+                      className={DESTINATION_FORM_SELECT_CLASS}
                     >
                       {customers.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -851,7 +860,7 @@ Notes:     ${d.notes || "None registered"}
                     <SelectBox
                       value={formJobId}
                       onChange={(e) => setFormJobId(e.target.value)}
-                      className="w-full bg-muted border border-border text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring cursor-pointer"
+                      className={DESTINATION_FORM_SELECT_CLASS}
                     >
                       {availableJobsForFormCustomer.length === 0 ? (
                         <option value="">-- No jobs active for this customer --</option>
@@ -875,12 +884,12 @@ Notes:     ${d.notes || "None registered"}
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Telephone / Site Dispatch Phone
                     </label>
-                    <input
+                    <Input
                       type="text"
                       placeholder="e.g. +61 3 9522 9900"
                       value={formPhone}
                       onChange={(e) => setFormPhone(e.target.value)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={DESTINATION_FORM_INPUT_CLASS}
                     />
                   </div>
 
@@ -892,7 +901,7 @@ Notes:     ${d.notes || "None registered"}
                     <SelectBox
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value as any)}
-                      className="w-full bg-muted border border-border text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring cursor-pointer"
+                      className={DESTINATION_FORM_SELECT_CLASS}
                     >
                       <option value="Active">Active</option>
                       <option value="Inactive">Inactive</option>
@@ -914,13 +923,13 @@ Notes:     ${d.notes || "None registered"}
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Address Line 1 <span className="text-destructive">*</span>
                     </label>
-                    <input
+                    <Input
                       type="text"
                       required
                       placeholder="e.g. 102 Quarry Rd"
                       value={formAddressLine1}
                       onChange={(e) => setFormAddressLine1(e.target.value)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={DESTINATION_FORM_INPUT_CLASS}
                     />
                   </div>
 
@@ -929,12 +938,12 @@ Notes:     ${d.notes || "None registered"}
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Address Line 2 (Optional)
                     </label>
-                    <input
+                    <Input
                       type="text"
                       placeholder="e.g. Gate 4 entrance next to silo"
                       value={formAddressLine2}
                       onChange={(e) => setFormAddressLine2(e.target.value)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={DESTINATION_FORM_INPUT_CLASS}
                     />
                   </div>
 
@@ -943,13 +952,13 @@ Notes:     ${d.notes || "None registered"}
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Suburb <span className="text-destructive">*</span>
                     </label>
-                    <input
+                    <Input
                       type="text"
                       required
                       placeholder="e.g. Lilydale"
                       value={formSuburb}
                       onChange={(e) => setFormSuburb(e.target.value)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={DESTINATION_FORM_INPUT_CLASS}
                     />
                   </div>
 
@@ -958,13 +967,13 @@ Notes:     ${d.notes || "None registered"}
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       State <span className="text-destructive">*</span>
                     </label>
-                    <input
+                    <Input
                       type="text"
                       required
                       placeholder="e.g. VIC"
                       value={formState}
                       onChange={(e) => setFormState(e.target.value)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={DESTINATION_FORM_INPUT_CLASS}
                     />
                   </div>
 
@@ -973,13 +982,13 @@ Notes:     ${d.notes || "None registered"}
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Postcode <span className="text-destructive">*</span>
                     </label>
-                    <input
+                    <Input
                       type="text"
                       required
                       placeholder="e.g. 3140"
                       value={formPostcode}
                       onChange={(e) => setFormPostcode(e.target.value)}
-                      className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-semibold text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                      className={DESTINATION_FORM_INPUT_CLASS}
                     />
                   </div>
                 </div>
@@ -1001,7 +1010,7 @@ Notes:     ${d.notes || "None registered"}
                     placeholder="Provide logistics comments, special entrance instructions, speed limits, or restrictions..."
                     value={formNotes}
                     onChange={(e) => setFormNotes(e.target.value)}
-                    className="w-full bg-muted border border-border hover:border-input focus:bg-card text-xs font-medium text-foreground rounded-md px-3 py-2 focus:ring-1 focus:ring-ring"
+                    className={DESTINATION_FORM_TEXTAREA_CLASS}
                   />
                 </div>
               </div>
@@ -1018,7 +1027,7 @@ Notes:     ${d.notes || "None registered"}
                       setCurrentMode("list");
                       setSelectedDestId(null);
                     }}
-                    className="px-4 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-md text-xs font-semibold shadow-xs transition cursor-pointer"
+                    className={`${DESTINATION_FORM_ACTION_CLASS} border border-border bg-card px-4 text-foreground shadow-xs hover:bg-muted`}
                   >
                     Cancel
                   </button>
@@ -1027,15 +1036,16 @@ Notes:     ${d.notes || "None registered"}
                     <button
                       type="button"
                       onClick={() => handleSaveDestination(undefined, true)}
-                      className="px-4 py-2 bg-muted border border-border hover:bg-secondary text-foreground rounded-md text-xs font-semibold transition cursor-pointer"
+                      className={`${DESTINATION_FORM_ACTION_CLASS} gap-1 border border-info/25 bg-info/10 px-5 text-info hover:bg-info/10`}
                     >
-                      Save & Add Another
+                      <Plus className="h-4 w-4 shrink-0" />
+                      <span>Save & Add Another</span>
                     </button>
                   )}
 
                   <button
                     type="submit"
-                    className="px-4.5 py-2 bg-primary hover:bg-primary/90 text-white rounded-md text-xs font-bold shadow-sm transition cursor-pointer"
+                    className={`${DESTINATION_FORM_ACTION_CLASS} bg-primary px-5 text-white shadow-sm hover:bg-primary/90`}
                   >
                     Save Destination
                   </button>

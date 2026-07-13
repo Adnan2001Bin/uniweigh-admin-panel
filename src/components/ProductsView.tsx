@@ -19,7 +19,13 @@ import {
 import { Product } from "../types";
 import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
+import { Input } from "@/src/components/ui/input";
 import { Checkbox } from "@/src/components/ui/checkbox";
+
+const PRODUCT_FORM_INPUT_CLASS = "h-9 text-xs";
+const PRODUCT_FORM_SELECT_CLASS = "w-full text-xs";
+const PRODUCT_FORM_TEXTAREA_CLASS =
+  "w-full min-h-[72px] resize-y rounded-md border border-border bg-card p-3 text-xs font-semibold text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 import {
   downloadLotCertificate,
   LotCertificate,
@@ -659,24 +665,24 @@ export default function ProductsView({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-muted-foreground">Product Name</label>
-                    <input
+                    <Input
                       type="text"
                       required
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card px-3 py-2 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      className={`${PRODUCT_FORM_INPUT_CLASS} font-bold`}
                       placeholder="e.g. Concrete Crusher Sand"
                     />
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-muted-foreground">Product Code</label>
-                    <input
+                    <Input
                       type="text"
                       required
                       value={formProductCode}
                       onChange={(e) => setFormProductCode(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card px-3 py-2 text-xs font-mono font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      className={`${PRODUCT_FORM_INPUT_CLASS} font-mono font-bold`}
                       placeholder="e.g. P-123"
                     />
                   </div>
@@ -686,7 +692,7 @@ export default function ProductsView({
                     <SelectBox
                       value={formSite}
                       onChange={(e) => setFormSite(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      className={PRODUCT_FORM_SELECT_CLASS}
                     >
                       <option value="Melbourne Eastern Quarry">Melbourne Eastern Quarry</option>
                       <option value="Bayside Coastal Sands">Bayside Coastal Sands</option>
@@ -696,12 +702,12 @@ export default function ProductsView({
 
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-muted-foreground">Unit of Measure</label>
-                    <input
+                    <Input
                       type="text"
                       required
                       value={formUnit}
                       onChange={(e) => setFormUnit(e.target.value)}
-                      className="w-full rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      className={`${PRODUCT_FORM_INPUT_CLASS} font-semibold`}
                       placeholder="Default: Tonnes"
                     />
                   </div>
@@ -711,7 +717,7 @@ export default function ProductsView({
                     <SelectBox
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value as "Active" | "Inactive")}
-                      className="w-full rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      className={PRODUCT_FORM_SELECT_CLASS}
                     >
                       <option value="Active">Active</option>
                       <option value="Inactive">Inactive</option>
@@ -725,7 +731,7 @@ export default function ProductsView({
                     rows={2}
                     value={formNotes}
                     onChange={(e) => setFormNotes(e.target.value)}
-                    className="w-full rounded-md border border-border bg-card p-3 text-xs font-semibold text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className={PRODUCT_FORM_TEXTAREA_CLASS}
                     placeholder="Enter any material grades, origin descriptions, or compliance notes..."
                   />
                 </div>
@@ -810,13 +816,13 @@ export default function ProductsView({
                         <DollarSign className="h-3 w-3 text-info" />
                         Default Price ($ / {formUnit}) *
                       </label>
-                      <input
+                      <Input
                         type="number"
                         step="0.01"
                         required
                         value={formDefaultPrice}
                         onChange={(e) => setFormDefaultPrice(e.target.value)}
-                        className="w-full rounded-md border border-info/25 bg-card px-3 py-2 text-xs font-mono font-bold text-info focus:outline-none focus:ring-1 focus:ring-ring"
+                        className={`${PRODUCT_FORM_INPUT_CLASS} border-info/25 font-mono font-bold text-info`}
                         placeholder="0.00"
                       />
                       <p className="text-xs text-muted-foreground">Must be maintained for generic transactions.</p>
@@ -824,48 +830,49 @@ export default function ProductsView({
 
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-foreground">Price Level 1 (Optional)</label>
-                      <input
+                      <Input
                         type="number"
                         step="0.01"
                         value={formPriceLevel1}
                         onChange={(e) => setFormPriceLevel1(e.target.value)}
-                        className="w-full rounded-md border border-border bg-card px-3 py-2 text-xs font-mono text-foreground focus:outline-none"
+                        className={`${PRODUCT_FORM_INPUT_CLASS} font-mono`}
                         placeholder="None"
                       />
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-foreground">Price Level 2 (Optional)</label>
-                      <input
+                      <Input
                         type="number"
                         step="0.01"
                         value={formPriceLevel2}
                         onChange={(e) => setFormPriceLevel2(e.target.value)}
-                        className="w-full rounded-md border border-border bg-card px-3 py-2 text-xs font-mono text-foreground focus:outline-none"
+                        className={`${PRODUCT_FORM_INPUT_CLASS} font-mono`}
                         placeholder="None"
                       />
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-foreground">Price Level 3 (Optional)</label>
-                      <input
+                      <Input
                         type="number"
                         step="0.01"
                         value={formPriceLevel3}
                         onChange={(e) => setFormPriceLevel3(e.target.value)}
-                        className="w-full rounded-md border border-border bg-card px-3 py-2 text-xs font-mono text-foreground focus:outline-none"
+                        className={`${PRODUCT_FORM_INPUT_CLASS} font-mono`}
                         placeholder="None"
                       />
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-foreground block">Custom Contract Price</label>
-                      <input
+                      <Input
                         type="number"
                         step="0.01"
                         value={formCustomPrice}
                         onChange={(e) => setFormCustomPrice(e.target.value)}
-                        className="w-full rounded-md border border-border bg-card px-3 py-2 text-xs font-mono text-foreground focus:outline-none"
+                        disabled
+                        className={`${PRODUCT_FORM_INPUT_CLASS} cursor-not-allowed bg-muted font-mono text-muted-foreground opacity-60`}
                         placeholder="Managed inside Job"
                       />
                       <p className="text-xs text-muted-foreground leading-normal">Used only when specifically selected within an active Job configuration.</p>

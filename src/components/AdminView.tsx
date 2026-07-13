@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   ShieldAlert,
   Sliders,
@@ -23,12 +23,16 @@ import {
   Image as ImageIcon
 } from "lucide-react";
 import { AdminUser, Site, DocketConfig } from "../types";
-import { MOCK_ROLES } from "../data";
+import { MOCK_ROLES, INITIAL_TRANSACTIONS } from "../data";
 import { toast } from "sonner";
 import { confirmDialog } from "@/src/components/shared/dialog-service";
 import { SelectBox } from "@/src/components/ui/select";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { readDocketLogo, hasDocketLogo } from "@/src/lib/docket-logo";
+import { buildDeliveryDocketHtml } from "@/src/lib/delivery-docket";
+import { getPreviewIframeHeight } from "@/src/lib/print-preview";
+
+const DOCKET_PREVIEW_WIDTH_PX = 728;
 
 type BackOfficeOperator = {
   id: string;
@@ -80,6 +84,15 @@ export default function AdminView({
   useEffect(() => {
     setActiveTab(subView);
   }, [subView]);
+
+  const docketPreviewHtml = useMemo(
+    () =>
+      buildDeliveryDocketHtml(INITIAL_TRANSACTIONS[0], docketConfig, {
+        autoPrint: false,
+        reprintCopy: false,
+      }),
+    [docketConfig]
+  );
 
   // States for adding site
   const [newSiteName, setNewSiteName] = useState("");
@@ -538,185 +551,17 @@ export default function AdminView({
                   Live A4 Docket Preview (Scale Adjusted)
                 </span>
 
-                <div className="w-full rounded-md border border-border bg-muted p-8 shadow-inner flex justify-center overflow-x-auto">
-                  {/* Miniature A4 Sheet Aspect Ratio (roughly 1:1.41) */}
-                  <div className="w-[520px] min-h-[730px] shrink-0 bg-card border border-input shadow-lg p-8 text-foreground flex flex-col justify-between font-sans text-xs leading-relaxed relative select-none">
-                    <div>
-                      {/* Top Branding Section */}
-                      <div className="flex justify-between items-start border-b border-border pb-4 mb-4">
-                        {/* Custom SVG dynamic logo */}
-                        <div className="flex items-center gap-3">
-                          {docketConfig.showLogo && (
-                            <div className="flex h-14 w-[72px] shrink-0 items-center justify-center">
-                              {hasDocketLogo(docketConfig.logoUrl) ? (
-                                <img
-                                  src={docketConfig.logoUrl}
-                                  alt="Company logo"
-                                  className="max-h-12 max-w-[72px] object-contain"
-                                />
-                              ) : (
-                                <div className="flex flex-col items-center">
-                                  <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M50 5L90 35L75 90L25 90L10 35L50 5Z" fill={docketConfig.logoColor} opacity="0.15" />
-                                    <path d="M50 15L80 40H20L50 15Z" fill={docketConfig.logoColor} />
-                                    <path d="M45 40H55V85H45V40Z" fill={docketConfig.logoColor} />
-                                    <path d="M30 55L50 45L70 55L50 65L30 55Z" fill="#fff" opacity="0.9" />
-                                    <path d="M50 5L95 38L78 92H22L5 38L50 5ZM50 10L10 40L25 87H75L90 40L50 10Z" fill={docketConfig.logoColor} />
-                                  </svg>
-                                  <span className="text-[10px] font-bold tracking-widest uppercase mt-0.5" style={{ color: docketConfig.logoColor }}>
-                                    BLACK OAK
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          <div className="max-w-[180px]">
-                            <h4 className="font-bold text-xs uppercase tracking-tight leading-tight text-foreground">
-                              {docketConfig.eftAccountName}
-                            </h4>
-                            <span className="text-xs text-muted-foreground font-bold uppercase tracking-wider block mt-0.5">
-                              Certified Weighbridge Material Record
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Top Right Address block */}
-                        <div className="text-right text-xs space-y-0.5 text-muted-foreground max-w-[200px]">
-                          <p className="font-bold text-foreground leading-tight">{docketConfig.businessName}</p>
-                          <p>{docketConfig.poBox}</p>
-                          <p>CONTACT: {docketConfig.contact}</p>
-                          <p>FAX: {docketConfig.fax}</p>
-                          <p>EMAIL: {docketConfig.email}</p>
-                          <p className="font-semibold">ABN: {docketConfig.abn}</p>
-                        </div>
-                      </div>
-
-                      {/* Title */}
-                      <div className="text-center my-4">
-                        <h2 className="text-sm font-bold tracking-widest text-foreground border-y border-border py-1.5 uppercase">
-                          DELIVERY DOCKET
-                        </h2>
-                      </div>
-
-                      {/* Header Fields grid */}
-                      <div className="grid grid-cols-2 gap-y-2 gap-x-6 text-xs border-b border-border pb-4 mb-4">
-                        <div className="space-y-1">
-                          <div className="flex"><span className="w-24 font-bold text-muted-foreground">TO :</span> <span className="font-bold text-foreground">Intract Australia Pty Ltd</span></div>
-                          <div className="flex"><span className="w-24 font-bold text-muted-foreground">JOB NUMBER :</span> <span className="font-mono font-bold text-foreground">J-731</span></div>
-                          <div className="flex"><span className="w-24 font-bold text-muted-foreground">PURCHASE ORDER :</span> <span className="font-semibold text-foreground">3200110 - SITE 3 SP2-SP5</span></div>
-                          <div className="flex"><span className="w-24 font-bold text-muted-foreground">TRANSPORT COMPANY :</span> <span className="font-semibold text-foreground">Zaclan Transport</span></div>
-                          <div className="flex"><span className="w-24 font-bold text-muted-foreground">WEIGHBRIDGE LOCATION :</span> <span className="font-bold text-foreground">{docketConfig.weighbridgeLocation}</span></div>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex"><span className="w-24 font-bold text-muted-foreground">DATE :</span> <span className="font-bold text-foreground">2026-06-22</span></div>
-                          <div className="flex"><span className="w-24 font-bold text-muted-foreground">TIME :</span> <span className="font-bold text-foreground">16 : 08 pm</span></div>
-                          <div className="flex"><span className="w-24 font-bold text-muted-foreground">DOCKET NUMBER :</span> <span className="font-mono font-bold text-foreground text-xs">BQA23650</span></div>
-                          <div className="flex"><span className="w-24 font-bold text-muted-foreground">DESTINATION :</span> <span className="font-bold text-foreground">SP2 - SP5 - Site 3</span></div>
-                        </div>
-                      </div>
-
-                      {/* Middle Grid */}
-                      <div className="grid grid-cols-3 gap-4 border-b border-border pb-4 mb-4 text-xs">
-                        <div className="border border-border rounded-md p-2.5 bg-muted">
-                          <span className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">TRAILER</span>
-                          <span className="font-bold text-muted-foreground">N/A (Standard Unit)</span>
-                        </div>
-                        <div className="border border-border rounded-md p-2.5 bg-muted space-y-1">
-                          <div>
-                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">TRUCK REG NO.</span>
-                            <span className="font-mono font-bold text-foreground">S176BPB</span>
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">PRODUCT</span>
-                            <span className="font-bold text-info">20MM QR PM2/20QG WET</span>
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">LOT NUMBER</span>
-                            <span className="font-semibold text-muted-foreground">L-850 LOT 20</span>
-                          </div>
-                        </div>
-                        <div className="border border-border rounded-md p-2.5 bg-muted space-y-1 text-right">
-                          <div>
-                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">TRUCK GROSS</span>
-                            <span className="font-mono font-bold text-foreground">5.00 t</span>
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">STORED TARE</span>
-                            <span className="font-mono font-bold text-muted-foreground">0.80 t</span>
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">TRUCK NETT</span>
-                            <span className="font-mono font-bold text-success text-xs">4.20 t</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Order Weights block */}
-                      <div className="mb-4">
-                        <span className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
-                          TOTAL ORDER WEIGHT SUMMARY:
-                        </span>
-                        <table className="w-full text-center border border-border border-collapse text-xs">
-                          <thead>
-                            <tr className="bg-muted border-b border-border text-muted-foreground font-bold">
-                              <th className="py-1 border-r border-border">Gross (t)</th>
-                              <th className="py-1 border-r border-border">Tare (t)</th>
-                              <th className="py-1">Net Weight (t)</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr className="font-mono font-bold text-foreground text-xs">
-                              <td className="py-2 border-r border-border">5.00</td>
-                              <td className="py-2 border-r border-border">0.80</td>
-                              <td className="py-2 text-info">4.20</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <div className="grid grid-cols-12 gap-4 mb-4">
-                        <div className="col-span-12 border border-border rounded-md p-2 bg-muted text-xs text-muted-foreground">
-                          <span className="font-bold text-foreground">DRIVER COMMENTS & SAFETY PRECAUTIONS:</span>
-                          <p className="mt-0.5">Own Driver. Ensure compliance with strict 20km/h quarry speed limits. PPE safety glasses, vest, and steel caps mandatory.</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Footer Section */}
-                    <div className="space-y-4">
-                      {/* EFT Payments Info */}
-                      <div className="border border-border rounded-md p-3 bg-muted flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">
-                            EFT PAYMENTS BANKING
-                          </span>
-                          <div className="grid grid-cols-3 gap-x-4 mt-1 text-xs text-muted-foreground">
-                            <div><span className="font-semibold text-foreground">Account Name:</span> {docketConfig.eftAccountName}</div>
-                            <div><span className="font-semibold text-foreground">BSB:</span> {docketConfig.eftBsb}</div>
-                            <div><span className="font-semibold text-foreground">Account No:</span> {docketConfig.eftAccountNo}</div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold bg-info/10 text-info px-1.5 py-0.5 rounded tracking-wide uppercase font-mono shrink-0">
-                          EFT APPROVED
-                        </span>
-                      </div>
-
-                      {/* Signature block */}
-                      <div className="grid grid-cols-2 gap-8 pt-2">
-                        <div>
-                          <span className="text-xs text-muted-foreground font-bold block mb-1">Customer Copy:</span>
-                          <div className="border-t border-input pt-1 text-xs text-muted-foreground font-semibold italic text-center">
-                            Received in Good Order
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-xs text-muted-foreground font-bold block mb-1">Weighbridge Operator:</span>
-                          <div className="border-t border-input pt-1 text-xs text-foreground font-bold text-center">
-                            (For {docketConfig.eftAccountName})
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                <div className="w-full rounded-md border border-border bg-muted p-4 shadow-inner overflow-x-auto">
+                  <div
+                    className="mx-auto w-full overflow-hidden rounded-md border border-input bg-white shadow-lg"
+                    style={{ maxWidth: `${DOCKET_PREVIEW_WIDTH_PX}px` }}
+                  >
+                    <iframe
+                      title="Delivery docket preview"
+                      srcDoc={docketPreviewHtml}
+                      className="w-full border-0 block"
+                      style={{ height: getPreviewIframeHeight(DOCKET_PREVIEW_WIDTH_PX) }}
+                    />
                   </div>
                 </div>
               </div>
