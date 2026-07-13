@@ -9,6 +9,7 @@ import {
   HelpCircle,
   Wrench,
   Plus,
+  UserPlus,
   Trash,
   Edit3,
   Lock,
@@ -28,6 +29,22 @@ import { confirmDialog } from "@/src/components/shared/dialog-service";
 import { SelectBox } from "@/src/components/ui/select";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { readDocketLogo, hasDocketLogo } from "@/src/lib/docket-logo";
+
+type BackOfficeOperator = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  station: string;
+  active: string;
+};
+
+const INITIAL_BACK_OFFICE_OPERATORS: BackOfficeOperator[] = [
+  { id: "op-1", name: "John Davis", email: "john.davis@uniweigh.com", role: "Weighbridge Operator", station: "Melbourne Eastern Quarry", active: "Scale-A2 active" },
+  { id: "op-2", name: "Sarah JenkinsK", email: "sarah.k@uniweigh.com", role: "Weighbridge Operator", station: "Bayside Coastal Sands", active: "Scale-C1 active" },
+  { id: "op-3", name: "Steve G", email: "steve.g@uniweigh.com", role: "Weighbridge Operator", station: "Western Eco-Recycling Depot", active: "Idle" },
+  { id: "op-4", name: "Admin User", email: "admin.user@uniweigh.com", role: "Administrator", station: "HQ Corporate Services", active: "System config active" },
+];
 
 interface AdminViewProps {
   adminUser: AdminUser;
@@ -74,6 +91,79 @@ export default function AdminView({
   const [editingSiteName, setEditingSiteName] = useState("");
   const [editingSiteSupervisor, setEditingSiteSupervisor] = useState("");
   const [isLogoUploading, setIsLogoUploading] = useState(false);
+  const [operators, setOperators] = useState<BackOfficeOperator[]>(() => {
+    const saved = localStorage.getItem("uniweigh_back_office_users");
+    if (saved) {
+      try {
+        return JSON.parse(saved) as BackOfficeOperator[];
+      } catch {
+        // fall through to defaults
+      }
+    }
+    return INITIAL_BACK_OFFICE_OPERATORS;
+  });
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserRole, setNewUserRole] = useState("");
+  const [newUserStation, setNewUserStation] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("uniweigh_back_office_users", JSON.stringify(operators));
+  }, [operators]);
+
+  const resetAddUserForm = () => {
+    setNewUserName("");
+    setNewUserEmail("");
+    setNewUserRole("");
+    setNewUserStation("");
+  };
+
+  const closeAddUserModal = () => {
+    setShowAddUserModal(false);
+    resetAddUserForm();
+  };
+
+  const handleAddUser = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const name = newUserName.trim();
+    const email = newUserEmail.trim().toLowerCase();
+
+    if (!name) {
+      toast.info("Please enter the operator name.");
+      return;
+    }
+    if (!email || !email.includes("@")) {
+      toast.info("Please enter a valid corporate email address.");
+      return;
+    }
+    if (!newUserRole) {
+      toast.info("Please select a system role.");
+      return;
+    }
+    if (!newUserStation) {
+      toast.info("Please select an operating station.");
+      return;
+    }
+    if (operators.some((operator) => operator.email.toLowerCase() === email)) {
+      toast.error("A user with this email already exists.");
+      return;
+    }
+
+    const newOperator: BackOfficeOperator = {
+      id: `op-${Date.now().toString().slice(-6)}`,
+      name,
+      email,
+      role: newUserRole,
+      station: newUserStation,
+      active: newUserRole === "Administrator" ? "System config active" : "Idle",
+    };
+
+    setOperators((prev) => [...prev, newOperator]);
+    toast.success(`User "${name}" added successfully.`);
+    closeAddUserModal();
+  };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -99,12 +189,7 @@ export default function AdminView({
     toast.success("Logo removed from docket configuration.");
   };
 
-  const mockBackOfficeUsers = [
-    { name: "John Davis", email: "john.davis@uniweigh.com", role: "Weighbridge Operator", station: "Melbourne Eastern Quarry", active: "Scale-A2 active" },
-    { name: "Sarah JenkinsK", email: "sarah.k@uniweigh.com", role: "Weighbridge Operator", station: "Bayside Coastal Sands", active: "Scale-C1 active" },
-    { name: "Steve G", email: "steve.g@uniweigh.com", role: "Weighbridge Operator", station: "Western Eco-Recycling Depot", active: "Idle" },
-    { name: "Admin User", email: "admin.user@uniweigh.com", role: "Administrator", station: "HQ Corporate Services", active: "System config active" }
-  ];
+  const mockBackOfficeUsers = operators;
 
   return (
     <div className="space-y-4">
@@ -156,8 +241,20 @@ export default function AdminView({
         {/* USERS / OPERATORS TAB */}
         {activeTab === "users" && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Active Weighbridge Operators</h3>
-            <p className="text-xs text-muted-foreground mb-3">Logged-in back-office representatives operating physical scales:</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Active Weighbridge Operators</h3>
+                <p className="text-xs text-muted-foreground mt-1">Logged-in back-office representatives operating physical scales:</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddUserModal(true)}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-4 text-xs font-bold text-white hover:bg-primary/90 transition cursor-pointer"
+              >
+                <UserPlus className="h-4 w-4" />
+                <span>Add User</span>
+              </button>
+            </div>
 
             <div className="overflow-hidden rounded-md border border-border">
               <table className="w-full text-left text-xs border-collapse">
@@ -171,19 +268,31 @@ export default function AdminView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border text-sm text-foreground">
-                  {mockBackOfficeUsers.map((u, idx) => (
-                    <tr key={idx} className="hover:bg-muted">
+                  {mockBackOfficeUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-10 text-center text-xs font-medium text-muted-foreground">
+                        No operators registered yet. Use Add User to create the first account.
+                      </td>
+                    </tr>
+                  ) : (
+                    mockBackOfficeUsers.map((u) => (
+                    <tr key={u.id} className="hover:bg-muted">
                       <td className="px-4 py-4 font-bold text-foreground">{u.name}</td>
                       <td className="px-4 py-4 font-mono text-muted-foreground">{u.email}</td>
                       <td className="px-4 py-4 font-semibold text-foreground">{u.role}</td>
                       <td className="px-4 py-4 text-info font-medium">{u.station}</td>
                       <td className="px-4 py-4 text-center">
-                        <span className="inline-flex rounded-full bg-success/10 text-success font-bold font-mono text-xs px-2 py-0.5 border border-success/25 uppercase animate-pulse">
+                        <span className={`inline-flex rounded-full font-bold font-mono text-xs px-2 py-0.5 border uppercase ${
+                          u.active.toLowerCase() === "idle"
+                            ? "bg-muted text-muted-foreground border-border"
+                            : "bg-success/10 text-success border-success/25 animate-pulse"
+                        }`}>
                           {u.active}
                         </span>
                       </td>
                     </tr>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1027,6 +1136,101 @@ export default function AdminView({
         )}
 
       </div>
+
+      {showAddUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            onClick={closeAddUserModal}
+            className="absolute inset-0 bg-foreground/50 backdrop-blur-xs"
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-w-lg rounded-md border border-border bg-card shadow-lg">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-info" />
+                <h3 className="text-sm font-bold text-foreground">Register New Operator</h3>
+              </div>
+              <button
+                type="button"
+                onClick={closeAddUserModal}
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
+                aria-label="Close add user dialog"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddUser} className="space-y-4 p-5">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-muted-foreground uppercase">Operator Name</label>
+                <input
+                  type="text"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  placeholder="e.g. Marcus Vance"
+                  className="w-full h-9 rounded-md border border-border bg-card px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-muted-foreground uppercase">Corporate Email</label>
+                <input
+                  type="email"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  placeholder="e.g. marcus.vance@uniweigh.com"
+                  className="w-full h-9 rounded-md border border-border bg-card px-3 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-muted-foreground uppercase">System Role</label>
+                <SelectBox
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value)}
+                  className="h-9 w-full text-xs"
+                >
+                  <option value="">Select role…</option>
+                  {MOCK_ROLES.map((role) => (
+                    <option key={role.name} value={role.name}>{role.name}</option>
+                  ))}
+                </SelectBox>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-muted-foreground uppercase">Operating Station</label>
+                <SelectBox
+                  value={newUserStation}
+                  onChange={(e) => setNewUserStation(e.target.value)}
+                  className="h-9 w-full text-xs"
+                >
+                  <option value="">Select station…</option>
+                  <option value="HQ Corporate Services">HQ Corporate Services</option>
+                  {sites.map((site) => (
+                    <option key={site.id} value={site.name}>{site.name}</option>
+                  ))}
+                </SelectBox>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={closeAddUserModal}
+                  className="h-9 rounded-md border border-border bg-card px-4 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="h-9 rounded-md bg-primary px-4 text-xs font-bold text-white hover:bg-primary/90 transition cursor-pointer"
+                >
+                  Add User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

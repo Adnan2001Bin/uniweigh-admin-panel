@@ -235,8 +235,6 @@ export default function DestinationContactsView({
   const [formEmail, setFormEmail] = useState<string>("");
   const [formStatus, setFormStatus] = useState<"Active" | "Inactive">("Active");
   const [formSafety, setFormSafety] = useState<boolean>(false);
-  const [formSiteAccess, setFormSiteAccess] = useState<boolean>(false);
-  const [formEmergency, setFormEmergency] = useState<boolean>(false);
   const [formSafetyInstructions, setFormSafetyInstructions] = useState<string>("");
   const [formSiteAccessNotes, setFormSiteAccessNotes] = useState<string>("");
   const [formPPE, setFormPPE] = useState<string>("");
@@ -282,8 +280,6 @@ export default function DestinationContactsView({
     setFormEmail("");
     setFormStatus("Active");
     setFormSafety(false);
-    setFormSiteAccess(false);
-    setFormEmergency(false);
     setFormSafetyInstructions("");
     setFormSiteAccessNotes("");
     setFormPPE("");
@@ -309,8 +305,6 @@ export default function DestinationContactsView({
     setFormEmail(contact.email);
     setFormStatus(contact.status);
     setFormSafety(contact.isSafetyContact);
-    setFormSiteAccess(contact.isSiteAccessContact);
-    setFormEmergency(contact.isEmergencyContact);
     setFormSafetyInstructions(contact.safetyInstructions || "");
     setFormSiteAccessNotes(contact.siteAccessNotes || "");
     setFormPPE(contact.ppeRequirements || "");
@@ -341,8 +335,8 @@ export default function DestinationContactsView({
       email: formEmail,
       role: formRole,
       isSafetyContact: formSafety,
-      isSiteAccessContact: formSiteAccess,
-      isEmergencyContact: formEmergency,
+      isSiteAccessContact: false,
+      isEmergencyContact: false,
       status: formStatus,
       lastUsedDate: isEditing && selectedContact ? selectedContact.lastUsedDate : "N/A",
       createdOn: isEditing && selectedContact ? selectedContact.createdOn : new Date().toISOString().split('T')[0],
@@ -375,8 +369,6 @@ export default function DestinationContactsView({
       setFormMobile("");
       setFormEmail("");
       setFormSafety(false);
-      setFormSiteAccess(false);
-      setFormEmergency(false);
       setFormSafetyInstructions("");
       setFormSiteAccessNotes("");
       setFormPPE("");
@@ -1334,29 +1326,13 @@ export default function DestinationContactsView({
                 2. Safety Protocols & Site access parameters
               </h3>
 
-              {/* Boolean Toggles Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border border-border p-4 rounded-md bg-muted">
+              {/* Boolean Toggles */}
+              <div className="border border-border p-4 rounded-md bg-muted">
                 <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded hover:bg-card transition">
-                  <Checkbox checked={formSafety} onCheckedChange={(checked) => (((e) => setFormSafety(e.target.checked)) as any)({ target: { checked } })} className="rounded text-destructive border-input focus:ring-destructive mt-0.5" />
+                  <Checkbox checked={formSafety} onCheckedChange={(checked) => setFormSafety(Boolean(checked))} className="rounded text-destructive border-input focus:ring-destructive mt-0.5" />
                   <div>
                     <span className="font-bold block text-foreground">Safety contact</span>
                     <span className="text-xs text-muted-foreground font-medium">Designated point of contact for safety auditing and incident reporting.</span>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded hover:bg-card transition">
-                  <Checkbox checked={formSiteAccess} onCheckedChange={(checked) => (((e) => setFormSiteAccess(e.target.checked)) as any)({ target: { checked } })} className="rounded text-info border-input focus:ring-info mt-0.5" />
-                  <div>
-                    <span className="font-bold block text-foreground">Site Access Coordinator</span>
-                    <span className="text-xs text-muted-foreground font-medium">Grants induction passes, barrier PIN keycodes, and logistics entry permissions.</span>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded hover:bg-card transition">
-                  <Checkbox checked={formEmergency} onCheckedChange={(checked) => (((e) => setFormEmergency(e.target.checked)) as any)({ target: { checked } })} className="rounded text-destructive border-input focus:ring-destructive mt-0.5" />
-                  <div>
-                    <span className="font-bold block text-foreground">Emergency Dispatcher</span>
-                    <span className="text-xs text-muted-foreground font-medium">Primary receiver of high-priority fire, hazard, or safety evacuation alerts.</span>
                   </div>
                 </label>
               </div>

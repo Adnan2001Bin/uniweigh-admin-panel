@@ -36,7 +36,7 @@ import {
 } from "./data";
 import { INITIAL_JOBS } from "./data_jobs";
 import { Transaction, Product, Customer, Site, Job, ProductLot, Carrier, Driver, Vehicle, DocketConfig, AdminUser } from "./types";
-import { canAccessView, canEnterClerkMode, getDefaultViewForRole } from "./lib/role-access";
+import { canAccessView, canEnterClerkMode, canAccessAdminPanel, getDefaultViewForRole, isOperatorRole, shouldStartInClerkMode } from "./lib/role-access";
 import { loadTextSize, saveTextSize, type TextSize } from "./lib/text-size";
 
 
@@ -77,20 +77,32 @@ export default function App() {
 
   useEffect(() => {
     if (!authUser) return;
+    if (isOperatorRole(authUser.role)) {
+      if (!isClerkMode) setIsClerkMode(true);
+      return;
+    }
     if (!canAccessView(authUser.role, activeView)) {
       setActiveView(getDefaultViewForRole(authUser.role));
     }
-  }, [authUser, activeView]);
+  }, [authUser, activeView, isClerkMode]);
 
   const handleLogin = (user: AdminUser) => {
     setAuthUser(user);
-    setActiveView(getDefaultViewForRole(user.role));
+    if (shouldStartInClerkMode(user.role)) {
+      setIsClerkMode(true);
+      return;
+    }
     setIsClerkMode(false);
+    setActiveView(getDefaultViewForRole(user.role));
   };
 
   const handleClerkExit = () => {
+    if (!authUser) return;
+    if (isOperatorRole(authUser.role)) {
+      handleLogout();
+      return;
+    }
     setIsClerkMode(false);
-    setAuthUser(null);
   };
 
   const handleLogout = () => {
@@ -448,7 +460,11 @@ export default function App() {
             customers={customers}
             onViewChange={setActiveView}
             userRole={authUser.role}
-            onEnterClerkMode={canEnterClerkMode(authUser.role) ? () => setIsClerkMode(true) : undefined}
+            onEnterClerkMode={
+          canAccessAdminPanel(authUser.role) && canEnterClerkMode(authUser.role)
+            ? () => setIsClerkMode(true)
+            : undefined
+        }
           />
         );
 
@@ -844,7 +860,7 @@ export default function App() {
     );
   }
 
-  if (isClerkMode) {
+  if (isClerkMode || isOperatorRole(authUser.role)) {
     return (
       <>
         <Toaster />
@@ -905,7 +921,11 @@ export default function App() {
         }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onEnterClerkMode={canEnterClerkMode(authUser.role) ? () => setIsClerkMode(true) : undefined}
+        onEnterClerkMode={
+          canAccessAdminPanel(authUser.role) && canEnterClerkMode(authUser.role)
+            ? () => setIsClerkMode(true)
+            : undefined
+        }
         userRole={authUser.role}
       />
 
@@ -921,7 +941,11 @@ export default function App() {
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           sites={sites}
           siteLimit={siteLimit}
-          onEnterClerkMode={canEnterClerkMode(authUser.role) ? () => setIsClerkMode(true) : undefined}
+          onEnterClerkMode={
+          canAccessAdminPanel(authUser.role) && canEnterClerkMode(authUser.role)
+            ? () => setIsClerkMode(true)
+            : undefined
+        }
           onLogout={handleLogout}
           textSize={textSize}
           onTextSizeChange={setTextSize}

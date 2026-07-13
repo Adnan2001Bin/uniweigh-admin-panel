@@ -13,12 +13,18 @@ import {
   ChevronDown,
   Trash2,
   FileText,
-  DollarSign
+  DollarSign,
+  Upload
 } from "lucide-react";
 import { Product } from "../types";
 import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
 import { Checkbox } from "@/src/components/ui/checkbox";
+import {
+  downloadLotCertificate,
+  LotCertificate,
+  readPdfCertificate,
+} from "@/src/lib/lot-certificate";
 
 interface ProductsViewProps {
   products: Product[];
@@ -78,6 +84,8 @@ export default function ProductsView({
   const [formPriceLevel2, setFormPriceLevel2] = useState<string>("");
   const [formPriceLevel3, setFormPriceLevel3] = useState<string>("");
   const [formCustomPrice, setFormCustomPrice] = useState<string>("");
+  const [formCertificates, setFormCertificates] = useState<LotCertificate[]>([]);
+  const [isCertificateUploading, setIsCertificateUploading] = useState(false);
 
   // Get distinct list values for toolbar drop-downs
   const distinctSites = useMemo(() => {
@@ -143,6 +151,7 @@ export default function ProductsView({
       setFormPriceLevel2(product.priceLevel2?.toString() || "");
       setFormPriceLevel3(product.priceLevel3?.toString() || "");
       setFormCustomPrice(product.customPrice?.toString() || "");
+      setFormCertificates(product.datasheets ? [...product.datasheets] : []);
     } else {
       setEditingProduct(null);
       setFormName("");
@@ -156,8 +165,31 @@ export default function ProductsView({
       setFormPriceLevel2("");
       setFormPriceLevel3("");
       setFormCustomPrice("");
+      setFormCertificates([]);
     }
     setIsModalOpen(true);
+  };
+
+  const handleCertificateUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setIsCertificateUploading(true);
+    try {
+      const certificate = await readPdfCertificate(file);
+      setFormCertificates((prev) => [certificate, ...prev]);
+      toast.success(`Certificate "${certificate.name}" attached.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to upload certificate.";
+      toast.error(message);
+    } finally {
+      setIsCertificateUploading(false);
+    }
+  };
+
+  const handleRemoveCertificate = (index: number) => {
+    setFormCertificates((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Save Add/Edit
@@ -177,6 +209,7 @@ export default function ProductsView({
     const p2Price = formPriceLevel2 ? parseFloat(formPriceLevel2) : undefined;
     const p3Price = formPriceLevel3 ? parseFloat(formPriceLevel3) : undefined;
     const cPrice = formCustomPrice ? parseFloat(formCustomPrice) : undefined;
+    const certificatePayload = formCertificates.length > 0 ? formCertificates : undefined;
 
     const savedProduct: Product = {
       id: editingProduct ? editingProduct.id : `P-${Math.floor(130 + Math.random() * 100)}`,
@@ -203,7 +236,8 @@ export default function ProductsView({
       priceLevel1: p1Price,
       priceLevel2: p2Price,
       priceLevel3: p3Price,
-      customPrice: cPrice
+      customPrice: cPrice,
+      datasheets: certificatePayload,
     };
 
     onUpdateProduct(savedProduct, editingProduct?.id);
@@ -597,8 +631,8 @@ export default function ProductsView({
             onClick={() => setIsModalOpen(false)}
             className="absolute inset-0 bg-foreground/50 backdrop-blur-xs"
           />
-          <div className="relative bg-card rounded-md border border-border shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto z-10 animate-fade-in flex flex-col">
-            <div className="sticky top-0 bg-muted border-b border-border px-6 py-4 flex items-center justify-between shrink-0 z-10">
+          <div className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-md border border-border bg-card shadow-lg animate-fade-in">
+            <div className="shrink-0 border-b border-border bg-muted px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-info" />
                 <h3 className="font-bold text-sm text-foreground">
@@ -606,15 +640,16 @@ export default function ProductsView({
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="p-6 space-y-6 overflow-y-auto">
-              
+            <form onSubmit={handleSaveProduct} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
               {/* SECTION A: Product Details */}
               <div className="space-y-4">
                 <div className="border-b border-border pb-1">
@@ -694,6 +729,72 @@ export default function ProductsView({
                     placeholder="Enter any material grades, origin descriptions, or compliance notes..."
                   />
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block">
+                    PDF Certificates
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Attach quality or lab certificates for this product. PDF only, up to 5 MB each.
+                  </p>
+
+                  {formCertificates.length > 0 && (
+                    <div className="space-y-2">
+                      {formCertificates.map((certificate, index) => (
+                        <div
+                          key={`${certificate.name}-${certificate.uploadedAt}-${index}`}
+                          className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted px-3 py-2"
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="rounded-md bg-warning/10 p-1.5 text-warning shrink-0">
+                              <FileText className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate font-semibold text-foreground" title={certificate.name}>
+                                {certificate.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {certificate.size} • Uploaded {certificate.uploadedAt}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {certificate.url && (
+                              <button
+                                type="button"
+                                onClick={() => downloadLotCertificate(certificate)}
+                                className="rounded-md border border-border bg-card p-1.5 text-muted-foreground hover:text-info hover:border-info/25 transition cursor-pointer"
+                                title="Preview download"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCertificate(index)}
+                              className="rounded-md border border-border bg-card p-1.5 text-muted-foreground hover:text-destructive hover:border-destructive/25 transition cursor-pointer"
+                              title="Remove certificate"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted px-3 py-3 text-xs font-semibold text-muted-foreground hover:bg-card hover:text-foreground transition">
+                    <Upload className="h-4 w-4" />
+                    <span>{isCertificateUploading ? "Uploading PDF..." : "Upload PDF certificate"}</span>
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={handleCertificateUpload}
+                      disabled={isCertificateUploading}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
 
               {/* SECTION B: Pricing Levels */}
@@ -772,19 +873,19 @@ export default function ProductsView({
                   </div>
                 </div>
               </div>
+              </div>
 
-              {/* Form Controls */}
-              <div className="sticky bottom-0 bg-card pt-4 border-t border-border flex gap-2 justify-end shrink-0">
+              <div className="shrink-0 border-t border-border bg-card px-6 py-4 flex gap-2 justify-end">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="rounded-md border border-border bg-card hover:bg-muted px-4 py-2 text-xs font-bold text-foreground transition"
+                  className="h-9 rounded-md border border-border bg-card hover:bg-muted px-4 text-xs font-bold text-foreground transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-md bg-primary hover:bg-primary/90 text-white px-5 py-2 text-xs font-bold shadow-sm transition flex items-center gap-1"
+                  className="h-9 rounded-md bg-primary hover:bg-primary/90 text-white px-5 text-xs font-bold shadow-sm transition flex items-center gap-1 cursor-pointer"
                 >
                   <Check className="h-4 w-4" />
                   Save Product specifications

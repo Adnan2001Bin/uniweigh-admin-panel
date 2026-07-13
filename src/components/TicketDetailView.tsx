@@ -30,7 +30,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { promptDialog } from "@/src/components/shared/dialog-service";
 import { buildDeliveryDocketHtml, openDeliveryDocketPrint, resolveDocketConfig } from "@/src/lib/delivery-docket";
-import { buildTaxInvoiceHtml, openTaxInvoicePrint } from "@/src/lib/tax-invoice";
 
 interface TicketDetailViewProps {
   transaction: Transaction;
@@ -52,39 +51,6 @@ export default function TicketDetailView({
   // Printing states
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [isReprint, setIsReprint] = useState<boolean>(false);
-  const [printType, setPrintType] = useState<"docket" | "invoice">("docket");
-
-  const handlePrintInvoice = (reprintCopy: boolean) => {
-    const actionLabel = reprintCopy ? "Invoice Reprinted" : "Invoice Printed";
-    const detailLabel = reprintCopy
-      ? "Printed duplicate/reprint commercial tax invoice copy for client reference."
-      : "First official commercial tax invoice printed successfully.";
-
-    const updated: Transaction = {
-      ...transaction,
-      auditHistory: [
-        ...transaction.auditHistory,
-        {
-          timestamp: new Date().toLocaleString(),
-          action: actionLabel,
-          user: "Admin User",
-          details: detailLabel
-        }
-      ]
-    };
-    onUpdateTransaction(updated);
-
-    const linkedJob = jobs.find((job) => job.id === transaction.jobOrder) ?? null;
-    const printed = openTaxInvoicePrint(
-      transaction,
-      { linkedJob, transactions },
-      docketConfig,
-      { reprintCopy }
-    );
-    if (!printed) {
-      toast.info("Popup blocker active! Please allow popups to open the official tax invoice.");
-    }
-  };
 
   const handlePrintDocket = (reprintCopy: boolean) => {
     // Log to transaction's audit history
@@ -608,18 +574,10 @@ export default function TicketDetailView({
       {/* Print Preview Modal Overlay */}
       {showPrintModal && (() => {
         const config = resolveDocketConfig(docketConfig);
-        const linkedJob = jobs.find((job) => job.id === transaction.jobOrder) ?? null;
         const docketPreviewHtml = buildDeliveryDocketHtml(transaction, config, {
           reprintCopy: isReprint,
           autoPrint: false,
         });
-        const invoicePreviewHtml = buildTaxInvoiceHtml(
-          transaction,
-          config,
-          { linkedJob, transactions },
-          { reprintCopy: isReprint, autoPrint: false }
-        );
-        const previewHtml = printType === "docket" ? docketPreviewHtml : invoicePreviewHtml;
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-6 md:p-8 overflow-hidden">
@@ -634,47 +592,23 @@ export default function TicketDetailView({
               </button>
 
               {/* Modal Header */}
-              <div className="mb-4 flex shrink-0 flex-col justify-between gap-4 border-b border-white/15 pb-4 pr-10 md:flex-row md:items-center">
+              <div className="mb-4 flex shrink-0 border-b border-white/15 pb-4 pr-10">
                 <div>
                   <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
                     <Printer className="h-4 w-4 text-info" />
                     <span>Official Weighbridge Document Spooler</span>
                   </h3>
                   <p className="text-xs text-white/65 mt-1">
-                    Select a document layout type to preview and print.
+                    Preview and print the official delivery docket.
                   </p>
-                </div>
-                
-                {/* Print Type Switcher */}
-                <div className="flex max-w-fit rounded-md border border-white/20 bg-white/5 p-1">
-                  <button
-                    onClick={() => setPrintType("docket")}
-                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
-                      printType === "docket"
-                        ? "bg-white text-primary shadow-xs"
-                        : "text-white/70 hover:text-white hover:bg-white/10"
-                    }`}
-                  >
-                    Delivery Docket
-                  </button>
-                  <button
-                    onClick={() => setPrintType("invoice")}
-                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
-                      printType === "invoice"
-                        ? "bg-white text-primary shadow-xs"
-                        : "text-white/70 hover:text-white hover:bg-white/10"
-                    }`}
-                  >
-                    Tax Invoice
-                  </button>
                 </div>
               </div>
 
               {/* Paper Ticket Representation */}
               <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-border bg-white">
                 <iframe
-                  title={printType === "docket" ? "Delivery docket preview" : "Tax invoice preview"}
-                  srcDoc={previewHtml}
+                  title="Delivery docket preview"
+                  srcDoc={docketPreviewHtml}
                   className="w-full border-0 block"
                   style={{ height: "calc(29.7cm + 12px)", minHeight: "100%" }}
                 />
@@ -692,11 +626,7 @@ export default function TicketDetailView({
                 <button
                   type="button"
                   onClick={() => {
-                    if (printType === "docket") {
-                      handlePrintDocket(isReprint);
-                    } else {
-                      handlePrintInvoice(isReprint);
-                    }
+                    handlePrintDocket(isReprint);
                     setShowPrintModal(false);
                   }}
                   className="px-5 py-2 rounded-md bg-accent text-accent-foreground hover:bg-accent/90 text-xs font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer"

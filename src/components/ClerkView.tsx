@@ -50,6 +50,7 @@ import { SelectBox } from "@/src/components/ui/select";
 import { RadioBox } from "@/src/components/ui/radio-group";
 import { Slider } from "@/src/components/ui/slider";
 import { openDeliveryDocketPrint } from "@/src/lib/delivery-docket";
+import { isOperatorRole } from "@/src/lib/role-access";
 
 interface ClerkViewProps {
   adminUser: { name: string; role: string; avatarUrl?: string };
@@ -780,7 +781,7 @@ export default function ClerkView({
               className="flex items-center gap-1.5 bg-destructive hover:bg-destructive/90 text-white font-bold px-3 py-1.5 rounded-md text-xs cursor-pointer transition select-none shadow-xs"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Back to Admin Panel</span>
+              <span>{isOperatorRole(adminUser.role) ? "Sign Out" : "Back to Admin Panel"}</span>
             </button>
           </div>
         </div>

@@ -60,9 +60,9 @@ export default function LoginView({ onLogin }: LoginViewProps) {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-muted">
               <Lock className="h-5 w-5 text-muted-foreground" />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">Sign in to Admin Panel</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Sign in to UniWeigh</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Demo authentication — no backend required.
+              Administrators and auditors access the admin panel. Weighbridge operators sign in to the clerk terminal only.
             </p>
           </div>
 

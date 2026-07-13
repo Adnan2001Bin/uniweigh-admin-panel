@@ -30,6 +30,18 @@ export function normalizeRole(role: string): AppRole {
   return "Administrator";
 }
 
+export function isOperatorRole(role: string): boolean {
+  return normalizeRole(role) === "Weighbridge Operator";
+}
+
+export function canAccessAdminPanel(role: string): boolean {
+  return !isOperatorRole(role);
+}
+
+export function shouldStartInClerkMode(role: string): boolean {
+  return isOperatorRole(role);
+}
+
 export function getDefaultViewForRole(role: string): string {
   return "dashboard";
 }
