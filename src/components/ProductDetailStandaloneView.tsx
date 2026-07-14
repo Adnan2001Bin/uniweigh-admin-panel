@@ -19,11 +19,13 @@ import {
   Sliders,
   X,
   Upload,
-  Trash2
+  Trash2,
+  Eye
 } from "lucide-react";
 import { Product, Job, Transaction } from "../types";
 import { toast } from "sonner";
 import { RadioBox } from "@/src/components/ui/radio-group";
+import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 
 interface ProductDetailStandaloneViewProps {
   products: Product[];
@@ -414,7 +416,7 @@ export default function ProductDetailStandaloneView({
     <div className="space-y-6">
       
       {/* Page Header bar */}
-      <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           {onBack && (
             <button
@@ -689,10 +691,12 @@ export default function ProductDetailStandaloneView({
                           </td>
                           <td className="px-5 py-3.5 text-center">
                             <button
+                              type="button"
                               onClick={() => toast.info(`Viewing inventory logs for Lot batch: ${l.lotNumber}`)}
-                              className="text-info hover:text-info font-bold text-xs"
+                              className={`${TABLE_ACTION_ICON_BUTTON_CLASS} mx-auto`}
+                              title="Manage inventory"
                             >
-                              Manage Inventory
+                              <Eye className="h-4 w-4" />
                             </button>
                           </td>
                         </tr>
@@ -765,10 +769,12 @@ export default function ProductDetailStandaloneView({
                             </td>
                             <td className="px-5 py-3.5 text-center">
                               <button
+                                type="button"
                                 onClick={() => toast.info(`Relational View: Navigating to Job Profile: ${j.id}. Please access via Customer / Jobs module for full modifications.`)}
-                                className="text-info hover:text-info font-bold text-xs"
+                                className={`${TABLE_ACTION_ICON_BUTTON_CLASS} mx-auto`}
+                                title="View Job"
                               >
-                                View Job
+                                <Eye className="h-4 w-4" />
                               </button>
                             </td>
                           </tr>
@@ -848,10 +854,12 @@ export default function ProductDetailStandaloneView({
                           </td>
                           <td className="px-4 py-3 text-center">
                             <button
+                              type="button"
                               onClick={() => toast.info(`Consolidated ticket layout: #${t.ticketNo}. Access via Transactions panel for formal approvals.`)}
-                              className="text-info hover:text-info font-bold text-xs"
+                              className={`${TABLE_ACTION_ICON_BUTTON_CLASS} mx-auto`}
+                              title="View ticket"
                             >
-                              Ticket
+                              <Eye className="h-4 w-4" />
                             </button>
                           </td>
                         </tr>

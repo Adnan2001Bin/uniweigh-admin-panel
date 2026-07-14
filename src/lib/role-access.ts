@@ -49,7 +49,9 @@ export function isOperationalSiteStatus(status: string): boolean {
   return status !== "PendingApproval" && status !== "Inactive";
 }
 
-export function getVisibleSites<T extends { status: string }>(sites: T[]): T[] {
+export function getVisibleSites<T extends { status: string; name: string }>(
+  sites: T[]
+): T[] {
   return sites.filter((site) => isOperationalSiteStatus(site.status));
 }
 

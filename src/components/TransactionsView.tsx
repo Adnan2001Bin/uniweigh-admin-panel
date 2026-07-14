@@ -34,6 +34,8 @@ import {
 import { Transaction, TransactionStatus } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import StatusBadge from "@/src/components/shared/StatusBadge";
+import PageHeader from "@/src/components/shared/PageHeader";
+import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 import { toast } from "sonner";
 import { confirmDialog, promptDialog } from "@/src/components/shared/dialog-service";
 import { SelectBox } from "@/src/components/ui/select";
@@ -505,95 +507,92 @@ export default function TransactionsView({
 
   return (
     <div className="space-y-4">
-      {/* 1. Header and Page Title */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between font-normal">
-        <div>
-          <h1 className="text-xl font-bold text-foreground tracking-tight sm:text-2xl">
-            Weighbridge Transactions & Audit Log
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Operations / Transactions Control Hub
-          </p>
-        </div>
-
-        {/* 2. Interactive Controls & Export */}
-        <div className="flex items-center gap-2 self-start sm:self-auto relative">
-          {/* Advanced Filter Drawer Trigger */}
-          <button
-            id="btn-toggle-filters"
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold cursor-pointer transition ${
-              showFilters
-                ? "border-ring bg-info/10 text-info"
-                : "border-border bg-card text-foreground hover:bg-muted"
-            }`}
-          >
-            <Filter className="h-3.5 w-3.5" />
-            <span>Advanced Filters</span>
-            {activeAdvancedFilterCount > 0 && (
-              <span className="ml-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                {activeAdvancedFilterCount}
-              </span>
-            )}
-          </button>
-
-          {/* Column Visibility dropdown */}
-          <div className="relative">
+      <PageHeader
+        title="Weighbridge Transactions & Audit Log"
+        icon={Scale}
+        breadcrumbs={[
+          { label: "Operations" },
+          { label: "Transactions Control Hub" },
+        ]}
+        actions={
+          <div className="flex items-center gap-2 relative">
             <button
-              id="btn-toggle-columns"
-              onClick={() => setShowColumnsMenu(!showColumnsMenu)}
-              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition select-none"
+              id="btn-toggle-filters"
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold cursor-pointer transition ${
+                showFilters
+                  ? "border-ring bg-info/10 text-info"
+                  : "border-border bg-card text-foreground hover:bg-muted"
+              }`}
             >
-              <span>Column Visibility</span>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              <Filter className="h-3.5 w-3.5" />
+              <span>Advanced Filters</span>
+              {activeAdvancedFilterCount > 0 && (
+                <span className="ml-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                  {activeAdvancedFilterCount}
+                </span>
+              )}
             </button>
 
-            {showColumnsMenu && (
-              <div className="absolute right-0 mt-1.5 w-48 bg-card border border-border rounded-md shadow-lg py-2 z-20 text-xs">
-                <div className="px-3.5 py-1 text-muted-foreground font-bold text-xs uppercase tracking-widest border-b border-border mb-1.5">
-                  Toggle Columns
-                </div>
-                {Object.keys(visibleColumns).map((col) => (
-                  <button
-                    key={col}
-                    onClick={() => {
-                      setVisibleColumns((prev) => ({
-                        ...prev,
-                        [col]: !prev[col]
-                      }));
-                    }}
-                    className="w-full text-left px-3.5 py-1.5 hover:bg-muted font-bold text-foreground flex items-center justify-between cursor-pointer"
-                  >
-                    <span className="capitalize">
-                      {col === "ticketCode"
-                        ? "Ticket / Code"
-                        : col === "date"
-                        ? "Transaction Date"
-                        : col === "vehicleDriver"
-                        ? "Vehicle & Driver"
-                        : col === "customer"
-                        ? "Invoiced To"
-                        : col === "material"
-                        ? "Material"
-                        : col === "netWeight"
-                        ? "Net Weight"
-                        : col === "type"
-                        ? "Type"
-                        : col === "status"
-                        ? "Status"
-                        : col === "action"
-                        ? "Action"
-                        : col}
-                    </span>
-                    {visibleColumns[col] && <Check className="h-3.5 w-3.5 text-info shrink-0" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+            <div className="relative">
+              <button
+                id="btn-toggle-columns"
+                type="button"
+                onClick={() => setShowColumnsMenu(!showColumnsMenu)}
+                className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition select-none"
+              >
+                <span>Column Visibility</span>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
 
-        </div>
-      </div>
+              {showColumnsMenu && (
+                <div className="absolute right-0 mt-1.5 w-48 bg-card border border-border rounded-md shadow-lg py-2 z-20 text-xs">
+                  <div className="px-3.5 py-1 text-muted-foreground font-bold text-xs uppercase tracking-widest border-b border-border mb-1.5">
+                    Toggle Columns
+                  </div>
+                  {Object.keys(visibleColumns).map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => {
+                        setVisibleColumns((prev) => ({
+                          ...prev,
+                          [col]: !prev[col]
+                        }));
+                      }}
+                      className="w-full text-left px-3.5 py-1.5 hover:bg-muted font-bold text-foreground flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="capitalize">
+                        {col === "ticketCode"
+                          ? "Ticket / Code"
+                          : col === "date"
+                          ? "Transaction Date"
+                          : col === "vehicleDriver"
+                          ? "Vehicle & Driver"
+                          : col === "customer"
+                          ? "Invoiced To"
+                          : col === "material"
+                          ? "Material"
+                          : col === "netWeight"
+                          ? "Net Weight"
+                          : col === "type"
+                          ? "Type"
+                          : col === "status"
+                          ? "Status"
+                          : col === "action"
+                          ? "Action"
+                          : col}
+                      </span>
+                      {visibleColumns[col] && <Check className="h-3.5 w-3.5 text-info shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        }
+      />
 
       {/* 3. Export Dialog Modal overlay */}
       {exportScope && (
@@ -677,7 +676,7 @@ export default function TransactionsView({
       )}
 
       {/* 4. Top Filtering Chips */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-border pb-3">
+      <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest mr-2 select-none">
           Category Filters:
         </span>
@@ -1204,13 +1203,14 @@ export default function TransactionsView({
                           <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center">
                               <button
+                                type="button"
                                 onClick={() => {
                                   onViewTicketDetails(tx.id);
                                 }}
-                                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-info transition"
+                                className={TABLE_ACTION_ICON_BUTTON_CLASS}
                                 title="Review weight ticket details"
                               >
-                                <Eye className="h-4.5 w-4.5 text-muted-foreground" />
+                                <Eye className="h-4 w-4" />
                               </button>
                             </div>
                           </td>

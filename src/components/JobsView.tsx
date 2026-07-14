@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import {
   Briefcase,
   Eye,
-  Edit2,
+  Edit,
   Plus,
   Search,
   Download,
@@ -14,10 +14,8 @@ import {
   TrendingUp,
   MapPin,
   Activity,
-  ChevronRight,
   Filter,
   Layers,
-  FileCheck2,
   Clock,
   Shield,
   FileText,
@@ -28,11 +26,17 @@ import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
+import { Textarea } from "@/src/components/ui/textarea";
+import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
+import FormPage, {
+  FORM_PAGE_INPUT_CLASS,
+  FORM_PAGE_SELECT_CLASS,
+  FORM_PAGE_TEXTAREA_CLASS,
+  FORM_PAGE_SECTION_CLASS,
+  FORM_PAGE_LABEL_CLASS,
+} from "@/src/components/shared/FormPage";
 
-const JOB_FORM_INPUT_CLASS = "h-9 text-xs font-semibold bg-muted";
-const JOB_FORM_SELECT_CLASS = "w-full text-xs font-semibold bg-muted";
-const JOB_FORM_TEXTAREA_CLASS =
-  "w-full min-h-[72px] resize-y rounded-md border border-border bg-muted px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 const JOB_FORM_ACTION_CLASS =
   "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer";
 import {
@@ -434,47 +438,38 @@ export default function JobsView({
   return (
     <div className="space-y-6" id="jobs-module-container">
 
-      {/* ----------------- SUB-HEADER & NAVIGATION BANNER ----------------- */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground tracking-tight sm:text-2xl flex items-center gap-2">
-            <Briefcase className="h-6 w-6 text-info shrink-0" />
-            <span>Jobs</span>
-          </h1>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-            <span>Customers & Sales</span>
-            <ChevronRight className="h-3 w-3 text-muted-foreground" />
-            <span className="font-semibold text-info">Jobs & Supply Contracts</span>
-          </div>
-        </div>
-
-        {/* Top-Right Action Toolbar */}
-        {currentMode === "list" && (
-          <div className="flex flex-wrap items-center gap-2">
+      <PageHeader
+        title="Jobs"
+        icon={Briefcase}
+        breadcrumbs={[
+          { label: "Customers & Sales" },
+          { label: "Jobs & Supply Contracts" },
+        ]}
+        actions={
+          currentMode === "list" ? (
             <button
+              type="button"
               onClick={handleOpenAddForm}
-              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
+              className={PAGE_HEADER_ADD_BUTTON_CLASS}
             >
               <Plus className="h-4 w-4" />
               <span>Add Job</span>
             </button>
-          </div>
-        )}
-
-        {currentMode !== "list" && (
-          <button
-            type="button"
-            onClick={() => {
-              setCurrentMode("list");
-              setSelectedJobId(null);
-            }}
-            className={`${JOB_FORM_ACTION_CLASS} gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted`}
-          >
-            <ArrowLeft className="h-4 w-4 shrink-0" />
-            <span>Back to Listing</span>
-          </button>
-        )}
-      </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentMode("list");
+                setSelectedJobId(null);
+              }}
+              className={`${JOB_FORM_ACTION_CLASS} gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted`}
+            >
+              <ArrowLeft className="h-4 w-4 shrink-0" />
+              <span>Back to Listing</span>
+            </button>
+          )
+        }
+      />
 
       <AnimatePresence mode="wait">
 
@@ -644,8 +639,8 @@ export default function JobsView({
                             </td>
 
                             {/* Actions */}
-                            <td className="px-4 py-3.5 text-center">
-                              <div className="flex items-center justify-center gap-2">
+                            <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-center gap-1">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -653,16 +648,18 @@ export default function JobsView({
                                     setDetailTab("destinations");
                                     setCurrentMode("detail");
                                   }}
-                                  className="px-2.5 py-1 bg-info/10 hover:bg-info/10 text-info text-xs font-bold rounded transition"
+                                  className={TABLE_ACTION_ICON_BUTTON_CLASS}
+                                  title="View Job Details"
                                 >
-                                  View
+                                  <Eye className="h-4 w-4" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEditForm(j)}
-                                  className="px-2.5 py-1 bg-muted hover:bg-muted text-foreground text-xs font-bold rounded border border-border transition"
+                                  className={TABLE_ACTION_ICON_BUTTON_CLASS}
+                                  title="Edit Job Contract"
                                 >
-                                  Edit
+                                  <Edit className="h-4 w-4" />
                                 </button>
                               </div>
                             </td>
@@ -700,37 +697,22 @@ export default function JobsView({
         {/* ======================= MODE 2: ADD / EDIT JOB FORM ===================== */}
         {/* ========================================================================= */}
         {(currentMode === "add" || currentMode === "edit") && (
-          <motion.form
-            key="jobs-form-mode"
-            onSubmit={handleSaveJob}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="space-y-6 max-w-4xl mx-auto"
-          >
-            <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden divide-y divide-border">
-
-              {/* Form Title Banner */}
-              <div className="bg-muted px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-info/10 text-info">
-                    <Briefcase className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">
-                      {currentMode === "add" ? "Create New Project Job" : `Modify Job Contract Rules [${selectedJobId}]`}
-                    </h3>
-                    <p className="text-xs text-muted-foreground">Provide procurement quotas, customer mapping, and contract locked rates.</p>
-                  </div>
-                </div>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {currentMode === "add" ? "Draft Mode" : "Modifying Live Contract"}
-                </span>
-              </div>
-
+          <React.Fragment key="jobs-form-mode">
+            <FormPage
+              title={currentMode === "add" ? "Create New Project Job" : `Modify Job Contract Rules [${selectedJobId}]`}
+              subtitle="Provide procurement quotas, customer mapping, and contract locked rates."
+              icon={Briefcase}
+              modeBadge={currentMode === "add" ? "Draft Mode" : "Modifying Live Contract"}
+              onCancel={() => {
+                setCurrentMode("list");
+                setSelectedJobId(null);
+              }}
+              onSubmit={handleSaveJob}
+              saveLabel="Save Supply Job Contract"
+            >
               {/* SECTION 1: JOB DETAILS */}
               <div className="p-6 space-y-4">
-                <h4 className="text-xs font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5 border-b border-border pb-2">
+                <h4 className={FORM_PAGE_SECTION_CLASS}>
                   <Layers className="h-4 w-4 text-info" />
                   <span>Job Details & Target Quotas</span>
                 </h4>
@@ -739,7 +721,7 @@ export default function JobsView({
 
                   {/* Customer Order Reference */}
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <label className={FORM_PAGE_LABEL_CLASS}>
                       Customer Order Reference <span className="text-destructive">*</span>
                     </label>
                     <Input
@@ -748,19 +730,19 @@ export default function JobsView({
                       placeholder="e.g. PO-2026-APEX"
                       value={formOrderRef}
                       onChange={(e) => setFormOrderRef(e.target.value)}
-                      className={JOB_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
 
                   {/* Status selection */}
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <label className={FORM_PAGE_LABEL_CLASS}>
                       Job Status
                     </label>
                     <SelectBox
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value as any)}
-                      className={JOB_FORM_SELECT_CLASS}
+                      className={FORM_PAGE_SELECT_CLASS}
                     >
                       <option value="Active">Active</option>
                       <option value="Completed">Completed</option>
@@ -770,14 +752,14 @@ export default function JobsView({
 
                   {/* Customer Selection */}
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <label className={FORM_PAGE_LABEL_CLASS}>
                       Associated Customer <span className="text-destructive">*</span>
                     </label>
                     <SelectBox
                       value={formCustomerId}
                       onChange={(e) => setFormCustomerId(e.target.value)}
                       disabled={currentMode === "edit"} // Locked on edit as requested: standard practice
-                      className={`${JOB_FORM_SELECT_CLASS} disabled:bg-muted disabled:text-muted-foreground`}
+                      className={`${FORM_PAGE_SELECT_CLASS} disabled:bg-muted disabled:text-muted-foreground`}
                     >
                       {customers.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -789,14 +771,14 @@ export default function JobsView({
 
                   {/* Product Selection */}
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <label className={FORM_PAGE_LABEL_CLASS}>
                       Material Product <span className="text-destructive">*</span>
                     </label>
                     <SelectBox
                       value={formProductId}
                       onChange={(e) => setFormProductId(e.target.value)}
                       disabled={currentMode === "edit"} // Locked on edit
-                      className={`${JOB_FORM_SELECT_CLASS} disabled:bg-muted disabled:text-muted-foreground`}
+                      className={`${FORM_PAGE_SELECT_CLASS} disabled:bg-muted disabled:text-muted-foreground`}
                     >
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -808,7 +790,7 @@ export default function JobsView({
 
                   {/* Order Quantity in Tonnes */}
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <label className={FORM_PAGE_LABEL_CLASS}>
                       Order Quantity quota (Tonnes) <span className="text-destructive">*</span>
                     </label>
                     <div className="relative">
@@ -818,7 +800,7 @@ export default function JobsView({
                         required
                         value={formOrderQty}
                         onChange={(e) => setFormOrderQty(Number(e.target.value))}
-                        className={`${JOB_FORM_INPUT_CLASS} pr-8`}
+                        className={`${FORM_PAGE_INPUT_CLASS} pr-8`}
                       />
                       <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold uppercase text-muted-foreground">
                         t
@@ -828,23 +810,23 @@ export default function JobsView({
 
                   {/* Notes */}
                   <div className="col-span-1 md:col-span-2">
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <label className={FORM_PAGE_LABEL_CLASS}>
                       Operational Quota Notes
                     </label>
-                    <textarea
+                    <Textarea
                       rows={2}
                       placeholder="e.g. Delivery sites, access codes, project limits..."
                       value={formNotes}
                       onChange={(e) => setFormNotes(e.target.value)}
-                      className={JOB_FORM_TEXTAREA_CLASS}
+                      className={FORM_PAGE_TEXTAREA_CLASS}
                     />
                   </div>
                 </div>
               </div>
 
               {/* SECTION 2: PRODUCT & CONTRACT PRICING */}
-              <div className="p-6 space-y-4 bg-muted">
-                <h4 className="text-xs font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5 border-b border-border pb-2">
+              <div className="p-6 space-y-4 bg-muted border-t border-border">
+                <h4 className={FORM_PAGE_SECTION_CLASS}>
                   <DollarSign className="h-4 w-4 text-success" />
                   <span>Product & Contract pricing details</span>
                 </h4>
@@ -881,13 +863,13 @@ export default function JobsView({
                 {/* Dropdown for selector */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <label className={FORM_PAGE_LABEL_CLASS}>
                       Pricing Type <span className="text-destructive">*</span>
                     </label>
                     <SelectBox
                       value={formPricingType}
                       onChange={(e) => setFormPricingType(e.target.value as any)}
-                      className={JOB_FORM_SELECT_CLASS}
+                      className={FORM_PAGE_SELECT_CLASS}
                     >
                       <option value="Default Product Price">Default Product Price (${availableRates.basePrice.toFixed(2)}/t)</option>
                       <option value="Product Tier 1">Product Tier 1 (${availableRates.tier1.toFixed(2)}/t)</option>
@@ -900,7 +882,7 @@ export default function JobsView({
                   {/* Conditional custom rate field */}
                   {formPricingType === "Custom Contract Price" ? (
                     <div>
-                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                      <label className={FORM_PAGE_LABEL_CLASS}>
                         Custom Contract Rate ($/Tonne) <span className="text-destructive">*</span>
                       </label>
                       <div className="relative">
@@ -913,20 +895,20 @@ export default function JobsView({
                           min="0.10"
                           value={formCustomRate}
                           onChange={(e) => setFormCustomRate(parseFloat(e.target.value) || 0)}
-                          className={`${JOB_FORM_INPUT_CLASS} pl-6 font-bold`}
+                          className={`${FORM_PAGE_INPUT_CLASS} pl-6 font-bold`}
                         />
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                      <label className={FORM_PAGE_LABEL_CLASS}>
                         Applied Rate (Auto calculated)
                       </label>
                       <Input
                         type="text"
                         readOnly
                         value={`$${computedAppliedRate.toFixed(2)} / tonne`}
-                        className={`${JOB_FORM_INPUT_CLASS} font-bold text-muted-foreground select-none`}
+                        className={`${FORM_PAGE_INPUT_CLASS} font-bold text-muted-foreground select-none`}
                       />
                     </div>
                   )}
@@ -935,7 +917,7 @@ export default function JobsView({
                 {/* Additional Pricing Info */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <label className={FORM_PAGE_LABEL_CLASS}>
                       Pricing Notes / Reason
                     </label>
                     <Input
@@ -943,31 +925,31 @@ export default function JobsView({
                       placeholder="e.g. Contract rate override, winter promo"
                       value={formPricingNotes}
                       onChange={(e) => setFormPricingNotes(e.target.value)}
-                      className={JOB_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <label className={FORM_PAGE_LABEL_CLASS}>
                       Effective From
                     </label>
                     <Input
                       type="date"
                       value={formEffectiveFrom}
                       onChange={(e) => setFormEffectiveFrom(e.target.value)}
-                      className={JOB_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <label className={FORM_PAGE_LABEL_CLASS}>
                       Effective To
                     </label>
                     <Input
                       type="date"
                       value={formEffectiveTo}
                       onChange={(e) => setFormEffectiveTo(e.target.value)}
-                      className={JOB_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                 </div>
@@ -978,7 +960,7 @@ export default function JobsView({
                     <Check className="h-4.5 w-4.5 text-success shrink-0" />
                     <div>
                       <strong className="block text-xs font-bold uppercase tracking-wider">Locked Contract Job pricing rate:</strong>
-                      <span className="text-muted-foreground text-[10.5px]">This locked rate applies across all transactional invoicing. Product Lots ignore standard adjustments.</span>
+                      <span className="text-muted-foreground text-xs">This locked rate applies across all transactional invoicing. Product Lots ignore standard adjustments.</span>
                     </div>
                   </div>
                   <div className="text-right">
@@ -988,30 +970,8 @@ export default function JobsView({
                 </div>
 
               </div>
-
-            </div>
-
-            {/* Form actions row */}
-            <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentMode("list");
-                  setSelectedJobId(null);
-                }}
-                className={`${JOB_FORM_ACTION_CLASS} border border-border bg-card px-4 text-foreground shadow-xs hover:bg-muted`}
-              >
-                Cancel Changes
-              </button>
-              <button
-                type="submit"
-                className={`${JOB_FORM_ACTION_CLASS} gap-1.5 bg-primary px-5 text-white shadow-sm hover:bg-primary/90`}
-              >
-                <FileCheck2 className="h-4.5 w-4.5" />
-                <span>Save Supply Job Contract</span>
-              </button>
-            </div>
-          </motion.form>
+            </FormPage>
+          </React.Fragment>
         )}
 
         {/* ========================================================================= */}
@@ -1029,7 +989,7 @@ export default function JobsView({
             {/* JOB SUMMARY CARD (TOP SECTION) */}
             <div className="bg-card border border-border rounded-md overflow-hidden shadow-xs p-6 space-y-4">
 
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-10 w-10 items-center justify-center rounded-md bg-info/10 text-info shrink-0 font-bold text-sm">
                     {activeJob.id.split("-").pop()}
@@ -1052,7 +1012,7 @@ export default function JobsView({
                   onClick={() => handleOpenEditForm(activeJob)}
                   className={`${JOB_FORM_ACTION_CLASS} gap-1.5 border border-border bg-card px-4 text-foreground shadow-xs hover:bg-muted`}
                 >
-                  <Edit2 className="h-4 w-4 shrink-0" />
+                  <Edit className="h-4 w-4 shrink-0" />
                   <span>Edit Contract</span>
                 </button>
               </div>
@@ -1264,8 +1224,9 @@ export default function JobsView({
                                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{tx.secondWeighTime || tx.firstWeighTime}</td>
                                 <td className="px-4 py-3 text-center">
                                   <button
+                                    type="button"
                                     onClick={() => onViewTicketDetails(tx.id)}
-                                    className="p-1 rounded text-muted-foreground hover:text-info hover:bg-muted transition"
+                                    className={TABLE_ACTION_ICON_BUTTON_CLASS}
                                     title="Open weighbridge ticket dossier"
                                   >
                                     <Eye className="h-4 w-4" />

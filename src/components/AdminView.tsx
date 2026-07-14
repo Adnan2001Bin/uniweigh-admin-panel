@@ -19,17 +19,28 @@ import {
   X,
   Upload,
   Trash2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  FileText,
+  ArrowLeft
 } from "lucide-react";
+import FormPage, {
+  FORM_PAGE_INPUT_CLASS,
+  FORM_PAGE_SELECT_CLASS,
+  FORM_PAGE_SECTION_CLASS,
+  FORM_PAGE_LABEL_CLASS,
+  FORM_PAGE_ACTION_CLASS,
+} from "@/src/components/shared/FormPage";
 import { AdminUser, Site, DocketConfig } from "../types";
 import { MOCK_ROLES, INITIAL_TRANSACTIONS } from "../data";
 import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
+import { Input } from "@/src/components/ui/input";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { isDeveloperRole, getVisibleSites } from "@/src/lib/role-access";
 import { readDocketLogo, hasDocketLogo } from "@/src/lib/docket-logo";
 import { buildDeliveryDocketHtml } from "@/src/lib/delivery-docket";
 import { getPreviewIframeHeight } from "@/src/lib/print-preview";
+import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
 
 const DOCKET_PREVIEW_WIDTH_PX = 728;
 
@@ -115,7 +126,7 @@ export default function AdminView({
     }
     return INITIAL_BACK_OFFICE_OPERATORS;
   });
-  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState("");
@@ -132,8 +143,8 @@ export default function AdminView({
     setNewUserStation("");
   };
 
-  const closeAddUserModal = () => {
-    setShowAddUserModal(false);
+  const handleCloseAddUser = () => {
+    setIsAddingUser(false);
     resetAddUserForm();
   };
 
@@ -175,7 +186,7 @@ export default function AdminView({
 
     setOperators((prev) => [...prev, newOperator]);
     toast.success(`User "${name}" added successfully.`);
-    closeAddUserModal();
+    handleCloseAddUser();
   };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,13 +220,57 @@ export default function AdminView({
     ? MOCK_ROLES
     : MOCK_ROLES.filter((role) => role.name !== "Developer");
 
+  const adminPathLabel =
+    activeTab === "roles"
+      ? "Roles"
+      : activeTab === "sites"
+      ? "Sites & Locking"
+      : activeTab === "docket"
+      ? "Docket Customization"
+      : "Users";
+
+  const AdminIcon =
+    activeTab === "roles"
+      ? ShieldCheck
+      : activeTab === "sites"
+      ? Lock
+      : activeTab === "docket"
+      ? FileText
+      : Users2;
+
   return (
     <div className="space-y-4">
-      {/* Title */}
-      <div>
-        <h1 className="text-xl font-bold text-foreground tracking-tight sm:text-2xl">Administration Platform</h1>
-        <p className="text-xs text-muted-foreground">Administration / Settings & Users Manager</p>
-      </div>
+      <PageHeader
+        title="Administration Platform"
+        icon={AdminIcon}
+        breadcrumbs={[
+          { label: "Administration" },
+          { label: adminPathLabel },
+        ]}
+        actions={
+          activeTab === "users" ? (
+            isAddingUser ? (
+              <button
+                type="button"
+                onClick={handleCloseAddUser}
+                className={`${FORM_PAGE_ACTION_CLASS} gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted`}
+              >
+                <ArrowLeft className="h-4 w-4 shrink-0" />
+                <span>Back to Listing</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsAddingUser(true)}
+                className={PAGE_HEADER_ADD_BUTTON_CLASS}
+              >
+                <UserPlus className="h-4 w-4" />
+                <span>Add User</span>
+              </button>
+            )
+          ) : undefined
+        }
+      />
 
       {/* Nav internal tabs */}
       <div className="flex border-b border-border text-xs sm:text-sm bg-card p-1 rounded-md border max-w-xl flex-wrap gap-1">
@@ -257,21 +312,13 @@ export default function AdminView({
       <div className="bg-card border border-border rounded-md shadow-xs p-5">
         
         {/* USERS / OPERATORS TAB */}
-        {activeTab === "users" && (
+        {activeTab === "users" && !isAddingUser && (
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Active Weighbridge Operators</h3>
                 <p className="text-xs text-muted-foreground mt-1">Logged-in back-office representatives operating physical scales:</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAddUserModal(true)}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-4 text-xs font-bold text-white hover:bg-primary/90 transition cursor-pointer"
-              >
-                <UserPlus className="h-4 w-4" />
-                <span>Add User</span>
-              </button>
             </div>
 
             <div className="overflow-hidden rounded-md border border-border">
@@ -315,6 +362,87 @@ export default function AdminView({
               </table>
             </div>
           </div>
+        )}
+
+        {/* ADD USER FORM PAGE */}
+        {activeTab === "users" && isAddingUser && (
+          <FormPage
+            icon={UserPlus}
+            title="Register New Operator"
+            subtitle="Create a new back-office operator account."
+            modeBadge="Draft Mode"
+            onCancel={handleCloseAddUser}
+            onSubmit={handleAddUser}
+            saveLabel="Add User"
+          >
+            <div className="p-6 space-y-4">
+              <h4 className={FORM_PAGE_SECTION_CLASS}>
+                <Users2 className="h-4 w-4 text-info" />
+                <span>Operator Details</span>
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={FORM_PAGE_LABEL_CLASS}>
+                    Operator Name <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    type="text"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    placeholder="e.g. Marcus Vance"
+                    className={FORM_PAGE_INPUT_CLASS}
+                  />
+                </div>
+
+                <div>
+                  <label className={FORM_PAGE_LABEL_CLASS}>
+                    Corporate Email <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    type="email"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    placeholder="e.g. marcus.vance@uniweigh.com"
+                    className={`${FORM_PAGE_INPUT_CLASS} font-mono`}
+                  />
+                </div>
+
+                <div>
+                  <label className={FORM_PAGE_LABEL_CLASS}>
+                    System Role <span className="text-destructive">*</span>
+                  </label>
+                  <SelectBox
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value)}
+                    className={`h-9 ${FORM_PAGE_SELECT_CLASS}`}
+                  >
+                    <option value="">Select role…</option>
+                    {visibleRoles.map((role) => (
+                      <option key={role.name} value={role.name}>{role.name}</option>
+                    ))}
+                  </SelectBox>
+                </div>
+
+                <div>
+                  <label className={FORM_PAGE_LABEL_CLASS}>
+                    Operating Station <span className="text-destructive">*</span>
+                  </label>
+                  <SelectBox
+                    value={newUserStation}
+                    onChange={(e) => setNewUserStation(e.target.value)}
+                    className={`h-9 ${FORM_PAGE_SELECT_CLASS}`}
+                  >
+                    <option value="">Select station…</option>
+                    <option value="HQ Corporate Services">HQ Corporate Services</option>
+                    {visibleSitesForLimit.map((site) => (
+                      <option key={site.id} value={site.name}>{site.name}</option>
+                    ))}
+                  </SelectBox>
+                </div>
+              </div>
+            </div>
+          </FormPage>
         )}
 
         {/* ROLES DICTIONARY */}
@@ -888,7 +1016,7 @@ export default function AdminView({
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        const newStatus =
+                                        const newStatus: Site["status"] =
                                           site.status === "Active"
                                             ? "Locked"
                                             : site.status === "Locked"
@@ -1071,100 +1199,6 @@ export default function AdminView({
 
       </div>
 
-      {showAddUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            onClick={closeAddUserModal}
-            className="absolute inset-0 bg-foreground/50 backdrop-blur-xs"
-            aria-hidden="true"
-          />
-          <div className="relative z-10 w-full max-w-lg rounded-md border border-border bg-card shadow-lg">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5 text-info" />
-                <h3 className="text-sm font-bold text-foreground">Register New Operator</h3>
-              </div>
-              <button
-                type="button"
-                onClick={closeAddUserModal}
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
-                aria-label="Close add user dialog"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddUser} className="space-y-4 p-5">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase">Operator Name</label>
-                <input
-                  type="text"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="e.g. Marcus Vance"
-                  className="w-full h-9 rounded-md border border-border bg-card px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase">Corporate Email</label>
-                <input
-                  type="email"
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                  placeholder="e.g. marcus.vance@uniweigh.com"
-                  className="w-full h-9 rounded-md border border-border bg-card px-3 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase">System Role</label>
-                <SelectBox
-                  value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value)}
-                  className="h-9 w-full text-xs"
-                >
-                  <option value="">Select role…</option>
-                  {visibleRoles.map((role) => (
-                    <option key={role.name} value={role.name}>{role.name}</option>
-                  ))}
-                </SelectBox>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase">Operating Station</label>
-                <SelectBox
-                  value={newUserStation}
-                  onChange={(e) => setNewUserStation(e.target.value)}
-                  className="h-9 w-full text-xs"
-                >
-                  <option value="">Select station…</option>
-                  <option value="HQ Corporate Services">HQ Corporate Services</option>
-                  {visibleSitesForLimit.map((site) => (
-                    <option key={site.id} value={site.name}>{site.name}</option>
-                  ))}
-                </SelectBox>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-                <button
-                  type="button"
-                  onClick={closeAddUserModal}
-                  className="h-9 rounded-md border border-border bg-card px-4 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="h-9 rounded-md bg-primary px-4 text-xs font-bold text-white hover:bg-primary/90 transition cursor-pointer"
-                >
-                  Add User
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

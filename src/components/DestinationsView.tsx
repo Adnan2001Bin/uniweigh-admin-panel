@@ -2,13 +2,12 @@ import React, { useState, useMemo, useEffect } from "react";
 import {
   MapPin,
   Eye,
-  Edit2,
+  Edit,
   Plus,
   Search,
   Download,
   Check,
   X,
-  ChevronRight,
   Filter,
   FileText,
   Activity,
@@ -25,6 +24,9 @@ import { SelectBox } from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { RadioBox } from "@/src/components/ui/radio-group";
+import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import StatusBadge from "@/src/components/shared/StatusBadge";
+import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 
 const DESTINATION_FORM_INPUT_CLASS = "h-9 text-xs font-semibold bg-muted";
 const DESTINATION_FORM_SELECT_CLASS = "w-full text-xs font-semibold bg-muted";
@@ -499,49 +501,40 @@ Notes:     ${d.notes || "None registered"}
         )}
       </AnimatePresence>
 
-      {/* ----------------- SUB-HEADER & NAVIGATION BANNER ----------------- */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground tracking-tight sm:text-2xl flex items-center gap-2">
-            <MapPin className="h-6 w-6 text-info shrink-0" />
-            <span>Destinations</span>
-          </h1>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-            <span>Customers & Sales</span>
-            <ChevronRight className="h-3 w-3 text-muted-foreground" />
-            <span className="font-semibold text-info">Destinations Directory</span>
-          </div>
-        </div>
-
-        {/* Top-Right Action Toolbar */}
-          {currentMode === "list" && (
-          <div className="flex flex-wrap items-center gap-2">
+      <PageHeader
+        title="Destinations"
+        icon={MapPin}
+        breadcrumbs={[
+          { label: "Customers & Sales" },
+          { label: "Destinations Directory" },
+        ]}
+        actions={
+          currentMode === "list" ? (
             <button
+              type="button"
               onClick={handleOpenAdd}
-              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+              className={PAGE_HEADER_ADD_BUTTON_CLASS}
               id="btn-add-destination"
             >
               <Plus className="h-4 w-4" />
               <span>Add Destination</span>
             </button>
-          </div>
-        )}
-
-        {currentMode !== "list" && (
-          <button
-            type="button"
-            onClick={() => {
-              setCurrentMode("list");
-              setSelectedDestId(null);
-            }}
-            className={`${DESTINATION_FORM_ACTION_CLASS} gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted`}
-            id="btn-back-to-listing"
-          >
-            <ArrowLeft className="h-4 w-4 shrink-0" />
-            <span>Back to Listing</span>
-          </button>
-        )}
-      </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentMode("list");
+                setSelectedDestId(null);
+              }}
+              className={`${DESTINATION_FORM_ACTION_CLASS} gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted`}
+              id="btn-back-to-listing"
+            >
+              <ArrowLeft className="h-4 w-4 shrink-0" />
+              <span>Back to Listing</span>
+            </button>
+          )
+        }
+      />
 
       <AnimatePresence mode="wait">
         {/* ======================= MODE 1: DESTINATIONS LISTING PAGE ======================= */}
@@ -729,25 +722,27 @@ Notes:     ${d.notes || "None registered"}
                             </td>
 
                             {/* Actions */}
-                            <td className="px-4 py-3.5 text-center">
-                              <div className="flex items-center justify-center gap-1.5">
+                            <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-center gap-1">
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     setSelectedDestId(d.id);
                                     setDetailTab("transactions");
                                     setCurrentMode("detail");
                                   }}
-                                  className="p-1 rounded text-muted-foreground hover:text-info hover:bg-muted transition cursor-pointer"
+                                  className={TABLE_ACTION_ICON_BUTTON_CLASS}
                                   title="View Destination Summary & Logs"
                                 >
                                   <Eye className="h-4 w-4" />
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => handleOpenEdit(d)}
-                                  className="p-1 rounded text-muted-foreground hover:text-success hover:bg-muted transition cursor-pointer"
+                                  className={TABLE_ACTION_ICON_BUTTON_CLASS}
                                   title="Edit Destination Parameters"
                                 >
-                                  <Edit2 className="h-3.8 w-3.8" />
+                                  <Edit className="h-4 w-4" />
                                 </button>
                               </div>
                             </td>
@@ -1084,31 +1079,28 @@ Notes:     ${d.notes || "None registered"}
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span
-                    className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                      activeDestination.status === "Active"
-                        ? "bg-success/10 text-success border border-success/25"
-                        : "bg-destructive/10 text-destructive border border-destructive/25"
-                    }`}
-                  >
-                    {activeDestination.status}
-                  </span>
+                  <StatusBadge
+                    status={activeDestination.status}
+                    className="h-9 rounded-md px-2.5"
+                  />
                   <button
+                    type="button"
                     onClick={() => {
                       setExportScope("individual-summary");
                       setShowExportModal(true);
                     }}
-                    className="px-2.5 py-1.2 bg-card border border-border hover:bg-muted text-foreground rounded-md text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                    className={`${DESTINATION_FORM_ACTION_CLASS} gap-1.5 border border-border bg-card px-3.5 text-foreground shadow-xs hover:bg-muted`}
                     title="Export destination profile report"
                   >
-                    <Download className="h-3 w-3 text-muted-foreground" />
+                    <Download className="h-4 w-4 shrink-0" />
                     <span>Export Profile</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleOpenEdit(activeDestination)}
-                    className="px-2.5 py-1.2 bg-primary hover:bg-info text-white rounded-md text-xs font-bold flex items-center gap-1 shadow-sm transition cursor-pointer"
+                    className={`${DESTINATION_FORM_ACTION_CLASS} gap-1.5 border border-primary bg-primary px-3.5 text-primary-foreground shadow-xs hover:bg-primary/90`}
                   >
-                    <Edit2 className="h-3 w-3" />
+                    <Edit className="h-4 w-4 shrink-0" />
                     <span>Edit Destination</span>
                   </button>
                 </div>
@@ -1234,13 +1226,14 @@ Notes:     ${d.notes || "None registered"}
 
                     {linkedTransactions.length > 0 && (
                       <button
+                        type="button"
                         onClick={() => {
                           setExportScope("destination-transactions");
                           setShowExportModal(true);
                         }}
-                        className="px-2.5 py-1.2 bg-card border border-border hover:bg-muted text-foreground rounded-md text-xs font-bold flex items-center gap-1 cursor-pointer"
+                        className={`${DESTINATION_FORM_ACTION_CLASS} gap-1.5 border border-border bg-card px-3.5 text-foreground shadow-xs hover:bg-muted`}
                       >
-                        <Download className="h-3 w-3" />
+                        <Download className="h-4 w-4 shrink-0" />
                         <span>Export Transactions ({linkedTransactions.length})</span>
                       </button>
                     )}
@@ -1309,11 +1302,12 @@ Notes:     ${d.notes || "None registered"}
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <button
+                                  type="button"
                                   onClick={() => onViewTicketDetails(tx.id)}
-                                  className="p-1 rounded text-info hover:bg-muted transition cursor-pointer"
+                                  className={TABLE_ACTION_ICON_BUTTON_CLASS}
                                   title="Open weighbridge ticket dossier"
                                 >
-                                  <Eye className="h-4.5 w-4.5" />
+                                  <Eye className="h-4 w-4" />
                                 </button>
                               </td>
                             </tr>

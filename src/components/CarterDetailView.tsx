@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Carrier, Driver, Vehicle, Transaction, TransactionStatus } from "../types";
 import { toast } from "sonner";
+import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 
 interface CarterDetailViewProps {
   carterId: string;
@@ -602,7 +603,7 @@ export default function CarterDetailView({
 
       {/* Carter Summary Card */}
       <div className="bg-card border border-border rounded-md p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-border pb-5 mb-5">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
           <div className="space-y-1">
             <span className="bg-info/10 text-info font-mono font-bold text-xs tracking-widest uppercase px-2 py-0.5 rounded-sm border border-info/25">
               Carter Profile
@@ -772,11 +773,12 @@ export default function CarterDetailView({
                         </td>
                         <td className="px-6 py-4 text-center">
                           <button
+                            type="button"
                             onClick={() => setSelectedDriverDetails(d)}
-                            className="rounded-md border border-border hover:border-info/25 bg-card hover:bg-info/10 text-foreground hover:text-info p-1 px-2 text-xs font-bold transition flex items-center gap-1 mx-auto select-none"
+                            className={`${TABLE_ACTION_ICON_BUTTON_CLASS} mx-auto`}
+                            title="Quick view driver"
                           >
-                            <Eye className="h-3 w-3" />
-                            Quick View
+                            <Eye className="h-4 w-4" />
                           </button>
                         </td>
                       </tr>
@@ -852,11 +854,12 @@ export default function CarterDetailView({
                           </td>
                           <td className="px-6 py-4 text-center">
                             <button
+                              type="button"
                               onClick={() => setSelectedVehicleDetails(v)}
-                              className="rounded-md border border-border hover:border-info/25 bg-card hover:bg-info/10 text-foreground hover:text-info p-1 px-2 text-xs font-bold transition flex items-center gap-1 mx-auto select-none"
+                              className={`${TABLE_ACTION_ICON_BUTTON_CLASS} mx-auto`}
+                              title="Quick view vehicle"
                             >
-                              <Eye className="h-3 w-3" />
-                              Quick View
+                              <Eye className="h-4 w-4" />
                             </button>
                           </td>
                         </tr>
@@ -947,11 +950,12 @@ export default function CarterDetailView({
                           </td>
                           <td className="px-6 py-4 text-center">
                             <button
+                              type="button"
                               onClick={() => onViewTicketDetails(tx.id)}
-                              className="rounded-md border border-border hover:border-info/25 bg-card hover:bg-info/10 text-foreground hover:text-info p-1 px-2.5 text-xs font-bold transition flex items-center gap-1 mx-auto select-none font-sans"
+                              className={`${TABLE_ACTION_ICON_BUTTON_CLASS} mx-auto`}
+                              title="View ticket"
                             >
-                              <ExternalLink className="h-3 w-3" />
-                              View Ticket
+                              <Eye className="h-4 w-4" />
                             </button>
                           </td>
                         </tr>

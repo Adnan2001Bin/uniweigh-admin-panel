@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Carrier, Vehicle, Transaction, TransactionStatus, AxleSet } from "../types";
 import { toast } from "sonner";
+import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 
 interface VehicleDetailViewProps {
   plateNumber: string;
@@ -770,12 +771,12 @@ export default function VehicleDetailView({
                         </td>
                         <td className="px-5 py-3.5 text-center font-bold">
                           <button
+                            type="button"
                             onClick={() => onViewTicketDetails(t.id)}
-                            className="rounded-md border border-border bg-card hover:bg-muted text-foreground p-1 px-2.5 text-xs transition flex items-center gap-1 cursor-pointer select-none font-bold"
+                            className={`${TABLE_ACTION_ICON_BUTTON_CLASS} mx-auto`}
                             title="Open direct weighbridge ticket receipt"
                           >
-                            <Eye className="h-3 w-3" />
-                            View Ticket
+                            <Eye className="h-4 w-4" />
                           </button>
                         </td>
                       </tr>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Scale, FileCheck2, DollarSign, ArrowUpRight, TrendingUp, AlertTriangle, ClipboardList } from "lucide-react";
+import { Scale, FileCheck2, DollarSign, ArrowUpRight, TrendingUp, AlertTriangle, ClipboardList, LayoutDashboard } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Transaction, Product, Customer } from "../types";
 import { chartColor, CHART_AXIS, CHART_GRID, CHART_TOOLTIP_STYLE } from "@/src/lib/chart-theme";
@@ -80,6 +80,11 @@ export default function DashboardView({
       <div className="space-y-6">
         <PageHeader
           title={dashboardCopy.title}
+          icon={LayoutDashboard}
+          breadcrumbs={[
+            { label: "Dashboard" },
+            { label: "Operator Console" },
+          ]}
           description={dashboardCopy.description}
         />
 
@@ -259,6 +264,11 @@ export default function DashboardView({
       <div className="space-y-6">
         <PageHeader
           title={dashboardCopy.title}
+          icon={LayoutDashboard}
+          breadcrumbs={[
+            { label: "Dashboard" },
+            { label: "Billing & Audit Console" },
+          ]}
           description={dashboardCopy.description}
         />
 
@@ -479,6 +489,11 @@ export default function DashboardView({
       {/* Top Welcome Title */}
       <PageHeader
         title={dashboardCopy.title}
+        icon={LayoutDashboard}
+        breadcrumbs={[
+          { label: "Dashboard" },
+          { label: "Operations Overview" },
+        ]}
         description={dashboardCopy.description}
       />
 

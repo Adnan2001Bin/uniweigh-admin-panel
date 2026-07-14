@@ -47,13 +47,16 @@ import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
-
-const CUSTOMER_FORM_INPUT_CLASS = "h-9 text-xs";
-const CUSTOMER_FORM_SELECT_CLASS = "w-full text-xs";
-const CUSTOMER_FORM_TEXTAREA_CLASS =
-  "w-full rounded-md border border-border bg-card p-2 text-xs focus:ring-1 focus:ring-ring focus:outline-none resize-y min-h-[80px]";
-const CUSTOMER_MODAL_ACTION_CLASS =
-  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer";
+import { Textarea } from "@/src/components/ui/textarea";
+import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
+import FormPage, {
+  FORM_PAGE_INPUT_CLASS,
+  FORM_PAGE_SELECT_CLASS,
+  FORM_PAGE_TEXTAREA_CLASS,
+  FORM_PAGE_SECTION_CLASS,
+  FORM_PAGE_LABEL_CLASS
+} from "@/src/components/shared/FormPage";
 
 interface CustomersViewProps {
   customers: Customer[];
@@ -111,9 +114,8 @@ export default function CustomersView({
   // Checklist Selection for bulk/selected operations
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Modals / forms states
-  const [showAddCustomerModal, setShowAddCustomerModal] = useState<boolean>(false);
-  const [showEditCustomerModal, setShowEditCustomerModal] = useState<boolean>(false);
+  // View mode: list | add | edit (detail preview uses showPreview separately)
+  const [currentMode, setCurrentMode] = useState<"list" | "add" | "edit">("list");
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
 
   // Form Field States
@@ -335,7 +337,7 @@ export default function CustomersView({
     setFormBalance(0);
     setFormStatus("Active");
     setFormNotes("");
-    setShowAddCustomerModal(true);
+    setCurrentMode("add");
   };
 
   const openEditModal = (c: Customer, e: React.MouseEvent) => {
@@ -358,7 +360,8 @@ export default function CustomersView({
     setFormBalance(c.accountBalance || 0);
     setFormStatus(c.status);
     setFormNotes(c.notes || "");
-    setShowEditCustomerModal(true);
+    setShowPreview(false);
+    setCurrentMode("edit");
   };
 
   const handleSaveCustomer = (addAnother: boolean) => {
@@ -371,7 +374,7 @@ export default function CustomersView({
     const calculatedBillingAddress = `${formAddress1}${formAddress2 ? ", " + formAddress2 : ""}, ${formSuburb} ${formState} ${formPostcode}`.trim();
 
     const newCustomer: Customer = {
-      id: showEditCustomerModal && customerToEdit ? customerToEdit.id : nextId,
+      id: currentMode === "edit" && customerToEdit ? customerToEdit.id : nextId,
       name: formName,
       contactPerson: formContact,
       email: formEmail,
@@ -380,7 +383,7 @@ export default function CustomersView({
       billingAddress: calculatedBillingAddress || "VIC Australia",
       paymentTerms: formPricingTier.includes("Major") ? "60 Days Net" : formPricingTier.includes("Volume") ? "30 Days Net" : "14 Days Net",
       creditLimit: formStatus === "Suspended" ? 0 : formPricingTier.includes("Major") ? 800000 : formPricingTier.includes("Volume") ? 250000 : 50000,
-      activeContracts: showEditCustomerModal && customerToEdit ? customerToEdit.activeContracts : 1,
+      activeContracts: currentMode === "edit" && customerToEdit ? customerToEdit.activeContracts : 1,
       recentActivityDate: new Date().toISOString().split("T")[0],
 
       customerCode: formCode || formName.replace(/\s+/g, "").slice(0, 10).toUpperCase(),
@@ -393,9 +396,9 @@ export default function CustomersView({
       postCodeVal: formPostcode,
       pricingTier: formPricingTier,
       accountBalance: formBalance,
-      lastTransactionDate: showEditCustomerModal && customerToEdit ? customerToEdit.lastTransactionDate : new Date().toISOString().split("T")[0],
-      createdOn: showEditCustomerModal && customerToEdit ? customerToEdit.createdOn : new Date().toISOString().split("T")[0],
-      createdBy: showEditCustomerModal && customerToEdit ? customerToEdit.createdBy : "Admin User",
+      lastTransactionDate: currentMode === "edit" && customerToEdit ? customerToEdit.lastTransactionDate : new Date().toISOString().split("T")[0],
+      createdOn: currentMode === "edit" && customerToEdit ? customerToEdit.createdOn : new Date().toISOString().split("T")[0],
+      createdBy: currentMode === "edit" && customerToEdit ? customerToEdit.createdBy : "Admin User",
       modifiedOn: new Date().toISOString().split("T")[0],
       modifiedBy: "Admin User",
       notes: formNotes,
@@ -404,8 +407,8 @@ export default function CustomersView({
 
     onUpdateCustomer(newCustomer);
 
-    if (showEditCustomerModal) {
-      setShowEditCustomerModal(false);
+    if (currentMode === "edit") {
+      setCurrentMode("list");
       setCustomerToEdit(null);
       toast.success(`Customer record for "${formName}" updated successfully.`);
     } else {
@@ -425,7 +428,7 @@ export default function CustomersView({
         setFormPostcode("");
         setFormNotes("");
       } else {
-        setShowAddCustomerModal(false);
+        setCurrentMode("list");
       }
     }
   };
@@ -518,7 +521,7 @@ export default function CustomersView({
         )}
 
         {/* Detail View Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-border pb-5">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => {
@@ -897,298 +900,308 @@ export default function CustomersView({
         {/* LEFT HAND PANE: CUSTOMER DIRECTORY TABLE AND TOPBAR */}
         <div className="lg:col-span-12 space-y-4 transition-all duration-300">
           
-          {/* Section Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-bold text-foreground tracking-tight sm:text-2xl flex items-center gap-2">
-                <Users2 className="h-6 w-6 text-info" />
-                <span>Customers</span>
-              </h1>
-              <p className="text-xs text-muted-foreground">Weighbridge client debtors, jobs, and delivery locations.</p>
-            </div>
-          </div>
-
-          {/* Top toolbar */}
-          <div className="bg-card border border-border rounded-md p-4 shadow-xs flex flex-wrap gap-3 items-center justify-between">
-            {/* Search Input bar */}
-            <div className="relative w-full sm:max-w-xs shrink-0">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search customers..."
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
-                className="w-full rounded-md border border-border bg-card pl-9.5 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition"
-              />
-              {(localSearch || topSearchQuery) && (
-                <button 
-                  onClick={() => setLocalSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground p-0.5 rounded"
+          <PageHeader
+            title="Customers"
+            icon={Users2}
+            breadcrumbs={[
+              { label: "Customers & Sales" },
+              { label: "Customers" },
+            ]}
+            actions={
+              currentMode === "list" ? (
+                <button
+                  type="button"
+                  onClick={openAddModal}
+                  className={PAGE_HEADER_ADD_BUTTON_CLASS}
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <Plus className="h-4 w-4" />
+                  <span>Add Customer</span>
                 </button>
-              )}
-            </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentMode("list");
+                    setCustomerToEdit(null);
+                  }}
+                  className="inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted"
+                >
+                  <ArrowLeft className="h-4 w-4 shrink-0" />
+                  <span>Back to Listing</span>
+                </button>
+              )
+            }
+          />
 
-            {/* Quick Action Buttons */}
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              {/* Add New Customer */}
-              <button
-                onClick={openAddModal}
-                className="rounded-md bg-primary hover:bg-primary/90 text-xs font-bold text-white px-4 py-2 transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Customer</span>
-              </button>
-            </div>
-          </div>
+          {currentMode === "list" && (
+            <>
+              {/* Top toolbar */}
+              <div className="bg-card border border-border rounded-md p-4 shadow-xs flex flex-wrap gap-3 items-center justify-between">
+                {/* Search Input bar */}
+                <div className="relative w-full sm:max-w-xs shrink-0">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search customers..."
+                    value={localSearch}
+                    onChange={(e) => setLocalSearch(e.target.value)}
+                    className="w-full rounded-md border border-border bg-card pl-9.5 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition"
+                  />
+                  {(localSearch || topSearchQuery) && (
+                    <button 
+                      onClick={() => setLocalSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground p-0.5 rounded"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
 
-          {/* Customers Registry Table */}
-          <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden w-full">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-border bg-muted text-xs font-bold text-muted-foreground uppercase tracking-wider select-none">
-                    <th className="px-4 py-3.5">Customer ID</th>
-                    <th className="px-4 py-3.5">Customer Name</th>
-                    <th className="px-4 py-3.5">Primary Contact</th>
-                    <th className="px-4 py-3.5">Phone Number</th>
-                    <th className="px-4 py-3.5">Email Address</th>
-                    <th className="px-4 py-3.5 text-center">Status</th>
-                    <th className="px-4 py-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredCustomers.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="text-center py-10 text-muted-foreground font-medium text-xs">
-                        <XCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                        <span>No customer records matching search criteria.</span>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredCustomers.map((c) => {
-                      return (
-                        <tr
-                          key={c.id}
-                          className="group text-xs transition-colors hover:bg-muted cursor-pointer"
-                          onClick={() => {
-                            setSelectedCustomerId(c.id);
-                            setShowPreview(true);
-                          }}
-                        >
-                          <td className="px-4 py-3.5 font-mono font-bold text-muted-foreground">{c.id}</td>
-                          <td className="px-4 py-3.5 font-bold text-foreground group-hover:text-info hover:underline transition-colors">
-                            {c.name}
-                          </td>
-                          <td className="px-4 py-3.5 font-semibold text-foreground">{c.contactPerson}</td>
-                          <td className="px-4 py-3.5 text-muted-foreground font-medium">{c.phone || "N/A"}</td>
-                          <td className="px-4 py-3.5 text-muted-foreground select-all font-medium">{c.email || "N/A"}</td>
-                          <td className="px-4 py-3.5 text-center">
-                            <span
-                              className={`inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${
-                                c.status === "Active"
-                                  ? "bg-success/10 text-success border border-success/25"
-                                  : "bg-destructive/10 text-destructive border border-destructive/25"
-                              }`}
-                            >
-                              {c.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-right font-semibold text-muted-foreground" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-end gap-1">
-                              {/* View Action Button */}
-                              <button
-                                onClick={() => {
-                                  setSelectedCustomerId(c.id);
-                                  setShowPreview(true);
-                                }}
-                                className="p-1 rounded text-muted-foreground hover:text-info hover:bg-muted transition"
-                                title="View Customer Details"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </button>
-
-                              {/* Edit Button */}
-                              <button
-                                onClick={(e) => openEditModal(c, e)}
-                                className="p-1 rounded text-muted-foreground hover:text-info hover:bg-muted transition"
-                                title="Edit Customer Details"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </button>
-                            </div>
+              {/* Customers Registry Table */}
+              <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden w-full">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-border bg-muted text-xs font-bold text-muted-foreground uppercase tracking-wider select-none">
+                        <th className="px-4 py-3.5">Customer ID</th>
+                        <th className="px-4 py-3.5">Customer Name</th>
+                        <th className="px-4 py-3.5">Primary Contact</th>
+                        <th className="px-4 py-3.5">Phone Number</th>
+                        <th className="px-4 py-3.5">Email Address</th>
+                        <th className="px-4 py-3.5 text-center">Status</th>
+                        <th className="px-4 py-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredCustomers.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="text-center py-10 text-muted-foreground font-medium text-xs">
+                            <XCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                            <span>No customer records matching search criteria.</span>
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      ) : (
+                        filteredCustomers.map((c) => {
+                          return (
+                            <tr
+                              key={c.id}
+                              className="group text-xs transition-colors hover:bg-muted cursor-pointer"
+                              onClick={() => {
+                                setSelectedCustomerId(c.id);
+                                setShowPreview(true);
+                              }}
+                            >
+                              <td className="px-4 py-3.5 font-mono font-bold text-muted-foreground">{c.id}</td>
+                              <td className="px-4 py-3.5 font-bold text-foreground group-hover:text-info hover:underline transition-colors">
+                                {c.name}
+                              </td>
+                              <td className="px-4 py-3.5 font-semibold text-foreground">{c.contactPerson}</td>
+                              <td className="px-4 py-3.5 text-muted-foreground font-medium">{c.phone || "N/A"}</td>
+                              <td className="px-4 py-3.5 text-muted-foreground select-all font-medium">{c.email || "N/A"}</td>
+                              <td className="px-4 py-3.5 text-center">
+                                <span
+                                  className={`inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${
+                                    c.status === "Active"
+                                      ? "bg-success/10 text-success border border-success/25"
+                                      : "bg-destructive/10 text-destructive border border-destructive/25"
+                                  }`}
+                                >
+                                  {c.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 text-right font-semibold text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex justify-end gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedCustomerId(c.id);
+                                      setShowPreview(true);
+                                    }}
+                                    className={TABLE_ACTION_ICON_BUTTON_CLASS}
+                                    title="View Customer Details"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => openEditModal(c, e)}
+                                    className={TABLE_ACTION_ICON_BUTTON_CLASS}
+                                    title="Edit Customer Details"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
-            {/* Pagination / Table Summary Footer */}
-            <div className="border-t border-border px-5 py-3 flex items-center justify-between bg-muted">
-              <span className="text-xs text-muted-foreground font-semibold">
-                Showing {filteredCustomers.length} of {customers.length} customer records
-              </span>
-              <div className="flex gap-1">
-                <button disabled className="rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground cursor-not-allowed">
-                  Previous
-                </button>
-                <button disabled className="rounded border border-primary bg-info/10 px-2.5 py-1 text-xs text-info font-bold">
-                  1
-                </button>
-                <button disabled className="rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground cursor-not-allowed">
-                  Next
-                </button>
+                {/* Pagination / Table Summary Footer */}
+                <div className="border-t border-border px-5 py-3 flex items-center justify-between bg-muted">
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    Showing {filteredCustomers.length} of {customers.length} customer records
+                  </span>
+                  <div className="flex gap-1">
+                    <button disabled className="rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground cursor-not-allowed">
+                      Previous
+                    </button>
+                    <button disabled className="rounded border border-primary bg-info/10 px-2.5 py-1 text-xs text-info font-bold">
+                      1
+                    </button>
+                    <button disabled className="rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground cursor-not-allowed">
+                      Next
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
+            </>
+          )}
 
-
-      </div>
-
-      {/* MODAL 1: ADD NEW CUSTOMER */}
-      {showAddCustomerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl bg-card rounded-md border border-border shadow-lg relative my-8 flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="p-6 border-b border-border flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
-                <Users2 className="h-5 w-5 text-info" />
-                <span>Add New Customer Profile</span>
-              </h3>
-              <button onClick={() => setShowAddCustomerModal(false)} className="p-1 rounded-md text-muted-foreground hover:bg-muted transition">
-                <X className="h-4.5 w-4.5" />
-              </button>
-            </div>
-
-            {/* Scrollable Form Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
-              
+          {(currentMode === "add" || currentMode === "edit") && (
+            <FormPage
+              icon={Users2}
+              title={currentMode === "add" ? "Add New Customer Profile" : `Edit Customer: ${customerToEdit?.name}`}
+              subtitle="Manage customer contact details, billing address, and commercial rules."
+              modeBadge={currentMode === "add" ? "Draft Mode" : "Modifying Live Record"}
+              saveLabel={currentMode === "add" ? "Save Customer" : "Save Changes"}
+              onSaveAndAddAnother={currentMode === "add" ? () => handleSaveCustomer(true) : undefined}
+              onCancel={() => {
+                setCurrentMode("list");
+                setCustomerToEdit(null);
+              }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSaveCustomer(false);
+              }}
+            >
               {/* SECTION 1: CUSTOMER DETAILS */}
-              <div className="space-y-4">
-                <h4 className="font-bold text-muted-foreground uppercase tracking-widest text-xs border-b border-border pb-1.5">
-                  Customer Details (Mandatory)
+              <div className="p-6 space-y-4">
+                <h4 className={FORM_PAGE_SECTION_CLASS}>
+                  <Building className="h-4 w-4 text-info" />
+                  <span>Customer Details {currentMode === "add" && "(Mandatory)"}</span>
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Customer Name *</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Customer Name *</label>
                     <Input
                       type="text"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       placeholder="e.g. Acme Roadworks Ltd"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Customer Code (Optional)</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Customer Code (Optional)</label>
                     <Input
                       type="text"
                       value={formCode}
                       onChange={(e) => setFormCode(e.target.value)}
                       placeholder="e.g. ACMEROAD"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Contact Person *</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Contact Person *</label>
                     <Input
                       type="text"
                       value={formContact}
                       onChange={(e) => setFormContact(e.target.value)}
                       placeholder="e.g. John Doe"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Email address *</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Email address *</label>
                     <Input
                       type="email"
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
                       placeholder="e.g. billing@acme.com"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Phone *</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Phone *</label>
                     <Input
                       type="text"
                       value={formPhone}
                       onChange={(e) => setFormPhone(e.target.value)}
                       placeholder="e.g. +61 3 9988 7766"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Mobile Phone</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Mobile Phone</label>
                     <Input
                       type="text"
                       value={formMobile}
                       onChange={(e) => setFormMobile(e.target.value)}
                       placeholder="e.g. +61 400 999 888"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Fax</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Fax</label>
                     <Input
                       type="text"
                       value={formFax}
                       onChange={(e) => setFormFax(e.target.value)}
                       placeholder="e.g. +61 3 9988 7767"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                 </div>
               </div>
 
               {/* SECTION 2: ADDRESS */}
-              <div className="space-y-4">
-                <h4 className="font-bold text-muted-foreground uppercase tracking-widest text-xs border-b border-border pb-1.5">
-                  Billing Address details
+              <div className="p-6 space-y-4 bg-muted border-t border-border">
+                <h4 className={FORM_PAGE_SECTION_CLASS}>
+                  <MapPin className="h-4 w-4 text-success" />
+                  <span>Billing Address Details</span>
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Address Line 1</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Address Line 1</label>
                     <Input
                       type="text"
                       value={formAddress1}
                       onChange={(e) => setFormAddress1(e.target.value)}
                       placeholder="e.g. 100 Industrial Parkway"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Address Line 2</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Address Line 2</label>
                     <Input
                       type="text"
                       value={formAddress2}
                       onChange={(e) => setFormAddress2(e.target.value)}
                       placeholder="e.g. Warehouse B"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Suburb</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Suburb</label>
                     <Input
                       type="text"
                       value={formSuburb}
                       onChange={(e) => setFormSuburb(e.target.value)}
                       placeholder="e.g. Dandenong"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">State</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>State</label>
                     <SelectBox
                       value={formState}
                       onChange={(e) => setFormState(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_SELECT_CLASS}
                     >
                       <option value="VIC">Victoria (VIC)</option>
                       <option value="NSW">New South Wales (NSW)</option>
@@ -1199,40 +1212,41 @@ export default function CustomersView({
                     </SelectBox>
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Postcode</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Postcode</label>
                     <Input
                       type="text"
                       value={formPostcode}
                       onChange={(e) => setFormPostcode(e.target.value)}
                       placeholder="e.g. 3175"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                 </div>
               </div>
 
               {/* SECTION 3: COMMERCIAL */}
-              <div className="space-y-4">
-                <h4 className="font-bold text-muted-foreground uppercase tracking-widest text-xs border-b border-border pb-1.5">
-                  Commercial & Financial Rules
+              <div className="p-6 space-y-4 border-t border-border">
+                <h4 className={FORM_PAGE_SECTION_CLASS}>
+                  <DollarSign className="h-4 w-4 text-warning" />
+                  <span>Commercial & Financial Rules</span>
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Client Since (Year)</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Client Since (Year)</label>
                     <Input
                       type="text"
                       value={formClientSince}
                       onChange={(e) => setFormClientSince(e.target.value)}
                       placeholder="e.g. 2026"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Product Rule / Pricing Tier</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Product Rule / Pricing Tier</label>
                     <SelectBox
                       value={formPricingTier}
                       onChange={(e) => setFormPricingTier(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_SELECT_CLASS}
                     >
                       <option value="Tier 1 - Standard Rate">Tier 1 - Standard Rate</option>
                       <option value="Tier 2 - Volume Pricing">Tier 2 - Volume Pricing</option>
@@ -1241,298 +1255,42 @@ export default function CustomersView({
                     </SelectBox>
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Initial Account Balance ($)</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Initial Account Balance ($)</label>
                     <Input
                       type="number"
                       value={formBalance}
                       onChange={(e) => setFormBalance(parseFloat(e.target.value) || 0)}
                       placeholder="0.00"
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Account Status</label>
+                    <label className={FORM_PAGE_LABEL_CLASS}>Account Status</label>
                     <SelectBox
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value as any)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
+                      className={FORM_PAGE_SELECT_CLASS}
                     >
                       <option value="Active">Active</option>
                       <option value="Suspended">Suspended</option>
                     </SelectBox>
                   </div>
                   <div className="space-y-1 md:col-span-2">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Operation Annotations & Notes</label>
-                    <textarea
+                    <label className={FORM_PAGE_LABEL_CLASS}>Operation Annotations & Notes</label>
+                    <Textarea
                       value={formNotes}
                       onChange={(e) => setFormNotes(e.target.value)}
                       placeholder="Enter internal dispatch caveats or credit override rules."
                       rows={3}
-                      className={CUSTOMER_FORM_TEXTAREA_CLASS}
+                      className={FORM_PAGE_TEXTAREA_CLASS}
                     />
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Footer buttons */}
-            <div className="p-6 border-t border-border flex flex-wrap items-center justify-end gap-2 bg-muted rounded-b-2xl">
-              <button
-                type="button"
-                onClick={() => setShowAddCustomerModal(false)}
-                className={`${CUSTOMER_MODAL_ACTION_CLASS} border border-border bg-card px-4 text-muted-foreground hover:bg-muted`}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSaveCustomer(true)}
-                className={`${CUSTOMER_MODAL_ACTION_CLASS} gap-1 border border-info/25 bg-info/10 px-5 text-info hover:bg-info/10`}
-              >
-                <Plus className="h-4 w-4 shrink-0" />
-                <span>Save & Add Another</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSaveCustomer(false)}
-                className={`${CUSTOMER_MODAL_ACTION_CLASS} bg-primary px-5 text-white hover:bg-primary/90 shadow-sm`}
-              >
-                Save Customer
-              </button>
-            </div>
-          </div>
+            </FormPage>
+          )}
         </div>
-      )}
-
-      {/* MODAL 2: EDIT CUSTOMER DETAILS */}
-      {showEditCustomerModal && customerToEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl bg-card rounded-md border border-border shadow-lg relative my-8 flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="p-6 border-b border-border flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
-                <Edit className="h-5 w-5 text-info" />
-                <span>Edit Customer: {customerToEdit.name}</span>
-              </h3>
-              <button onClick={() => setShowEditCustomerModal(false)} className="p-1 rounded-md text-muted-foreground hover:bg-muted transition">
-                <X className="h-4.5 w-4.5" />
-              </button>
-            </div>
-
-            {/* Scrollable Form Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
-              <div className="space-y-4">
-                <h4 className="font-bold text-muted-foreground uppercase tracking-widest text-xs border-b border-border pb-1.5">
-                  Customer Details
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Customer Name *</label>
-                    <Input
-                      type="text"
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Customer Code</label>
-                    <Input
-                      type="text"
-                      value={formCode}
-                      onChange={(e) => setFormCode(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Contact Person *</label>
-                    <Input
-                      type="text"
-                      value={formContact}
-                      onChange={(e) => setFormContact(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Email Address *</label>
-                    <Input
-                      type="email"
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Phone *</label>
-                    <Input
-                      type="text"
-                      value={formPhone}
-                      onChange={(e) => setFormPhone(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Mobile Phone</label>
-                    <Input
-                      type="text"
-                      value={formMobile}
-                      onChange={(e) => setFormMobile(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Fax</label>
-                    <Input
-                      type="text"
-                      value={formFax}
-                      onChange={(e) => setFormFax(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Address details */}
-              <div className="space-y-4">
-                <h4 className="font-bold text-muted-foreground uppercase tracking-widest text-xs border-b border-border pb-1.5">
-                  Billing Address details
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Address Line 1</label>
-                    <Input
-                      type="text"
-                      value={formAddress1}
-                      onChange={(e) => setFormAddress1(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Address Line 2</label>
-                    <Input
-                      type="text"
-                      value={formAddress2}
-                      onChange={(e) => setFormAddress2(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Suburb</label>
-                    <Input
-                      type="text"
-                      value={formSuburb}
-                      onChange={(e) => setFormSuburb(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">State</label>
-                    <SelectBox
-                      value={formState}
-                      onChange={(e) => setFormState(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    >
-                      <option value="VIC">Victoria (VIC)</option>
-                      <option value="NSW">New South Wales (NSW)</option>
-                      <option value="QLD">Queensland (QLD)</option>
-                      <option value="WA">Western Australia (WA)</option>
-                      <option value="SA">South Australia (SA)</option>
-                      <option value="TAS">Tasmania (TAS)</option>
-                    </SelectBox>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Postcode</label>
-                    <Input
-                      type="text"
-                      value={formPostcode}
-                      onChange={(e) => setFormPostcode(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Commercial rules */}
-              <div className="space-y-4">
-                <h4 className="font-bold text-muted-foreground uppercase tracking-widest text-xs border-b border-border pb-1.5">
-                  Commercial & Financial Rules
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Client Since (Year)</label>
-                    <Input
-                      type="text"
-                      value={formClientSince}
-                      onChange={(e) => setFormClientSince(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Product Rule / Pricing Tier</label>
-                    <SelectBox
-                      value={formPricingTier}
-                      onChange={(e) => setFormPricingTier(e.target.value)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    >
-                      <option value="Tier 1 - Standard Rate">Tier 1 - Standard Rate</option>
-                      <option value="Tier 2 - Volume Pricing">Tier 2 - Volume Pricing</option>
-                      <option value="Tier 3 - Concrete Aggregate Special">Tier 3 - Concrete Aggregate Special</option>
-                      <option value="Tier 4 - Major Infrastructure Rate">Tier 4 - Major Infrastructure Rate</option>
-                    </SelectBox>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Account Balance ($)</label>
-                    <Input
-                      type="number"
-                      value={formBalance}
-                      onChange={(e) => setFormBalance(parseFloat(e.target.value) || 0)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Account Status</label>
-                    <SelectBox
-                      value={formStatus}
-                      onChange={(e) => setFormStatus(e.target.value as any)}
-                      className={CUSTOMER_FORM_INPUT_CLASS}
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Suspended">Suspended</option>
-                    </SelectBox>
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="block text-xs font-bold uppercase text-muted-foreground">Operation Annotations & Notes</label>
-                    <textarea
-                      value={formNotes}
-                      onChange={(e) => setFormNotes(e.target.value)}
-                      rows={3}
-                      className={CUSTOMER_FORM_TEXTAREA_CLASS}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-6 border-t border-border flex items-center justify-end gap-2 bg-muted rounded-b-2xl">
-              <button
-                type="button"
-                onClick={() => setShowEditCustomerModal(false)}
-                className={`${CUSTOMER_MODAL_ACTION_CLASS} border border-border bg-card px-4 text-muted-foreground hover:bg-muted`}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSaveCustomer(false)}
-                className={`${CUSTOMER_MODAL_ACTION_CLASS} bg-primary px-5 text-white hover:bg-primary/90 shadow-sm`}
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* MODAL 3: EXPORT REPORTS DIALOG */}
       {showExportModal && (

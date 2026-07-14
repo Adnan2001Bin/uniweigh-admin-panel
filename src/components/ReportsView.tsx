@@ -16,6 +16,7 @@ import {
 import { Transaction, Product, Customer } from "../types";
 import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
+import PageHeader from "@/src/components/shared/PageHeader";
 
 interface ReportsViewProps {
   transactions: Transaction[];
@@ -58,13 +59,25 @@ export default function ReportsView({
   const totalBilledVal = siteFilteredTxs.reduce((acc, t) => acc + t.totalValue, 0);
   const countWeighs = siteFilteredTxs.length;
 
+  const reportPathLabel =
+    subView === "products"
+      ? "Product Reports"
+      : subView === "customers"
+      ? "Customer Reports"
+      : subView === "progress"
+      ? "Job Progress Reports"
+      : "Transaction Reports";
+
   return (
     <div className="space-y-4">
-      {/* Title */}
-      <div>
-        <h1 className="text-xl font-bold text-foreground tracking-tight sm:text-2xl">Financial & Tonnage Audits</h1>
-        <p className="text-xs text-muted-foreground">Reports / Custom Query Builder</p>
-      </div>
+      <PageHeader
+        title="Financial & Tonnage Audits"
+        icon={BarChart3}
+        breadcrumbs={[
+          { label: "Reports" },
+          { label: reportPathLabel },
+        ]}
+      />
 
       {/* Query Parameters Canvas */}
       <div className="rounded-md border border-border bg-card p-5 shadow-xs grid gap-4 md:grid-cols-4">

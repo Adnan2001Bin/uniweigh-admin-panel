@@ -22,7 +22,6 @@ import {
   Briefcase,
   MapPin,
   ShieldAlert,
-  Save,
   Check,
   FileDown,
   ChevronDown,
@@ -35,13 +34,19 @@ import { DestinationContact, Customer, Transaction } from "../types";
 import { confirmDialog } from "@/src/components/shared/dialog-service";
 import { SelectBox } from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
+import { Textarea } from "@/src/components/ui/textarea";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { RadioBox } from "@/src/components/ui/radio-group";
-
-const CONTACT_FORM_INPUT_CLASS = "h-9 text-xs";
-const CONTACT_FORM_SELECT_CLASS = "w-full text-xs";
-const CONTACT_FORM_ACTION_CLASS =
-  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer";
+import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import FormPage, {
+  FORM_PAGE_INPUT_CLASS,
+  FORM_PAGE_SELECT_CLASS,
+  FORM_PAGE_TEXTAREA_CLASS,
+  FORM_PAGE_ACTION_CLASS,
+  FORM_PAGE_SECTION_CLASS,
+  FORM_PAGE_LABEL_CLASS,
+} from "@/src/components/shared/FormPage";
+import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 
 interface DestinationContactsViewProps {
   customers: Customer[];
@@ -607,39 +612,51 @@ export default function DestinationContactsView({
         )}
       </AnimatePresence>
 
+      {(currentMode === "list" || currentMode === "form") && (
+        <PageHeader
+          title="Destination Contacts Directory"
+          icon={User}
+          breadcrumbs={[
+            { label: "Customers & Sales" },
+            { label: "Destination Contacts" },
+          ]}
+          actions={
+            currentMode === "list" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleInitAddContact}
+                  className={PAGE_HEADER_ADD_BUTTON_CLASS}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add New Contact</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  title="Synchronize Contacts list"
+                  className="rounded-md border border-border bg-card p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer shadow-xs"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-info" : ""}`} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCurrentMode(isEditing ? "detail" : "list")}
+                className={`${FORM_PAGE_ACTION_CLASS} gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted`}
+              >
+                <ArrowLeft className="h-4 w-4 shrink-0" />
+                <span>Back to Listing</span>
+              </button>
+            )
+          }
+        />
+      )}
+
       {/* VIEW 1: LIST VIEW */}
       {currentMode === "list" && (
         <div className="space-y-4">
-          
-          {/* Header Banner */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-border pb-5">
-            <div>
-              <h1 className="text-xl font-bold text-foreground tracking-tight sm:text-2xl">
-                Destination Contacts Directory
-              </h1>
-              <p className="text-xs text-muted-foreground mt-1">
-                Manage logistics coordinators, safety directors, and emergency dispatcher communications per customer.
-              </p>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={handleInitAddContact}
-                className="rounded-md bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary/90 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add New Contact</span>
-              </button>
-              
-              <button
-                onClick={handleRefresh}
-                title="Synchronize Contacts list"
-                className={`rounded-md border border-border bg-card p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer shadow-xs`}
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-info" : ""}`} />
-              </button>
-            </div>
-          </div>
 
           {/* Search, Filter, Column Visibility Toolbar */}
           <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-3">
@@ -911,23 +928,23 @@ export default function DestinationContactsView({
                             </span>
                           </td>
                           <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-center gap-1.5">
-                              {/* View Action */}
+                            <div className="flex items-center justify-center gap-1">
                               <button
+                                type="button"
                                 onClick={() => {
                                   setSelectedContact(c);
                                   setDetailTab("overview");
                                   setCurrentMode("detail");
                                 }}
-                                className="p-1 rounded text-muted-foreground hover:text-info hover:bg-muted transition"
+                                className={TABLE_ACTION_ICON_BUTTON_CLASS}
                                 title="View Contact Details"
                               >
                                 <Eye className="h-4 w-4" />
                               </button>
-                              {/* Edit Action */}
                               <button
+                                type="button"
                                 onClick={() => handleInitEditContact(c)}
-                                className="p-1 rounded text-muted-foreground hover:text-success hover:bg-muted transition"
+                                className={TABLE_ACTION_ICON_BUTTON_CLASS}
                                 title="Edit Contact details"
                               >
                                 <Edit className="h-4 w-4" />
@@ -959,7 +976,7 @@ export default function DestinationContactsView({
         <div className="space-y-6 animate-fade-in" id="contact-detail-page">
           
           {/* Header Bar */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-border pb-5">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => {
@@ -1167,36 +1184,39 @@ export default function DestinationContactsView({
         </div>
       )}
 
-      {/* VIEW 3: ADD NEW / EDIT CONTACT FORM (FULL PAGE VIEW) */}
+      {/* VIEW 3: ADD / EDIT CONTACT FORM (FULL PAGE VIEW) */}
       {currentMode === "form" && (
-        <div className="bg-card border border-border rounded-md p-6 shadow-sm animate-fade-in" id="contact-form-container">
-          
-          <div className="border-b border-border pb-4 mb-6">
-            <h2 className="text-lg font-bold text-foreground tracking-tight">
-              {isEditing ? `Edit Contact: ${formName}` : "Register New Destination Contact"}
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Configure company link, safety inductions, and site gate parameters.
-            </p>
-          </div>
-
-          <div className="space-y-6 text-xs text-foreground">
-            
-            {/* Subsection A: Contact Details */}
+        <FormPage
+          icon={User}
+          title={isEditing ? `Edit Contact: ${formName}` : "Register New Destination Contact"}
+          subtitle="Configure company link, safety inductions, and site gate parameters."
+          modeBadge={isEditing ? "Modifying Live Record" : "Draft Mode"}
+          saveLabel="Save Contact Details"
+          saveAndAddAnotherLabel="Save & Add Another"
+          onCancel={() => setCurrentMode(isEditing ? "detail" : "list")}
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveContact(false);
+          }}
+          onSaveAndAddAnother={!isEditing ? () => handleSaveContact(true) : undefined}
+        >
+          <div className="p-6 space-y-5 text-xs">
+            {/* Section 1: Contact Profile & Organization Details */}
             <div className="space-y-4">
-              <h3 className="text-xs uppercase tracking-wider text-info font-bold border-b border-border pb-1.5">
-                1. Contact Profile & Organization Details
+              <h3 className={FORM_PAGE_SECTION_CLASS}>
+                <Building className="h-4 w-4 text-info" />
+                <span>1. Contact Profile & Organization Details</span>
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                
-                {/* Customer Mapped Link */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Company Customer Link *</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>
+                    Company Customer Link <span className="text-destructive">*</span>
+                  </label>
                   <SelectBox
                     value={formCustomer}
                     onChange={(e) => setFormCustomer(e.target.value)}
-                    className={CONTACT_FORM_SELECT_CLASS}
+                    className={FORM_PAGE_SELECT_CLASS}
                     required
                   >
                     {customers.map(c => (
@@ -1205,95 +1225,89 @@ export default function DestinationContactsView({
                   </SelectBox>
                 </div>
 
-                {/* Name */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Contact Full Name *</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>
+                    Contact Full Name <span className="text-destructive">*</span>
+                  </label>
                   <Input
                     type="text"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="e.g. Alistair Cooke"
-                    className={CONTACT_FORM_INPUT_CLASS}
+                    className={FORM_PAGE_INPUT_CLASS}
                     required
                   />
                 </div>
 
-                {/* Contact Code */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Contact Code</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>Contact Code</label>
                   <Input
                     type="text"
                     value={formCode}
                     onChange={(e) => setFormCode(e.target.value)}
-                    className={`${CONTACT_FORM_INPUT_CLASS} font-mono`}
                     placeholder="e.g. CON-APX-05"
+                    className={`${FORM_PAGE_INPUT_CLASS} font-mono`}
                   />
                 </div>
 
-                {/* Role */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Role / Position Title</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>Role / Position Title</label>
                   <Input
                     type="text"
                     value={formRole}
                     onChange={(e) => setFormRole(e.target.value)}
                     placeholder="e.g. HSE Manager"
-                    className={CONTACT_FORM_INPUT_CLASS}
+                    className={FORM_PAGE_INPUT_CLASS}
                   />
                 </div>
 
-                {/* Phone */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Office Direct Phone</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>Office Direct Phone</label>
                   <Input
                     type="text"
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
                     placeholder="e.g. +61 3 9999 1111"
-                    className={`${CONTACT_FORM_INPUT_CLASS} font-mono`}
+                    className={`${FORM_PAGE_INPUT_CLASS} font-mono`}
                   />
                 </div>
 
-                {/* Mobile */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Mobile Dispatch Contact</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>Mobile Dispatch Contact</label>
                   <Input
                     type="text"
                     value={formMobile}
                     onChange={(e) => setFormMobile(e.target.value)}
                     placeholder="e.g. +61 412 345 678"
-                    className={`${CONTACT_FORM_INPUT_CLASS} font-mono`}
+                    className={`${FORM_PAGE_INPUT_CLASS} font-mono`}
                   />
                 </div>
 
-                {/* Email */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Email Address</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>Email Address</label>
                   <Input
                     type="email"
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
                     placeholder="e.g. a.cooke@apex.com"
-                    className={`${CONTACT_FORM_INPUT_CLASS} font-mono`}
+                    className={`${FORM_PAGE_INPUT_CLASS} font-mono`}
                   />
                 </div>
 
-                {/* Status */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Communication Status</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>Communication Status</label>
                   <SelectBox
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value as any)}
-                    className={CONTACT_FORM_SELECT_CLASS}
+                    className={FORM_PAGE_SELECT_CLASS}
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
                   </SelectBox>
                 </div>
 
-                {/* Photo Upload block */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Profile Picture / Avatar</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>Profile Picture / Avatar</label>
                   <div className="flex items-center gap-3">
                     {formPhoto ? (
                       <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-border">
@@ -1326,71 +1340,70 @@ export default function DestinationContactsView({
                     </label>
                   </div>
                 </div>
-
               </div>
             </div>
 
-            {/* Subsection B: Safety & Access */}
+            {/* Section 2: Safety Protocols & Site Access */}
             <div className="space-y-4 pt-2">
-              <h3 className="text-xs uppercase tracking-wider text-destructive font-bold border-b border-border pb-1.5">
-                2. Safety Protocols & Site access parameters
+              <h3 className={FORM_PAGE_SECTION_CLASS}>
+                <ShieldAlert className="h-4 w-4 text-destructive" />
+                <span>2. Safety Protocols & Site Access Parameters</span>
               </h3>
 
-              {/* Boolean Toggles */}
               <div className="border border-border p-4 rounded-md bg-muted">
                 <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded hover:bg-card transition">
-                  <Checkbox checked={formSafety} onCheckedChange={(checked) => setFormSafety(Boolean(checked))} className="rounded text-destructive border-input focus:ring-destructive mt-0.5" />
+                  <Checkbox
+                    checked={formSafety}
+                    onCheckedChange={(checked) => setFormSafety(Boolean(checked))}
+                    className="mt-0.5"
+                  />
                   <div>
                     <span className="font-bold block text-foreground">Safety contact</span>
-                    <span className="text-xs text-muted-foreground font-medium">Designated point of contact for safety auditing and incident reporting.</span>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      Designated point of contact for safety auditing and incident reporting.
+                    </span>
                   </div>
                 </label>
               </div>
 
-              {/* Text Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* Safety instructions */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Safety Instructions / Inductions Mandate</label>
-                  <textarea
+                  <label className={FORM_PAGE_LABEL_CLASS}>Safety Instructions / Inductions Mandate</label>
+                  <Textarea
                     value={formSafetyInstructions}
                     onChange={(e) => setFormSafetyInstructions(e.target.value)}
                     placeholder="e.g. Standard steel cap boots required. No lone working permitted."
-                    className="w-full border border-border rounded-md p-2 focus:outline-none min-h-[80px]"
+                    className={FORM_PAGE_TEXTAREA_CLASS}
                   />
                 </div>
 
-                {/* Site access notes */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Site access & Gate keycode notes</label>
-                  <textarea
+                  <label className={FORM_PAGE_LABEL_CLASS}>Site Access & Gate Keycode Notes</label>
+                  <Textarea
                     value={formSiteAccessNotes}
                     onChange={(e) => setFormSiteAccessNotes(e.target.value)}
                     placeholder="e.g. Enter via Gate B. Keypad security barrier code is #4092."
-                    className="w-full border border-border rounded-md p-2 focus:outline-none min-h-[80px]"
+                    className={FORM_PAGE_TEXTAREA_CLASS}
                   />
                 </div>
 
-                {/* PPE list */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">PPE Requirements (comma-separated list)</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>PPE Requirements (comma-separated list)</label>
                   <Input
                     type="text"
                     value={formPPE}
                     onChange={(e) => setFormPPE(e.target.value)}
                     placeholder="e.g. Hi-Vis Vest, Steel Cap Boots, Hard Hat, Protective Glasses"
-                    className={CONTACT_FORM_INPUT_CLASS}
+                    className={FORM_PAGE_INPUT_CLASS}
                   />
                 </div>
 
-                {/* Induction toggle & date */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-foreground">Induction Required?</label>
+                  <label className={FORM_PAGE_LABEL_CLASS}>Induction Required?</label>
                   <SelectBox
                     value={formInduction ? "Yes" : "No"}
                     onChange={(e) => setFormInduction(e.target.value === "Yes")}
-                    className={CONTACT_FORM_SELECT_CLASS}
+                    className={FORM_PAGE_SELECT_CLASS}
                   >
                     <option value="No">No</option>
                     <option value="Yes">Yes (Mandatory)</option>
@@ -1398,73 +1411,38 @@ export default function DestinationContactsView({
 
                   {formInduction && (
                     <div className="space-y-1.5 pt-1 animate-fade-in">
-                      <label className="block font-bold text-foreground">Induction Expiry Date</label>
+                      <label className={FORM_PAGE_LABEL_CLASS}>Induction Expiry Date</label>
                       <Input
                         type="date"
                         value={formInductionExpiry}
                         onChange={(e) => setFormInductionExpiry(e.target.value)}
-                        className={`${CONTACT_FORM_INPUT_CLASS} font-mono`}
+                        className={`${FORM_PAGE_INPUT_CLASS} font-mono`}
                       />
                     </div>
                   )}
                 </div>
-
               </div>
             </div>
 
-            {/* Subsection C: General Notes */}
+            {/* Section 3: General Notes */}
             <div className="space-y-4 pt-2">
-              <h3 className="text-xs uppercase tracking-wider text-foreground font-bold border-b border-border pb-1.5">
-                3. General logistics notes
+              <h3 className={FORM_PAGE_SECTION_CLASS}>
+                <FileText className="h-4 w-4 text-warning" />
+                <span>3. General Logistics Notes</span>
               </h3>
 
               <div className="space-y-1.5">
-                <label className="block font-bold text-foreground">Operational & Dispatch Notes</label>
-                <textarea
+                <label className={FORM_PAGE_LABEL_CLASS}>Operational & Dispatch Notes</label>
+                <Textarea
                   value={formGeneralNotes}
                   onChange={(e) => setFormGeneralNotes(e.target.value)}
                   placeholder="e.g. Prefers site dispatches via SMS before truck transit departure. High-priority client."
-                  className="w-full border border-border rounded-md p-2 focus:outline-none min-h-[80px]"
+                  className={FORM_PAGE_TEXTAREA_CLASS}
                 />
               </div>
             </div>
-
-            {/* Form actions block */}
-            <div className="flex items-center justify-end gap-3 pt-6 border-t border-border">
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentMode(isEditing ? "detail" : "list");
-                }}
-                className={`${CONTACT_FORM_ACTION_CLASS} border border-border bg-card px-5 text-foreground hover:bg-muted`}
-              >
-                Cancel
-              </button>
-
-              {!isEditing && (
-                <button
-                  type="button"
-                  onClick={() => handleSaveContact(true)}
-                  className={`${CONTACT_FORM_ACTION_CLASS} gap-1 border border-info/25 bg-info/10 px-5 text-info hover:bg-info/10`}
-                >
-                  <Plus className="h-4 w-4 shrink-0" />
-                  <span>Save & Add Another</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => handleSaveContact(false)}
-                className={`${CONTACT_FORM_ACTION_CLASS} gap-1.5 bg-primary px-6 text-white hover:bg-primary/90 shadow-sm`}
-              >
-                <Save className="h-4 w-4 shrink-0" />
-                <span>Save Contact Details</span>
-              </button>
-            </div>
-
           </div>
-
-        </div>
+        </FormPage>
       )}
 
       {/* EXPORT OPTIONS MODAL */}
