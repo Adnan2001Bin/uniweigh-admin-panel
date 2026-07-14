@@ -38,6 +38,7 @@ import { Textarea } from "@/src/components/ui/textarea";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { RadioBox } from "@/src/components/ui/radio-group";
 import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import StatusBadge from "@/src/components/shared/StatusBadge";
 import FormPage, {
   FORM_PAGE_INPUT_CLASS,
   FORM_PAGE_SELECT_CLASS,
@@ -47,6 +48,9 @@ import FormPage, {
   FORM_PAGE_LABEL_CLASS,
 } from "@/src/components/shared/FormPage";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
+
+const CONTACT_DETAIL_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer shadow-xs";
 
 interface DestinationContactsViewProps {
   customers: Customer[];
@@ -974,21 +978,21 @@ export default function DestinationContactsView({
       {/* VIEW 2: PROFILE PAGE VIEW (FULL-PAGE, RENDERED DIRECTLY, NO SIDE-DRAWER) */}
       {currentMode === "detail" && selectedContact && (
         <div className="space-y-6 animate-fade-in" id="contact-detail-page">
-          
-          {/* Header Bar */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => {
-                  setCurrentMode("list");
-                }}
-                className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer shadow-xs"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back to Directory</span>
-              </button>
 
-              <div className="h-12 w-12 rounded-full border border-info/25 overflow-hidden shadow-sm shrink-0">
+          {/* Return Navigation */}
+          <button
+            type="button"
+            onClick={() => setCurrentMode("list")}
+            className="group inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-info transition bg-card border border-border rounded-md px-3.5 py-2 shadow-xs cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+            <span>Back to Directory</span>
+          </button>
+
+          {/* Hero header card */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card border border-border rounded-md px-6 py-5 shadow-xs">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-full bg-muted border border-border overflow-hidden shadow-inner shrink-0 flex items-center justify-center">
                 {selectedContact.photoUrl ? (
                   <img
                     src={selectedContact.photoUrl}
@@ -997,190 +1001,254 @@ export default function DestinationContactsView({
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="h-full w-full bg-gradient-to-tr from-info to-info text-white flex items-center justify-center font-bold text-base">
+                  <span className="font-bold text-lg text-info">
                     {getInitials(selectedContact.name)}
-                  </div>
+                  </span>
                 )}
               </div>
-
               <div>
-                <div className="flex items-center gap-2.5">
-                  <h1 className="text-xl font-bold text-foreground tracking-tight sm:text-2xl">
-                    {selectedContact.name}
-                  </h1>
-                  <span
-                    className={`inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${
-                      selectedContact.status === "Active"
-                        ? "bg-success/10 text-success border border-success/25"
-                        : "bg-destructive/10 text-destructive border border-destructive/25"
-                    }`}
-                  >
-                    {selectedContact.status}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Contact ID: {selectedContact.id}
+                  </span>
+                  <StatusBadge status={selectedContact.status} className="rounded-md" />
+                  <span className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-foreground">
+                    {selectedContact.contactCode}
                   </span>
                 </div>
-                <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                  ID: <span className="font-bold">{selectedContact.id}</span> | Code: <span className="font-semibold text-foreground">{selectedContact.contactCode}</span> | Customer: <span className="font-bold text-info">{selectedContact.customerName}</span>
+                <div className="flex flex-wrap items-center gap-2.5 mt-1">
+                  <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
+                    {selectedContact.name}
+                  </h1>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground bg-muted border border-border rounded-md px-2.5 py-1 select-none">
+                    <Building className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{selectedContact.customerName}</span>
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-2 self-start md:self-center items-center">
               <button
+                type="button"
                 onClick={() => handleInitEditContact(selectedContact)}
-                className="rounded-md border border-border bg-card text-xs font-bold text-foreground px-4 py-2 hover:bg-muted transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className={`${CONTACT_DETAIL_ACTION_CLASS} gap-1.5 border border-border bg-card px-4 text-foreground hover:bg-muted`}
               >
-                <Edit className="h-4 w-4 text-success" />
+                <Edit className="h-4 w-4 shrink-0" />
                 <span>Edit Profile Settings</span>
               </button>
-
               <button
+                type="button"
                 onClick={() => {
                   setExportType("profile");
                   setShowExportModal(true);
                 }}
-                className="rounded-md border border-border bg-card text-xs font-bold text-foreground px-4 py-2 hover:bg-muted transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className={`${CONTACT_DETAIL_ACTION_CLASS} gap-1.5 border border-border bg-card px-4 text-foreground hover:bg-muted`}
               >
-                <FileText className="h-4 w-4 text-info" />
+                <FileText className="h-4 w-4 shrink-0" />
                 <span>Export Profile Report</span>
               </button>
-
               <button
+                type="button"
                 onClick={() => handleDeleteContact(selectedContact.id)}
-                className="rounded-md border border-destructive/25 bg-destructive/10 text-xs font-bold text-destructive px-4 py-2 hover:bg-destructive/10 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className={`${CONTACT_DETAIL_ACTION_CLASS} gap-1.5 border border-destructive/25 bg-destructive/10 px-4 text-destructive hover:bg-destructive/10`}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4 shrink-0" />
                 <span>Delete Contact</span>
               </button>
             </div>
           </div>
 
-          {/* CONTACT SUMMARY CARD */}
-          <div className="bg-card border border-border rounded-md shadow-sm p-6 space-y-6 animate-fade-in">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Column 1: Contact Details */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 border-b border-border pb-2">
-                  <User className="h-4 w-4 text-info" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Contact Details</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-3 text-xs">
-                  <div>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Contact ID</span>
-                    <span className="font-mono font-bold text-foreground">{selectedContact.id}</span>
+          {/* Main grid: left metadata (4) + right expanded profile (8) — matches Ticket Detail */}
+          <div className="grid gap-6 lg:grid-cols-12 items-start">
+            {/* Left column */}
+            <div className="lg:col-span-4 space-y-4">
+              <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-4">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-2">
+                  Contact Details
+                </h3>
+                <div className="space-y-4 text-sm text-foreground font-normal">
+                  <div className="flex items-start gap-2.5">
+                    <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs text-muted-foreground font-semibold mb-0.5">Contact ID</div>
+                      <div className="font-mono font-bold text-foreground">{selectedContact.id}</div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Contact Code</span>
-                    <span className="font-mono font-bold text-foreground">{selectedContact.contactCode}</span>
+                  <div className="flex items-start gap-2.5">
+                    <Briefcase className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs text-muted-foreground font-semibold mb-0.5">Contact Code</div>
+                      <div className="font-mono font-bold text-foreground">{selectedContact.contactCode}</div>
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Contact Name</span>
-                    <span className="font-bold text-foreground text-sm block mt-0.5">{selectedContact.name}</span>
+                  <div className="flex items-start gap-2.5">
+                    <User className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs text-muted-foreground font-semibold mb-0.5">Contact Name</div>
+                      <div className="font-bold text-foreground">{selectedContact.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{selectedContact.role || "N/A"}</div>
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Associated Company / Customer</span>
-                    <span className="font-semibold text-foreground block mt-0.5">{selectedContact.customerName}</span>
+                  <div className="flex items-start gap-2.5">
+                    <Building className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs text-muted-foreground font-semibold mb-0.5">Associated Company / Customer</div>
+                      <div className="font-bold text-foreground">{selectedContact.customerName}</div>
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Role / Position</span>
-                    <span className="font-semibold text-foreground block mt-0.5">{selectedContact.role || "N/A"}</span>
+                  <div className="flex items-start gap-2.5">
+                    <Phone className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs text-muted-foreground font-semibold mb-0.5">Phone / Mobile</div>
+                      <div className="font-mono font-semibold text-foreground">{selectedContact.phone || "N/A"}</div>
+                      <div className="text-xs text-muted-foreground font-mono mt-0.5">{selectedContact.mobile || "N/A"}</div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Phone</span>
-                    <span className="font-semibold text-foreground font-mono block mt-0.5">{selectedContact.phone || "N/A"}</span>
+                  <div className="flex items-start gap-2.5">
+                    <Mail className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs text-muted-foreground font-semibold mb-0.5">Email</div>
+                      <div className="font-mono font-semibold text-foreground break-all select-all">{selectedContact.email || "N/A"}</div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Mobile</span>
-                    <span className="font-semibold text-foreground font-mono block mt-0.5">{selectedContact.mobile || "N/A"}</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</span>
-                    <span className="font-semibold text-info font-mono block mt-0.5 break-all select-all">{selectedContact.email || "N/A"}</span>
-                  </div>
-                  <div>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</span>
-                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-bold ${
-                      selectedContact.status === "Active" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                    }`}>{selectedContact.status}</span>
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs text-muted-foreground font-semibold mb-0.5">Status</div>
+                      <StatusBadge status={selectedContact.status} className="mt-0.5 rounded-md" />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Column 2: Safety & Site Access Details */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 border-b border-border pb-2">
-                  <ShieldAlert className="h-4 w-4 text-destructive" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Safety & Site Access</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-3 text-xs">
-                  <div>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Safety Contact</span>
-                    <span className={`font-bold block mt-0.5 ${selectedContact.isSafetyContact ? "text-success" : "text-muted-foreground"}`}>
+              <div className="bg-muted border border-border rounded-md p-4 text-xs space-y-2">
+                <span className="font-bold text-foreground block uppercase tracking-wider text-xs">
+                  Access Snapshot
+                </span>
+                <div className="space-y-1.5 font-medium">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Safety Contact:</span>
+                    <span className={`font-bold ${selectedContact.isSafetyContact ? "text-success" : "text-foreground"}`}>
                       {selectedContact.isSafetyContact ? "Yes" : "No"}
                     </span>
                   </div>
-                  <div>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Site Access Contact</span>
-                    <span className={`font-bold block mt-0.5 ${selectedContact.isSiteAccessContact ? "text-info" : "text-muted-foreground"}`}>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Site Access:</span>
+                    <span className={`font-bold ${selectedContact.isSiteAccessContact ? "text-info" : "text-foreground"}`}>
                       {selectedContact.isSiteAccessContact ? "Yes" : "No"}
                     </span>
                   </div>
-                  <div>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Emergency Contact</span>
-                    <span className={`font-bold block mt-0.5 ${selectedContact.isEmergencyContact ? "text-destructive animate-pulse" : "text-muted-foreground"}`}>
-                      {selectedContact.isEmergencyContact ? "Yes" : "No"}
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Account State:</span>
+                    <span className={selectedContact.status === "Active" ? "text-success font-bold" : "text-destructive font-bold"}>
+                      {selectedContact.status === "Active" ? "Operational" : selectedContact.status}
                     </span>
                   </div>
-                  <div>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Induction Required</span>
-                    <span className="font-semibold block mt-0.5">{selectedContact.inductionRequired ? "Yes" : "No"}</span>
-                  </div>
-                  {selectedContact.inductionRequired && (
-                    <div className="col-span-2">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Induction Expiry Date</span>
-                      <span className="font-semibold text-foreground font-mono block mt-0.5">{selectedContact.inductionExpiryDate || "N/A"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right column — wide profile card */}
+            <div className="lg:col-span-8 bg-card border border-border rounded-md shadow-xs overflow-hidden">
+              <div className="p-6 space-y-6 text-sm leading-relaxed text-foreground min-h-[360px]">
+                <div>
+                  <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+                    Safety & Site Access Profile
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Gate induction, PPE, and site access controls registered against this destination contact.
+                  </p>
+                </div>
+
+                <div className="rounded-md border border-info/25 bg-info/10 p-5 space-y-5">
+                  <h4 className="text-xs font-bold text-info uppercase tracking-widest flex items-center gap-1">
+                    <ShieldAlert className="h-3.5 w-3.5" />
+                    Safety & Site Access Flags
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="rounded-md bg-card p-3 border border-border text-center">
+                      <div className="text-xs font-bold text-muted-foreground uppercase">Safety Contact</div>
+                      <div className={`text-sm font-bold mt-1 ${selectedContact.isSafetyContact ? "text-success" : "text-muted-foreground"}`}>
+                        {selectedContact.isSafetyContact ? "Yes" : "No"}
+                      </div>
                     </div>
-                  )}
-                  <div className="col-span-2">
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">PPE Requirements</span>
-                    <span className="font-semibold text-foreground block mt-0.5">{selectedContact.ppeRequirements || "N/A"}</span>
+                    <div className="rounded-md bg-card p-3 border border-border text-center">
+                      <div className="text-xs font-bold text-muted-foreground uppercase">Site Access</div>
+                      <div className={`text-sm font-bold mt-1 ${selectedContact.isSiteAccessContact ? "text-info" : "text-muted-foreground"}`}>
+                        {selectedContact.isSiteAccessContact ? "Yes" : "No"}
+                      </div>
+                    </div>
+                    <div className="rounded-md bg-card p-3 border border-border text-center">
+                      <div className="text-xs font-bold text-muted-foreground uppercase">Emergency</div>
+                      <div className={`text-sm font-bold mt-1 ${selectedContact.isEmergencyContact ? "text-destructive" : "text-muted-foreground"}`}>
+                        {selectedContact.isEmergencyContact ? "Yes" : "No"}
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Safety Instructions</span>
-                    <p className="text-xs text-muted-foreground leading-relaxed italic mt-0.5 line-clamp-2" title={selectedContact.safetyInstructions}>
+
+                  <div className="border-t border-info/25 pt-4 flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-bold text-muted-foreground">PPE Requirements:</span>
+                      {selectedContact.ppeRequirements?.trim() ? (
+                        <ul className="mt-1.5 space-y-1 list-disc list-inside">
+                          {selectedContact.ppeRequirements
+                            .split(",")
+                            .map((item) => item.trim())
+                            .filter(Boolean)
+                            .map((item) => (
+                              <li key={item} className="text-sm font-bold text-foreground">
+                                {item}
+                              </li>
+                            ))}
+                        </ul>
+                      ) : (
+                        <span className="text-sm font-bold text-foreground block mt-0.5">N/A</span>
+                      )}
+                    </div>
+                    <div className="text-left md:text-right shrink-0">
+                      <span className="text-xs font-bold text-muted-foreground block mb-0.5">Induction:</span>
+                      <span className="text-sm font-bold text-foreground">
+                        {selectedContact.inductionRequired
+                          ? `Required${selectedContact.inductionExpiryDate ? ` · Expires ${selectedContact.inductionExpiryDate}` : ""}`
+                          : "Not required"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 border-b border-border pb-5">
+                  <div className="p-3 bg-muted border border-border rounded-md">
+                    <div className="text-xs text-muted-foreground font-bold flex items-center gap-1">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      Safety Instructions
+                    </div>
+                    <div className="text-xs font-medium italic text-muted-foreground mt-1 leading-relaxed">
                       {selectedContact.safetyInstructions || "No explicit safety instructions specified."}
-                    </p>
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Site Access Notes</span>
-                    <p className="text-xs text-muted-foreground leading-relaxed italic mt-0.5 line-clamp-2" title={selectedContact.siteAccessNotes}>
+                  <div className="p-3 bg-muted border border-border rounded-md">
+                    <div className="text-xs text-muted-foreground font-bold flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                      Site Access Notes
+                    </div>
+                    <div className="text-xs font-medium italic text-muted-foreground mt-1 leading-relaxed">
                       {selectedContact.siteAccessNotes || "No site access notes logged."}
-                    </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
+                    General Notes
+                  </h4>
+                  <div className="p-4 rounded-md bg-warning/10 border border-warning/30 text-xs font-medium italic text-warning whitespace-pre-line">
+                    &ldquo;{selectedContact.notes || "No general operational notes recorded."}&rdquo;
                   </div>
                 </div>
               </div>
-
-              {/* Column 3: Notes Column */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 border-b border-border pb-2">
-                  <FileText className="h-4 w-4 text-warning" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Notes</h3>
-                </div>
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">General Notes</span>
-                    <p className="text-xs text-muted-foreground italic leading-relaxed whitespace-pre-line bg-muted p-3 rounded-md border border-border mt-1 max-h-56 overflow-y-auto">
-                      {selectedContact.notes || "No general operational notes recorded."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
             </div>
           </div>
-
-          {/* End of Summary Card */}
         </div>
       )}
 

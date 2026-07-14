@@ -23,7 +23,11 @@ import {
 } from "lucide-react";
 import { Carrier, Driver, Vehicle, Transaction, TransactionStatus } from "../types";
 import { toast } from "sonner";
+import StatusBadge from "@/src/components/shared/StatusBadge";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
+
+const CARTER_DETAIL_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer shadow-xs";
 
 interface CarterDetailViewProps {
   carterId: string;
@@ -495,24 +499,25 @@ export default function CarterDetailView({
 
   return (
     <div className="space-y-6">
-      {/* Back Button & Dropdown Actions */}
+      {/* Return Navigation + Export */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <button
+          type="button"
           onClick={onBack}
-          className="group inline-flex items-center gap-2 text-xs font-bold text-info hover:text-info transition select-none"
+          className="group inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-info transition bg-card border border-border rounded-md px-3.5 py-2 shadow-xs cursor-pointer"
         >
-          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition" />
-          Back to Carters List
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          <span>Back to Carters List</span>
         </button>
 
-        {/* Export Dropdown */}
         <div className="relative self-start sm:self-auto">
           <button
+            type="button"
             onClick={() => setIsExportOpen(!isExportOpen)}
-            className="rounded-md border border-border bg-card hover:bg-muted px-3.5 py-1.5 text-xs font-bold text-foreground transition flex items-center gap-1.5 select-none"
+            className={`${CARTER_DETAIL_ACTION_CLASS} gap-1.5 border border-border bg-card px-3.5 text-foreground hover:bg-muted`}
           >
-            <Download className="h-3.5 w-3.5 text-muted-foreground" />
-            Export Carter Data
+            <Download className="h-4 w-4 shrink-0" />
+            <span>Export Carter Data</span>
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
 
@@ -601,86 +606,144 @@ export default function CarterDetailView({
         </div>
       </div>
 
-      {/* Carter Summary Card */}
-      <div className="bg-card border border-border rounded-md p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
-          <div className="space-y-1">
-            <span className="bg-info/10 text-info font-mono font-bold text-xs tracking-widest uppercase px-2 py-0.5 rounded-sm border border-info/25">
-              Carter Profile
-            </span>
-            <h2 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
-              <Truck className="h-5 w-5 text-info" />
-              {selectedCarter.name}
-            </h2>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-semibold text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                Carter ID: <strong className="text-muted-foreground font-mono font-bold">{selectedCarter.id}</strong>
+      {/* Hero header card */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card border border-border rounded-md px-6 py-5 shadow-xs">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-full bg-muted border border-border text-info flex items-center justify-center shadow-inner shrink-0">
+            <Truck className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Carter ID: {selectedCarter.id}
               </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
+              <StatusBadge status={selectedCarter.status} className="rounded-md" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5 mt-1">
+              <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
+                {selectedCarter.name}
+              </h1>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground bg-muted border border-border rounded-md px-2.5 py-1 select-none">
                 <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                Registered: <strong className="text-muted-foreground">{selectedCarter.createdDate || "2024-03-12"}</strong>
+                <span>Registered: {selectedCarter.createdDate || "2024-03-12"}</span>
               </span>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div className="self-start md:self-auto">
-            <span
-              className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-bold border uppercase tracking-wider ${
-                selectedCarter.status === "Active"
-                  ? "bg-success/10 text-success border-success/25"
-                  : "bg-destructive/10 text-destructive border-destructive/25"
-              }`}
-            >
-              {selectedCarter.status}
+      {/* Main grid: left metadata (4) + right contact/rate profile (8) */}
+      <div className="grid gap-6 lg:grid-cols-12 items-start">
+        <div className="lg:col-span-4 space-y-4">
+          <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-4">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-2">
+              Carter Details
+            </h3>
+            <div className="space-y-4 text-sm text-foreground font-normal">
+              <div className="flex items-start gap-2.5">
+                <Building className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Carter ID</div>
+                  <div className="font-mono font-bold text-foreground">{selectedCarter.id}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Truck className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Company Name</div>
+                  <div className="font-bold text-foreground">{selectedCarter.name}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Calendar className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Registered</div>
+                  <div className="font-semibold text-foreground">{selectedCarter.createdDate || "2024-03-12"}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <CheckCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Status</div>
+                  <StatusBadge status={selectedCarter.status} className="mt-0.5 rounded-md" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-muted border border-border rounded-md p-4 text-xs space-y-2">
+            <span className="font-bold text-foreground block uppercase tracking-wider text-xs">
+              Fleet Snapshot
             </span>
-          </div>
-        </div>
-
-        {/* Info Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 text-xs">
-          <div className="bg-muted border border-border rounded-md p-3.5 space-y-1">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">Phone Number</span>
-            <div className="flex items-center gap-1.5 text-foreground font-bold">
-              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-              {selectedCarter.contactNo}
-            </div>
-          </div>
-
-          <div className="bg-muted border border-border rounded-md p-3.5 space-y-1">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">Email Address</span>
-            <div className="flex items-center gap-1.5 text-foreground font-bold font-mono">
-              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-              {selectedCarter.email}
-            </div>
-          </div>
-
-          <div className="bg-success/10 border border-success/25 rounded-md p-3.5 space-y-1">
-            <span className="text-xs font-bold text-success uppercase tracking-widest block">Transport Rate</span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-base font-bold text-success font-mono">
-                ${transportRate.toFixed(2)}
-              </span>
-              <span className="text-xs text-success font-bold">/ tonne</span>
-            </div>
-          </div>
-
-          <div className="bg-info/10 border border-info/25 rounded-md p-3.5 space-y-1">
-            <span className="text-xs font-bold text-info uppercase tracking-widest block">Physical Address</span>
-            <div className="flex items-center gap-1.5 text-foreground font-bold line-clamp-1">
-              <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="truncate" title={selectedCarter.address}>{selectedCarter.address || "No address supplied."}</span>
+            <div className="space-y-1.5 font-medium">
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Linked Drivers:</span>
+                <span className="text-foreground font-mono font-bold">{linkedDrivers.length}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Linked Vehicles:</span>
+                <span className="text-foreground font-mono font-bold">{linkedVehicles.length}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Transactions:</span>
+                <span className="text-foreground font-mono font-bold">{linkedTransactions.length}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Notes Block */}
-        <div className="bg-muted border border-border rounded-md p-4 text-xs">
-          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Internal Notes</span>
-          <p className="font-medium text-foreground whitespace-pre-line leading-relaxed">
-            {selectedCarter.notes || "No custom notes or instructions listed for this transport provider."}
-          </p>
+        <div className="lg:col-span-8 bg-card border border-border rounded-md shadow-xs overflow-hidden">
+          <div className="p-6 space-y-6 text-sm leading-relaxed text-foreground min-h-[360px]">
+            <div>
+              <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+                Contact & Transport Rate Profile
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Registered contact channels and cartage rate applied across weighbridge dispatches for this carter.
+              </p>
+            </div>
+
+            <div className="rounded-md border border-info/25 bg-info/10 p-5 space-y-4">
+              <h4 className="text-xs font-bold text-info uppercase tracking-widest flex items-center gap-1">
+                <DollarSign className="h-3.5 w-3.5" />
+                Contact & Rate
+              </h4>
+              <div className="space-y-3">
+                <div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Transport Rate</div>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <span className="text-2xl font-bold font-mono text-success">${transportRate.toFixed(2)}</span>
+                    <span className="text-xs text-muted-foreground font-semibold">/ tonne</span>
+                  </div>
+                </div>
+                <div className="border-t border-info/25 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phone Number</div>
+                    <div className="text-sm font-bold text-foreground mt-0.5">{selectedCarter.contactNo}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email Address</div>
+                    <div className="text-sm font-mono font-bold text-foreground mt-0.5 break-all">{selectedCarter.email}</div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Physical Address</div>
+                    <div className="text-sm font-semibold text-foreground mt-0.5">
+                      {selectedCarter.address || "No address supplied."}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
+                Internal Notes
+              </h4>
+              <div className="p-4 rounded-md bg-warning/10 border border-warning/30 text-xs font-medium italic text-warning whitespace-pre-line">
+                &ldquo;{selectedCarter.notes || "No custom notes or instructions listed for this transport provider."}&rdquo;
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

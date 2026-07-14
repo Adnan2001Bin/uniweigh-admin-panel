@@ -49,6 +49,7 @@ import { SelectBox } from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/src/components/ui/textarea";
 import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import StatusBadge from "@/src/components/shared/StatusBadge";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 import FormPage, {
   FORM_PAGE_INPUT_CLASS,
@@ -57,6 +58,9 @@ import FormPage, {
   FORM_PAGE_SECTION_CLASS,
   FORM_PAGE_LABEL_CLASS
 } from "@/src/components/shared/FormPage";
+
+const CUSTOMER_DETAIL_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer shadow-xs";
 
 interface CustomersViewProps {
   customers: Customer[];
@@ -520,167 +524,230 @@ export default function CustomersView({
           </div>
         )}
 
-        {/* Detail View Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => {
-                setShowPreview(false);
-                setPreviewTab("jobs");
-              }}
-              className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-bold text-foreground hover:bg-muted hover:text-foreground transition cursor-pointer shadow-xs"
-              title="Return to customer registry"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to Directory</span>
-            </button>
+        {/* Return Navigation */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowPreview(false);
+            setPreviewTab("jobs");
+          }}
+          className="group inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-info transition bg-card border border-border rounded-md px-3.5 py-2 shadow-xs cursor-pointer"
+          title="Return to customer registry"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          <span>Back to Directory</span>
+        </button>
 
-            <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-info to-info text-white flex items-center justify-center font-bold text-base shadow-sm">
+        {/* Hero header card — matches Ticket Detail layout */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card border border-border rounded-md px-6 py-5 shadow-xs">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-full bg-muted border border-border text-info flex items-center justify-center font-bold text-lg shadow-inner shrink-0">
               {getInitials(activeCustomer.name)}
             </div>
-
             <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl font-bold text-foreground tracking-tight sm:text-2xl">
-                  {activeCustomer.name}
-                </h1>
-                <span
-                  className={`inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${
-                    activeCustomer.status === "Active"
-                      ? "bg-success/10 text-success border border-success/25"
-                      : "bg-destructive/10 text-destructive border border-destructive/25"
-                  }`}
-                >
-                  {activeCustomer.status}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Customer ID: {activeCustomer.id}
+                </span>
+                <StatusBadge status={activeCustomer.status} className="rounded-md" />
+                <span className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-foreground">
+                  {activeCustomer.customerCode || "N/A"}
                 </span>
               </div>
-              <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                Customer ID: <span className="font-bold text-foreground">{activeCustomer.id}</span> | Customer Code: <span className="font-semibold text-foreground">{activeCustomer.customerCode || "N/A"}</span> | Client Number: <span className="font-semibold text-foreground">CL-100{activeCustomer.id.replace("C-", "")}</span>
+              <div className="flex flex-wrap items-center gap-2.5 mt-1">
+                <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
+                  {activeCustomer.name}
+                </h1>
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground bg-muted border border-border rounded-md px-2.5 py-1 select-none">
+                  <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>Client Number: CL-100{activeCustomer.id.replace("C-", "")}</span>
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-2 self-start md:self-center items-center">
             <button
+              type="button"
               onClick={(e) => openEditModal(activeCustomer, e)}
-              className="rounded-md border border-border bg-card text-xs font-bold text-foreground px-4 py-2 hover:bg-muted transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className={`${CUSTOMER_DETAIL_ACTION_CLASS} gap-1.5 border border-border bg-card px-4 text-foreground hover:bg-muted`}
             >
-              <Edit className="h-4 w-4 text-info" />
-              <span>Edit Account parameters</span>
+              <Edit className="h-4 w-4 shrink-0" />
+              <span>Edit Account Parameters</span>
             </button>
-
             <button
+              type="button"
               onClick={handleRefreshDataset}
               title="Refresh profile details"
-              className={`rounded-md border border-border bg-card p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer shadow-xs ${isRefreshing ? "bg-muted" : ""}`}
+              className={`${CUSTOMER_DETAIL_ACTION_CLASS} w-9 border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted ${isRefreshing ? "bg-muted" : ""}`}
             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-info" : ""}`} />
             </button>
           </div>
         </div>
 
-        {/* CUSTOMER SUMMARY CARD */}
-        <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden p-6 animate-fade-in">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* 1. Customer Details */}
-            <div className="lg:col-span-4 space-y-4">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <Building className="h-4 w-4 text-info" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Customer Details</h3>
-              </div>
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Customer ID</span>
-                  <span className="font-mono font-bold text-foreground">{activeCustomer.id}</span>
+        {/* Main grid: left metadata (4) + right expanded profile (8) — matches Ticket Detail */}
+        <div className="grid gap-6 lg:grid-cols-12 items-start">
+          {/* Left column */}
+          <div className="lg:col-span-4 space-y-4">
+            <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-4">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-2">
+                Customer Details
+              </h3>
+              <div className="space-y-4 text-sm text-foreground font-normal">
+                <div className="flex items-start gap-2.5">
+                  <CreditCard className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-muted-foreground font-semibold mb-0.5">Customer ID</div>
+                    <div className="font-mono font-bold text-foreground">{activeCustomer.id}</div>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Customer Code</span>
-                  <span className="font-mono font-bold text-foreground">{activeCustomer.customerCode || "N/A"}</span>
+                <div className="flex items-start gap-2.5">
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-muted-foreground font-semibold mb-0.5">Customer Code</div>
+                    <div className="font-mono font-bold text-foreground">{activeCustomer.customerCode || "N/A"}</div>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Customer Name</span>
-                  <span className="font-bold text-foreground">{activeCustomer.name}</span>
+                <div className="flex items-start gap-2.5">
+                  <Building className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-muted-foreground font-semibold mb-0.5">Customer Name</div>
+                    <div className="font-bold text-foreground">{activeCustomer.name}</div>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Primary Contact</span>
-                  <span className="font-semibold text-foreground">{activeCustomer.contactPerson}</span>
+                <div className="flex items-start gap-2.5">
+                  <User className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-muted-foreground font-semibold mb-0.5">Primary Contact</div>
+                    <div className="font-bold text-foreground">{activeCustomer.contactPerson}</div>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Phone Number</span>
-                  <span className="font-semibold text-foreground">{activeCustomer.phone}</span>
+                <div className="flex items-start gap-2.5">
+                  <Phone className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-muted-foreground font-semibold mb-0.5">Phone Number</div>
+                    <div className="font-semibold text-foreground">{activeCustomer.phone}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Mobile: {activeCustomer.mobileNo || "N/A"}</div>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Mobile Number</span>
-                  <span className="font-semibold text-foreground">{activeCustomer.mobileNo || "N/A"}</span>
+                <div className="flex items-start gap-2.5">
+                  <Mail className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-muted-foreground font-semibold mb-0.5">Email Address</div>
+                    <div className="font-semibold text-foreground select-all">{activeCustomer.email}</div>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Email Address</span>
-                  <span className="font-semibold text-foreground select-all">{activeCustomer.email}</span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</span>
-                  <span className={`inline-block mt-1 px-2.5 py-0.5 rounded text-xs font-bold ${
-                    activeCustomer.status === "Active" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                  }`}>{activeCustomer.status}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Address Details */}
-            <div className="lg:col-span-4 space-y-4">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <MapPin className="h-4 w-4 text-info" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Address Details</h3>
-              </div>
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Address Line 1</span>
-                  <span className="font-semibold text-foreground">{activeCustomer.addressLine1 || activeCustomer.billingAddress?.split(',')[0] || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Address Line 2</span>
-                  <span className="font-semibold text-foreground">{activeCustomer.addressLine2 || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Suburb</span>
-                  <span className="font-semibold text-foreground">{activeCustomer.suburbName || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">State</span>
-                  <span className="font-semibold text-foreground">{activeCustomer.stateCode || "VIC"}</span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Postcode</span>
-                  <span className="font-semibold text-foreground">{activeCustomer.postCodeVal || "N/A"}</span>
+                <div className="flex items-start gap-2.5">
+                  <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-muted-foreground font-semibold mb-0.5">Status</div>
+                    <StatusBadge status={activeCustomer.status} className="mt-0.5 rounded-md" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* 3. Commercial Details */}
-            <div className="lg:col-span-4 space-y-4">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <DollarSign className="h-4 w-4 text-info" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Commercial Details</h3>
-              </div>
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Product Rule / Pricing Tier</span>
-                  <span className="font-semibold text-info bg-info/10 px-2.5 py-0.5 rounded inline-block mt-1 font-mono">
-                    {activeCustomer.pricingTier || "Tier 1 - Standard"}
+            <div className="bg-muted border border-border rounded-md p-4 text-xs space-y-2">
+              <span className="font-bold text-foreground block uppercase tracking-wider text-xs">
+                Account Snapshot
+              </span>
+              <div className="space-y-1.5 font-medium">
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Linked Jobs:</span>
+                  <span className="text-foreground font-mono font-bold">{customerJobs.length}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Linked Transactions:</span>
+                  <span className="text-foreground font-mono font-bold">{matchingTxs.length}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Account State:</span>
+                  <span className={activeCustomer.status === "Active" ? "text-success font-bold" : "text-destructive font-bold"}>
+                    {activeCustomer.status === "Active" ? "Operational" : activeCustomer.status}
                   </span>
                 </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Client Since</span>
-                  <span className="font-semibold text-foreground">{activeCustomer.clientSince || "2024"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right column — wide profile card */}
+          <div className="lg:col-span-8 bg-card border border-border rounded-md shadow-xs overflow-hidden">
+            <div className="p-6 space-y-6 text-sm leading-relaxed text-foreground min-h-[360px]">
+              <div>
+                <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+                  Address & Commercial Profile
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Registered billing locality and commercial trading parameters for this customer account.
+                </p>
+              </div>
+
+              <div className="rounded-md border border-info/25 bg-info/10 p-5 space-y-4">
+                <h4 className="text-xs font-bold text-info uppercase tracking-widest flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Address Details
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Address Line 1</div>
+                    <div className="text-sm font-bold text-foreground mt-0.5">
+                      {activeCustomer.addressLine1 || activeCustomer.billingAddress?.split(',')[0] || "N/A"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Address Line 2</div>
+                    <div className="text-sm font-semibold text-foreground mt-0.5">{activeCustomer.addressLine2 || "N/A"}</div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Suburb</div>
+                      <div className="text-sm font-semibold text-foreground mt-0.5">{activeCustomer.suburbName || "N/A"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">State</div>
+                      <div className="text-sm font-semibold text-foreground mt-0.5">{activeCustomer.stateCode || "VIC"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Postcode</div>
+                      <div className="text-sm font-mono font-bold text-foreground mt-0.5">{activeCustomer.postCodeVal || "N/A"}</div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Notes</span>
-                  <p className="text-xs text-muted-foreground italic leading-relaxed mt-0.5">{activeCustomer.notes || "No operational notes recorded."}</p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 border-b border-border pb-5">
+                <div className="p-3 bg-muted border border-border rounded-md">
+                  <div className="text-xs text-muted-foreground font-bold flex items-center gap-1">
+                    <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                    Product Rule / Pricing Tier
+                  </div>
+                  <div className="mt-1.5">
+                    <span className="inline-flex items-center rounded-md border border-info/25 bg-info/10 px-2.5 py-0.5 text-xs font-bold font-mono text-info">
+                      {activeCustomer.pricingTier || "Tier 1 - Standard"}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3 bg-muted border border-border rounded-md">
+                  <div className="text-xs text-muted-foreground font-bold flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    Client Since
+                  </div>
+                  <div className="text-xs font-semibold text-foreground font-mono mt-1">
+                    {activeCustomer.clientSince || "2024"}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
+                  Operational Notes
+                </h4>
+                <div className="p-4 rounded-md bg-warning/10 border border-warning/30 text-xs font-medium italic text-warning">
+                  &ldquo;{activeCustomer.notes || "No operational notes recorded."}&rdquo;
                 </div>
               </div>
             </div>
-
           </div>
         </div>
 

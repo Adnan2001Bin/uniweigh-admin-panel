@@ -12,14 +12,17 @@ import {
   DollarSign,
   Layers,
   ChevronDown,
-  Clock,
   ExternalLink,
   Eye
 } from "lucide-react";
 import { ProductLot, Product, Transaction, TransactionStatus } from "../types";
 import { toast } from "sonner";
 import { downloadLotCertificate } from "@/src/lib/lot-certificate";
+import StatusBadge from "@/src/components/shared/StatusBadge";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
+
+const LOT_DETAIL_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer shadow-xs";
 
 interface ProductLotDetailViewProps {
   lotId: string;
@@ -309,24 +312,25 @@ export default function ProductLotDetailView({
 
   return (
     <div className="space-y-6">
-      {/* Back Button and Actions Header */}
+      {/* Return Navigation + Export */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <button
+          type="button"
           onClick={onBack}
-          className="group inline-flex items-center gap-2 text-xs font-bold text-info hover:text-info transition select-none"
+          className="group inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-info transition bg-card border border-border rounded-md px-3.5 py-2 shadow-xs cursor-pointer"
         >
-          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition" />
-          Back to Product Lots List
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          <span>Back to Product Lots List</span>
         </button>
 
-        {/* Individual Lot Export Dropdown Menu */}
         <div className="relative self-start sm:self-auto">
           <button
+            type="button"
             onClick={() => setIsExportOpen(!isExportOpen)}
-            className="rounded-md border border-border bg-card hover:bg-muted px-3.5 py-1.5 text-xs font-bold text-foreground transition flex items-center gap-1.5 select-none"
+            className={`${LOT_DETAIL_ACTION_CLASS} gap-1.5 border border-border bg-card px-3.5 text-foreground hover:bg-muted`}
           >
-            <Download className="h-3.5 w-3.5 text-muted-foreground" />
-            Export Lot Data
+            <Download className="h-4 w-4 shrink-0" />
+            <span>Export Lot Data</span>
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
 
@@ -386,91 +390,181 @@ export default function ProductLotDetailView({
         </div>
       </div>
 
-      {/* Product Lot Summary Card */}
-      <div className="bg-card border border-border rounded-md p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
-          <div className="space-y-1">
-            <span className="bg-info/10 text-info font-mono font-bold text-xs tracking-widest uppercase px-2 py-0.5 rounded-sm border border-info/25">
-              Product Lot Profile
-            </span>
-            <h2 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
-              <Layers className="h-5 w-5 text-info" />
-              {selectedLot.name}
-            </h2>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-semibold text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                Lot ID: <strong className="text-muted-foreground font-mono font-bold">{selectedLot.id}</strong>
+      {/* Hero header card */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card border border-border rounded-md px-6 py-5 shadow-xs">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-full bg-muted border border-border text-info flex items-center justify-center shadow-inner shrink-0">
+            <Layers className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Lot ID: {selectedLot.id}
               </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
+              <StatusBadge
+                status={displayedStatus === "Completed" ? "Completed" : displayedStatus}
+                className="rounded-md"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5 mt-1">
+              <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
+                {selectedLot.name}
+              </h1>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground bg-muted border border-border rounded-md px-2.5 py-1 select-none">
                 <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                Registered: <strong className="text-muted-foreground">{selectedLot.createdDate || "N/A"}</strong>
+                <span>Registered: {selectedLot.createdDate || "N/A"}</span>
               </span>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div className="self-start md:self-auto">
-            <span
-              className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-bold border uppercase tracking-wider ${
-                displayedStatus === "Completed"
-                  ? "bg-muted text-foreground border-border"
-                  : displayedStatus === "Active"
-                  ? "bg-success/10 text-success border-success/25"
-                  : "bg-warning/10 text-warning border-warning/30"
-              }`}
-            >
-              {displayedStatus === "Completed" ? "Fully Used / Completed" : displayedStatus}
+      {/* Main grid: left metadata (4) + right tonnage profile (8) */}
+      <div className="grid gap-6 lg:grid-cols-12 items-start">
+        <div className="lg:col-span-4 space-y-4">
+          <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-4">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-2">
+              Lot Details
+            </h3>
+            <div className="space-y-4 text-sm text-foreground font-normal">
+              <div className="flex items-start gap-2.5">
+                <Tag className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Lot ID</div>
+                  <div className="font-mono font-bold text-foreground">{selectedLot.id}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Layers className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Lot Name</div>
+                  <div className="font-bold text-foreground">{selectedLot.name}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Parent Product</div>
+                  <div className="font-bold text-foreground">{parentProduct?.name || "N/A"}</div>
+                  <div className="text-xs text-muted-foreground font-mono mt-0.5">{selectedLot.productId}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Calendar className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Registered</div>
+                  <div className="font-semibold text-foreground">{selectedLot.createdDate || "N/A"}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Status</div>
+                  <StatusBadge
+                    status={displayedStatus === "Completed" ? "Completed" : displayedStatus}
+                    className="mt-0.5 rounded-md"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-muted border border-border rounded-md p-4 text-xs space-y-2">
+            <span className="font-bold text-foreground block uppercase tracking-wider text-xs">
+              Lot Snapshot
             </span>
+            <div className="space-y-1.5 font-medium">
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Linked Transactions:</span>
+                <span className="text-foreground font-mono font-bold">{lotTransactions.length}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Quality Certificates:</span>
+                <span className="text-foreground font-mono font-bold">{lotDatasheets.length}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Lot State:</span>
+                <span className={displayedStatus === "Active" ? "text-success font-bold" : "text-foreground font-bold"}>
+                  {displayedStatus === "Completed" ? "Fully Used" : displayedStatus}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-muted border border-border rounded-md p-4">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1">Order Quantity</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-foreground font-mono">
-                {selectedLot.orderQuantity.toFixed(2)}
-              </span>
-              <span className="text-xs text-muted-foreground font-bold">Tonnes</span>
+        <div className="lg:col-span-8 bg-card border border-border rounded-md shadow-xs overflow-hidden">
+          <div className="p-6 space-y-6 text-sm leading-relaxed text-foreground min-h-[360px]">
+            <div>
+              <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+                Batch Allocation & Tonnage Balance
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Allocated batch tonnage versus used and remaining capacity for this product lot.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1 font-semibold">Total quantity allocated for batch.</p>
-          </div>
 
-          <div className="bg-success/10 border border-success/25 rounded-md p-4">
-            <span className="text-xs font-bold text-success uppercase tracking-widest block mb-1">Used Quantity</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-success font-mono">
-                {usedQuantity.toFixed(2)}
-              </span>
-              <span className="text-xs text-success font-bold">Tonnes</span>
+            <div className="rounded-md border border-info/25 bg-info/10 p-5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-1 opacity-10">
+                <Layers className="h-28 w-28 text-info" />
+              </div>
+              <h4 className="text-xs font-bold text-info uppercase tracking-widest mb-3 flex items-center gap-1">
+                <DollarSign className="h-3.5 w-3.5" />
+                Quantity Progress (Tonnes)
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center items-stretch">
+                <div className="rounded-md bg-card p-3 border border-border">
+                  <div className="text-xs font-bold text-muted-foreground uppercase">Order Quantity</div>
+                  <div className="text-lg font-bold font-mono text-foreground mt-1">
+                    {selectedLot.orderQuantity.toFixed(2)} t
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Total allocated for batch</p>
+                </div>
+                <div className="rounded-md bg-card p-3 border border-border">
+                  <div className="text-xs font-bold text-muted-foreground uppercase">Used Quantity</div>
+                  <div className="text-lg font-bold font-mono text-success mt-1">
+                    {usedQuantity.toFixed(2)} t
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">From approved records</p>
+                </div>
+                <div className="rounded-md bg-card p-3 border border-border">
+                  <div className="text-xs font-bold text-muted-foreground uppercase">Remaining Quantity</div>
+                  <div className={`text-lg font-bold font-mono mt-1 ${remainingQuantity < 0 ? "text-destructive" : "text-info"}`}>
+                    {remainingQuantity.toFixed(2)} t
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Capacity remaining</p>
+                </div>
+              </div>
+
+              <div className="mt-4 border-t border-info/25 pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold text-muted-foreground">Parent Product:</span>
+                  <span className="text-sm font-bold text-foreground block mt-0.5">
+                    {parentProduct?.name || "N/A"}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-muted-foreground block mb-0.5">Remaining Capacity:</span>
+                  <span className={`text-xl font-bold font-mono px-3.5 py-1 rounded-md inline-block border ${
+                    remainingQuantity < 0
+                      ? "text-destructive bg-destructive/10 border-destructive/25"
+                      : "text-info bg-info/10 border-info/25"
+                  }`}>
+                    {remainingQuantity.toFixed(2)} Tonnes
+                  </span>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-success mt-1 font-semibold">Summed weight from approved records.</p>
-          </div>
 
-          <div className="bg-info/10 border border-info/25 rounded-md p-4">
-            <span className="text-xs font-bold text-info uppercase tracking-widest block mb-1">Remaining Quantity</span>
-            <div className="flex items-baseline gap-1.5">
-              <span
-                className={`text-xl font-bold font-mono ${
-                  remainingQuantity < 0 ? "text-destructive" : "text-info"
-                }`}
-              >
-                {remainingQuantity.toFixed(2)}
-              </span>
-              <span className="text-xs text-info font-bold">Tonnes</span>
+            <div>
+              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
+                Lot Notes & Directives
+              </h4>
+              <div className="p-4 rounded-md bg-warning/10 border border-warning/30 text-xs font-medium italic text-warning whitespace-pre-line">
+                &ldquo;{selectedLot.notes || "No notes, comments, or custom directives provided for this batch lot."}&rdquo;
+              </div>
             </div>
-            <p className="text-xs text-info mt-1 font-semibold">Capacity remaining for processing.</p>
           </div>
-        </div>
-
-        {/* Notes Block */}
-        <div className="bg-muted border border-border rounded-md p-4 text-xs">
-          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">Lot Notes & Directives</span>
-          <p className="font-medium text-foreground whitespace-pre-line leading-relaxed">
-            {selectedLot.notes || "No notes, comments, or custom directives provided for this batch lot."}
-          </p>
         </div>
       </div>
 

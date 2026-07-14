@@ -19,7 +19,9 @@ import {
   Clock,
   Shield,
   FileText,
-  ArrowLeft
+  ArrowLeft,
+  Building,
+  Package
 } from "lucide-react";
 import { Job, Customer, Product, Transaction, TransactionStatus } from "../types";
 import { motion, AnimatePresence } from "motion/react";
@@ -28,6 +30,7 @@ import { SelectBox } from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/src/components/ui/textarea";
 import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import StatusBadge from "@/src/components/shared/StatusBadge";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 import FormPage, {
   FORM_PAGE_INPUT_CLASS,
@@ -986,27 +989,31 @@ export default function JobsView({
             className="space-y-6"
           >
 
-            {/* JOB SUMMARY CARD (TOP SECTION) */}
-            <div className="bg-card border border-border rounded-md overflow-hidden shadow-xs p-6 space-y-4">
-
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-info/10 text-info shrink-0 font-bold text-sm">
-                    {activeJob.id.split("-").pop()}
+            {/* Hero header card */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card border border-border rounded-md px-6 py-5 shadow-xs">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-muted border border-border text-info flex items-center justify-center font-bold text-lg shadow-inner shrink-0">
+                  {activeJob.id.split("-").pop()}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Job Contract ID: {activeJob.id}
+                    </span>
+                    <StatusBadge status={activeJob.status} className="rounded-md" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <strong className="text-sm font-bold text-foreground font-mono tracking-tight">{activeJob.id}</strong>
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${activeJob.status === "Active"
-                        ? "bg-success/10 text-success"
-                        : activeJob.status === "Completed"
-                          ? "bg-info/10 text-info"
-                          : "bg-destructive/10 text-destructive"
-                        }`}>{activeJob.status}</span>
-                    </div>
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Job Contract Profile</p>
+                  <div className="flex flex-wrap items-center gap-2.5 mt-1">
+                    <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight font-mono">
+                      {activeJob.id}
+                    </h1>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground bg-muted border border-border rounded-md px-2.5 py-1 select-none">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>Job Contract Profile</span>
+                    </span>
                   </div>
                 </div>
+              </div>
+              <div className="flex flex-wrap gap-2 self-start md:self-center items-center">
                 <button
                   type="button"
                   onClick={() => handleOpenEditForm(activeJob)}
@@ -1016,59 +1023,142 @@ export default function JobsView({
                   <span>Edit Contract</span>
                 </button>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-xs text-foreground">
-                <div>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Job ID</span>
-                  <span className="font-mono font-bold text-foreground select-all">{activeJob.id}</span>
+            {/* Main grid: left metadata (4) + right fulfillment (8) */}
+            <div className="grid gap-6 lg:grid-cols-12 items-start">
+              <div className="lg:col-span-4 space-y-4">
+                <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-2">
+                    Contract Information
+                  </h3>
+                  <div className="space-y-4 text-sm text-foreground font-normal">
+                    <div className="flex items-start gap-2.5">
+                      <Briefcase className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Job ID</div>
+                        <div className="font-mono font-bold text-foreground select-all">{activeJob.id}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Order Reference Number</div>
+                        <div className="font-semibold text-foreground select-all">{activeJob.customerOrderRef}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Building className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Customer</div>
+                        <div className="font-bold text-foreground">{activeJob.customerName}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Package className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Product</div>
+                        <div className="font-bold text-foreground">{activeJob.productName}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Shield className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Status</div>
+                        <StatusBadge status={activeJob.status} className="mt-0.5 rounded-md" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Order Reference Number</span>
-                  <span className="font-semibold text-foreground select-all">{activeJob.customerOrderRef}</span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Customer</span>
-                  <span className="font-bold text-foreground">{activeJob.customerName}</span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Product</span>
-                  <span className="font-bold text-foreground">{activeJob.productName}</span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Order Quantity</span>
-                  <span className="font-mono font-bold text-foreground text-sm">
-                    {activeJob.orderQty.toLocaleString()} t
+
+                <div className="bg-muted border border-border rounded-md p-4 text-xs space-y-2">
+                  <span className="font-bold text-foreground block uppercase tracking-wider text-xs">
+                    Contract Snapshot
                   </span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Delivered Quantity</span>
-                  <span className="font-mono font-bold text-success text-sm">
-                    {(jobDeliveredQuantities[activeJob.id] || 0).toLocaleString()} t
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Remaining Quantity</span>
-                  <span className="font-mono font-bold text-warning text-sm">
-                    {Math.max(0, activeJob.orderQty - (jobDeliveredQuantities[activeJob.id] || 0)).toLocaleString()} t
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Status</span>
-                  <span className={`inline-block px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${activeJob.status === "Active"
-                    ? "bg-success/10 text-success border border-success/25"
-                    : activeJob.status === "Completed"
-                      ? "bg-info/10 text-info border border-info/25"
-                      : "bg-destructive/10 text-destructive border border-destructive/25"
-                    }`}>{activeJob.status}</span>
-                </div>
-                <div className="col-span-1 sm:col-span-2 md:col-span-4">
-                  <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Notes</span>
-                  <p className="text-muted-foreground bg-muted rounded-md p-3 leading-relaxed text-xs font-medium border border-border">
-                    {activeJob.notes || "No operational notes recorded."}
-                  </p>
+                  <div className="space-y-1.5 font-medium">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Bound Destinations:</span>
+                      <span className="text-foreground font-mono font-bold">{activeJobDestinations.length}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Ledger Transactions:</span>
+                      <span className="text-foreground font-mono font-bold">{activeJobTransactions.length}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Contract State:</span>
+                      <span className={activeJob.status === "Active" ? "text-success font-bold" : "text-foreground font-bold"}>
+                        {activeJob.status}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
+              <div className="lg:col-span-8 bg-card border border-border rounded-md shadow-xs overflow-hidden">
+                <div className="p-6 space-y-6 text-sm leading-relaxed text-foreground min-h-[360px]">
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+                      Order Fulfillment & Tonnage Balance
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Contracted supply tonnage versus delivered and remaining balance against this job.
+                    </p>
+                  </div>
+
+                  <div className="rounded-md border border-info/25 bg-info/10 p-5 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-1 opacity-10">
+                      <Layers className="h-28 w-28 text-info" />
+                    </div>
+                    <h4 className="text-xs font-bold text-info uppercase tracking-widest mb-3 flex items-center gap-1">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      Quantity Progress (Tonnes)
+                    </h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center items-stretch">
+                      <div className="rounded-md bg-card p-3 border border-border">
+                        <div className="text-xs font-bold text-muted-foreground uppercase">Order Quantity</div>
+                        <div className="text-lg font-bold font-mono text-foreground mt-1">
+                          {activeJob.orderQty.toLocaleString()} t
+                        </div>
+                      </div>
+                      <div className="rounded-md bg-card p-3 border border-border">
+                        <div className="text-xs font-bold text-muted-foreground uppercase">Delivered Quantity</div>
+                        <div className="text-lg font-bold font-mono text-success mt-1">
+                          {(jobDeliveredQuantities[activeJob.id] || 0).toLocaleString()} t
+                        </div>
+                      </div>
+                      <div className="rounded-md bg-card p-3 border border-border">
+                        <div className="text-xs font-bold text-muted-foreground uppercase">Remaining Quantity</div>
+                        <div className="text-lg font-bold font-mono text-warning mt-1">
+                          {Math.max(0, activeJob.orderQty - (jobDeliveredQuantities[activeJob.id] || 0)).toLocaleString()} t
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 border-t border-info/25 pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                      <div>
+                        <span className="text-xs font-bold text-muted-foreground">Customer Order Ref:</span>
+                        <span className="text-sm font-bold text-foreground block mt-0.5 select-all">{activeJob.customerOrderRef}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-muted-foreground block mb-0.5">Fulfilment Remaining:</span>
+                        <span className="text-xl font-bold font-mono text-warning bg-warning/10 border border-warning/30 px-3.5 py-1 rounded-md inline-block">
+                          {Math.max(0, activeJob.orderQty - (jobDeliveredQuantities[activeJob.id] || 0)).toLocaleString()} t
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
+                      Contract Notes
+                    </h4>
+                    <div className="p-4 rounded-md bg-warning/10 border border-warning/30 text-xs font-medium italic text-warning">
+                      &ldquo;{activeJob.notes || "No operational notes recorded."}&rdquo;
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* LOWER PORTION TABS NAVIGATION */}

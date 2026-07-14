@@ -25,7 +25,11 @@ import {
 import { Product, Job, Transaction } from "../types";
 import { toast } from "sonner";
 import { RadioBox } from "@/src/components/ui/radio-group";
+import StatusBadge from "@/src/components/shared/StatusBadge";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
+
+const PRODUCT_DETAIL_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer shadow-xs";
 
 interface ProductDetailStandaloneViewProps {
   products: Product[];
@@ -415,136 +419,191 @@ export default function ProductDetailStandaloneView({
   return (
     <div className="space-y-6">
       
-      {/* Page Header bar */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          {onBack && (
-            <button
-              onClick={onBack}
-              className="rounded-md border border-border hover:border-input bg-card hover:bg-muted p-1.5 transition text-muted-foreground hover:text-foreground"
-              title="Return to Product Listing"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-          )}
+      {/* Return Navigation */}
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="group inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-info transition bg-card border border-border rounded-md px-3.5 py-2 shadow-xs cursor-pointer"
+          title="Return to Product Listing"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          <span>Back to Product Listing</span>
+        </button>
+      )}
+
+      {/* Hero header card */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card border border-border rounded-md px-6 py-5 shadow-xs">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-full bg-muted border border-border text-info flex items-center justify-center shadow-inner shrink-0">
+            <Package className="h-6 w-6" />
+          </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground tracking-tight flex items-center gap-2">
-              <Package className="h-5 w-5 text-info" />
-              {selectedProduct.name} Profile Page
-            </h2>
-            <p className="text-xs text-muted-foreground font-semibold">
-              Product ID: <span className="font-mono text-foreground">{selectedProduct.id}</span> • Code: <span className="font-mono text-foreground">{selectedProduct.productCode || selectedProduct.id}</span>
-            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Product ID: {selectedProduct.id}
+              </span>
+              <StatusBadge status={selectedProduct.status} className="rounded-md" />
+              <span className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-foreground font-mono">
+                {selectedProduct.productCode || selectedProduct.id}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5 mt-1">
+              <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
+                {selectedProduct.name}
+              </h1>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground bg-muted border border-border rounded-md px-2.5 py-1 select-none">
+                <Building className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>{selectedProduct.site || "Melbourne Eastern Quarry"}</span>
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Global Export Action */}
-        <button
-          onClick={() => setIsExportOpen(true)}
-          className="bg-card border border-border hover:bg-muted text-foreground rounded-md px-3.5 py-1.5 text-xs font-bold tracking-wide shadow-sm flex items-center gap-1.5 transition select-none"
-        >
-          <Download className="h-4 w-4 text-muted-foreground" />
-          Export Product Report
-        </button>
+        <div className="flex flex-wrap gap-2 self-start md:self-center items-center">
+          <button
+            type="button"
+            onClick={() => setIsExportOpen(true)}
+            className={`${PRODUCT_DETAIL_ACTION_CLASS} gap-1.5 border border-border bg-card px-4 text-foreground hover:bg-muted`}
+          >
+            <Download className="h-4 w-4 shrink-0" />
+            <span>Export Product Report</span>
+          </button>
+        </div>
       </div>
 
-      {/* Product Summary Card Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        
-        {/* Core Product Details Summary block */}
-        <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden flex flex-col justify-between">
-          <div className="p-4 bg-muted border-b border-border flex items-center gap-2">
-            <Building className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Product Details</h3>
+      {/* Main grid: left metadata (4) + right pricing profile (8) */}
+      <div className="grid gap-6 lg:grid-cols-12 items-start">
+        <div className="lg:col-span-4 space-y-4">
+          <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-4">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-2">
+              Product Details
+            </h3>
+            <div className="space-y-4 text-sm text-foreground font-normal">
+              <div className="flex items-start gap-2.5">
+                <Tag className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Product ID</div>
+                  <div className="font-mono font-bold text-foreground">{selectedProduct.id}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Product Code</div>
+                  <div className="font-mono font-bold text-foreground">{selectedProduct.productCode || selectedProduct.id}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Package className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Product Name</div>
+                  <div className="font-bold text-foreground">{selectedProduct.name}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Building className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Weighbridge Site</div>
+                  <div className="font-semibold text-foreground">{selectedProduct.site || "Melbourne Eastern Quarry"}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Sliders className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Unit of Measure</div>
+                  <div className="font-bold text-foreground">{selectedProduct.unitOfMeasure || "Tonnes"}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <CheckCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Status</div>
+                  <StatusBadge status={selectedProduct.status} className="mt-0.5 rounded-md" />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="p-5 space-y-3.5 flex-1">
-            <div className="grid grid-cols-2 gap-y-3 text-xs">
-              <div>
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Product ID</span>
-                <span className="font-bold text-foreground font-mono text-sm">{selectedProduct.id}</span>
+
+          <div className="bg-muted border border-border rounded-md p-4 text-xs space-y-2">
+            <span className="font-bold text-foreground block uppercase tracking-wider text-xs">
+              Catalog Snapshot
+            </span>
+            <div className="space-y-1.5 font-medium">
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Product Lots:</span>
+                <span className="text-foreground font-mono font-bold">{productLots.length}</span>
               </div>
-              <div>
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Product Code</span>
-                <span className="font-bold text-foreground font-mono text-sm">{selectedProduct.productCode || selectedProduct.id}</span>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Active Jobs:</span>
+                <span className="text-foreground font-mono font-bold">{productJobs.length}</span>
               </div>
-              <div className="col-span-2">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Product Name</span>
-                <span className="font-bold text-foreground text-sm">{selectedProduct.name}</span>
-              </div>
-              <div className="col-span-2">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Weighbridge Site</span>
-                <span className="font-semibold text-foreground text-sm">{selectedProduct.site || "Melbourne Eastern Quarry"}</span>
-              </div>
-              <div>
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Unit of Measure</span>
-                <span className="font-bold text-foreground text-sm">{selectedProduct.unitOfMeasure || "Tonnes"}</span>
-              </div>
-              <div>
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Status</span>
-                <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold border mt-1 ${
-                  selectedProduct.status === "Active"
-                    ? "bg-success/10 text-success border-success/25"
-                    : "bg-destructive/10 text-destructive border-destructive/25"
-                }`}>
-                  {selectedProduct.status}
-                </span>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Transactions:</span>
+                <span className="text-foreground font-mono font-bold">{productTransactions.length}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Pricing Card Section */}
-        <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden flex flex-col justify-between">
-          <div className="p-4 bg-muted border-b border-border flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-info" />
-            <h3 className="text-xs font-bold text-info uppercase tracking-widest">Central Pricing</h3>
-          </div>
-          <div className="p-5 flex-1 flex flex-col justify-between gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-info/10 border border-info/25 rounded-md p-2.5">
-                <span className="text-xs font-bold text-info uppercase tracking-widest block">Default Price</span>
-                <span className="text-base font-bold text-info font-mono">
-                  ${defaultPrice.toFixed(2)}
-                </span>
-                <span className="text-xs text-muted-foreground block mt-0.5">Per {selectedProduct.unitOfMeasure || "Tonne"}</span>
+        <div className="lg:col-span-8 bg-card border border-border rounded-md shadow-xs overflow-hidden">
+          <div className="p-6 space-y-6 text-sm leading-relaxed text-foreground min-h-[360px]">
+            <div>
+              <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+                Central Pricing & Catalog Notes
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                These tier properties are maintained globally within the Product profile. Individual Job modules link to their preferred level on dispatch.
+              </p>
+            </div>
+
+            <div className="rounded-md border border-info/25 bg-info/10 p-5 space-y-5">
+              <h4 className="text-xs font-bold text-info uppercase tracking-widest flex items-center gap-1">
+                <DollarSign className="h-3.5 w-3.5" />
+                Central Pricing
+              </h4>
+
+              <div className="space-y-1">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Default Price</div>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-2xl font-bold font-mono text-info">${defaultPrice.toFixed(2)}</span>
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    Per {selectedProduct.unitOfMeasure || "Tonne"}
+                  </span>
+                </div>
               </div>
 
-              <div className="bg-muted border border-border rounded-md p-2.5">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block">Price Level 1</span>
-                <span className="text-sm font-bold text-foreground font-mono">
-                  {p1Price !== undefined ? `$${p1Price.toFixed(2)}` : "Not Set"}
-                </span>
-              </div>
-
-              <div className="bg-muted border border-border rounded-md p-2.5">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block">Price Level 2</span>
-                <span className="text-sm font-bold text-foreground font-mono">
-                  {p2Price !== undefined ? `$${p2Price.toFixed(2)}` : "Not Set"}
-                </span>
-              </div>
-
-              <div className="bg-muted border border-border rounded-md p-2.5">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block">Price Level 3</span>
-                <span className="text-sm font-bold text-foreground font-mono">
-                  {p3Price !== undefined ? `$${p3Price.toFixed(2)}` : "Not Set"}
-                </span>
+              <div className="border-t border-info/25 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price Level 1</div>
+                  <div className="text-base font-bold font-mono text-foreground mt-1">
+                    {p1Price !== undefined ? `$${p1Price.toFixed(2)}` : "Not Set"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price Level 2</div>
+                  <div className="text-base font-bold font-mono text-foreground mt-1">
+                    {p2Price !== undefined ? `$${p2Price.toFixed(2)}` : "Not Set"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price Level 3</div>
+                  <div className="text-base font-bold font-mono text-foreground mt-1">
+                    {p3Price !== undefined ? `$${p3Price.toFixed(2)}` : "Not Set"}
+                  </div>
+                </div>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground leading-tight">These tier properties are maintained globally within the Product profile. Individual Job modules link to their preferred level on dispatch.</p>
-          </div>
-        </div>
 
-        {/* Product Notes Card Section */}
-        <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden flex flex-col justify-between">
-          <div className="p-4 bg-muted border-b border-border flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Product Notes</h3>
-          </div>
-          <div className="p-5 flex-1 flex flex-col justify-between">
-            <div className="bg-warning/10 border border-warning/30 rounded-md p-3.5 text-xs text-warning leading-relaxed font-medium italic min-h-[100px]">
-              {selectedProduct.notes || selectedProduct.description || "No specific guidelines or product specifications recorded for this material register."}
+            <div>
+              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
+                Product Notes
+              </h4>
+              <div className="p-4 rounded-md bg-warning/10 border border-warning/30 text-xs font-medium italic text-warning">
+                &ldquo;{selectedProduct.notes || selectedProduct.description || "No specific guidelines or product specifications recorded for this material register."}&rdquo;
+              </div>
+              <span className="text-xs text-muted-foreground text-right block mt-2">Last updated by Admin Operator</span>
             </div>
-            <span className="text-xs text-muted-foreground text-right block mt-2">Last updated by Admin Operator</span>
           </div>
         </div>
       </div>

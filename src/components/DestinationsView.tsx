@@ -1061,128 +1061,186 @@ Notes:     ${d.notes || "None registered"}
             className="space-y-6"
             id="destination-summary-sheet"
           >
-            {/* DESTINATION SUMMARY CARD */}
-            <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden">
-              <div className="bg-muted border-b border-border p-4 flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-info/10 text-info font-mono text-xs font-bold">
-                    {activeDestination.id.substring(activeDestination.id.length - 2)}
+            {/* Hero header card */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card border border-border rounded-md px-6 py-5 shadow-xs">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-muted border border-border text-info flex items-center justify-center font-mono font-bold text-lg shadow-inner shrink-0">
+                  {activeDestination.id.substring(activeDestination.id.length - 2)}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      System ID: {activeDestination.id}
+                    </span>
+                    <StatusBadge status={activeDestination.status} className="rounded-md" />
                   </div>
-                  <div>
-                    <h2 className="text-base font-bold text-foreground tracking-tight leading-none">
+                  <div className="flex flex-wrap items-center gap-2.5 mt-1">
+                    <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
                       {activeDestination.name}
-                    </h2>
-                    <span className="text-xs font-mono text-muted-foreground">
-                      SYSTEM ID: {activeDestination.id}
+                    </h1>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground bg-muted border border-border rounded-md px-2.5 py-1 select-none">
+                      <Building className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>{activeDestination.customerName}</span>
                     </span>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-2">
-                  <StatusBadge
-                    status={activeDestination.status}
-                    className="h-9 rounded-md px-2.5"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExportScope("individual-summary");
-                      setShowExportModal(true);
-                    }}
-                    className={`${DESTINATION_FORM_ACTION_CLASS} gap-1.5 border border-border bg-card px-3.5 text-foreground shadow-xs hover:bg-muted`}
-                    title="Export destination profile report"
-                  >
-                    <Download className="h-4 w-4 shrink-0" />
-                    <span>Export Profile</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEdit(activeDestination)}
-                    className={`${DESTINATION_FORM_ACTION_CLASS} gap-1.5 border border-primary bg-primary px-3.5 text-primary-foreground shadow-xs hover:bg-primary/90`}
-                  >
-                    <Edit className="h-4 w-4 shrink-0" />
-                    <span>Edit Destination</span>
-                  </button>
+              <div className="flex flex-wrap gap-2 self-start md:self-center items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExportScope("individual-summary");
+                    setShowExportModal(true);
+                  }}
+                  className={`${DESTINATION_FORM_ACTION_CLASS} gap-1.5 border border-border bg-card px-3.5 text-foreground shadow-xs hover:bg-muted`}
+                  title="Export destination profile report"
+                >
+                  <Download className="h-4 w-4 shrink-0" />
+                  <span>Export Profile</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(activeDestination)}
+                  className={`${DESTINATION_FORM_ACTION_CLASS} gap-1.5 border border-primary bg-primary px-3.5 text-primary-foreground shadow-xs hover:bg-primary/90`}
+                >
+                  <Edit className="h-4 w-4 shrink-0" />
+                  <span>Edit Destination</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Main grid: left metadata (4) + right address profile (8) */}
+            <div className="grid gap-6 lg:grid-cols-12 items-start">
+              <div className="lg:col-span-4 space-y-4">
+                <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-2">
+                    Destination Details
+                  </h3>
+                  <div className="space-y-4 text-sm text-foreground font-normal">
+                    <div className="flex items-start gap-2.5">
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Destination ID</div>
+                        <div className="font-mono font-bold text-foreground">{activeDestination.id}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Destination Name</div>
+                        <div className="font-bold text-foreground">{activeDestination.name}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <FileSpreadsheet className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Linked Job</div>
+                        <span className="inline-flex items-center font-mono font-bold text-foreground bg-muted border border-border px-1.5 py-0.5 rounded-sm text-xs mt-0.5">
+                          {activeDestination.jobId} (Ref: {activeDestination.jobRef})
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Building className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Customer</div>
+                        <div className="font-bold text-foreground">{activeDestination.customerName}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Phone className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Phone</div>
+                        <div className="font-mono font-semibold text-foreground">
+                          {activeDestination.phone || "N/A"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs text-muted-foreground font-semibold mb-0.5">Status</div>
+                        <StatusBadge status={activeDestination.status} className="mt-0.5 rounded-md" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-muted border border-border rounded-md p-4 text-xs space-y-2">
+                  <span className="font-bold text-foreground block uppercase tracking-wider text-xs">
+                    Site Snapshot
+                  </span>
+                  <div className="space-y-1.5 font-medium">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Linked Transactions:</span>
+                      <span className="text-foreground font-mono font-bold">{linkedTransactions.length}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Linked Jobs:</span>
+                      <span className="text-foreground font-mono font-bold">{linkedJob ? 1 : 0}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Site State:</span>
+                      <span className={activeDestination.status === "Active" ? "text-success font-bold" : "text-destructive font-bold"}>
+                        {activeDestination.status === "Active" ? "Operational" : activeDestination.status}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Destination Details */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5 border-b border-border pb-1.5">
-                    <Building className="h-3.5 w-3.5 text-info shrink-0" />
-                    <span>Destination Details</span>
-                  </h4>
-                  <div className="space-y-2 text-xs">
-                    <div>
-                      <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wide">Destination ID</span>
-                      <span className="font-mono font-bold text-info">{activeDestination.id}</span>
-                    </div>
-                    <div>
-                      <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wide">Destination Name</span>
-                      <span className="font-bold text-foreground">{activeDestination.name}</span>
-                    </div>
-                    <div>
-                      <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wide">Linked Job</span>
-                      <span className="inline-flex items-center gap-1 bg-muted font-mono font-bold text-foreground px-1.5 py-0.5 rounded text-xs mt-0.5">
-                        {activeDestination.jobId} (Ref: {activeDestination.jobRef})
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wide">Customer</span>
-                      <span className="font-semibold text-foreground">{activeDestination.customerName}</span>
-                    </div>
-                    <div>
-                      <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wide">Phone</span>
-                      <span className="font-mono font-semibold text-foreground">
-                        {activeDestination.phone || <span className="text-muted-foreground">N/A</span>}
-                      </span>
-                    </div>
+              <div className="lg:col-span-8 bg-card border border-border rounded-md shadow-xs overflow-hidden">
+                <div className="p-6 space-y-6 text-sm leading-relaxed text-foreground min-h-[360px]">
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+                      Address & Logistics Profile
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Registered dump location locality and operational notes for weighbridge dispatch.
+                    </p>
                   </div>
-                </div>
 
-                {/* Address Details */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5 border-b border-border pb-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-success shrink-0" />
-                    <span>Address Details</span>
-                  </h4>
-                  <div className="space-y-2 text-xs">
-                    <div>
-                      <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wide">Address Line 1</span>
-                      <span className="font-semibold text-foreground">{activeDestination.addressLine1}</span>
-                    </div>
-                    <div>
-                      <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wide">Address Line 2</span>
-                      <span className="font-semibold text-foreground">
-                        {activeDestination.addressLine2 || <span className="text-muted-foreground">N/A</span>}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="col-span-1">
-                        <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wide">Suburb</span>
-                        <span className="font-bold text-foreground">{activeDestination.suburb}</span>
+                  <div className="rounded-md border border-info/25 bg-info/10 p-5 space-y-4">
+                    <h4 className="text-xs font-bold text-info uppercase tracking-widest flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      Address Details
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Address Line 1</div>
+                        <div className="text-sm font-bold text-foreground mt-0.5">{activeDestination.addressLine1}</div>
                       </div>
-                      <div className="col-span-1">
-                        <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wide">State</span>
-                        <span className="font-bold text-foreground">{activeDestination.state}</span>
+                      <div>
+                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Address Line 2</div>
+                        <div className="text-sm font-semibold text-foreground mt-0.5">
+                          {activeDestination.addressLine2 || "N/A"}
+                        </div>
                       </div>
-                      <div className="col-span-1">
-                        <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wide">Postcode</span>
-                        <span className="font-mono font-bold text-foreground">{activeDestination.postcode}</span>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Suburb</div>
+                          <div className="text-sm font-semibold text-foreground mt-0.5">{activeDestination.suburb}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">State</div>
+                          <div className="text-sm font-semibold text-foreground mt-0.5">{activeDestination.state}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Postcode</div>
+                          <div className="text-sm font-mono font-bold text-foreground mt-0.5">{activeDestination.postcode}</div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Notes Column */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5 border-b border-border pb-1.5">
-                    <FileText className="h-3.5 w-3.5 text-warning shrink-0" />
-                    <span>Notes</span>
-                  </h4>
-                  <div className="bg-muted border border-border rounded-md p-3 text-xs font-medium text-muted-foreground leading-relaxed min-h-[100px]">
-                    {activeDestination.notes || "No special logistics notes configured."}
+                  <div>
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
+                      Site Notes
+                    </h4>
+                    <div className="p-4 rounded-md bg-warning/10 border border-warning/30 text-xs font-medium italic text-warning">
+                      &ldquo;{activeDestination.notes || "No special logistics notes configured."}&rdquo;
+                    </div>
                   </div>
                 </div>
               </div>

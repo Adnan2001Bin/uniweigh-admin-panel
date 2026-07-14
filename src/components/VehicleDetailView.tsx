@@ -23,7 +23,11 @@ import {
 } from "lucide-react";
 import { Carrier, Vehicle, Transaction, TransactionStatus, AxleSet } from "../types";
 import { toast } from "sonner";
+import StatusBadge from "@/src/components/shared/StatusBadge";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
+
+const VEHICLE_DETAIL_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-md text-xs font-bold transition cursor-pointer shadow-xs";
 
 interface VehicleDetailViewProps {
   plateNumber: string;
@@ -358,274 +362,289 @@ export default function VehicleDetailView({
 
   return (
     <div className="space-y-6">
-      {/* Back Button & Main Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
+      {/* Return Navigation + Export */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="group inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-info transition bg-card border border-border rounded-md px-3.5 py-2 shadow-xs cursor-pointer"
+          title="Return to vehicles ledger list"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          <span>Back to Vehicles List</span>
+        </button>
+
+        <div className="relative self-start sm:self-auto">
           <button
-            onClick={onBack}
-            className="group rounded-md border border-border bg-card hover:bg-muted p-2 text-foreground transition active:scale-95 cursor-pointer select-none"
-            title="Return to vehicles ledger list"
+            type="button"
+            onClick={() => setIsExportOpen(!isExportOpen)}
+            className={`${VEHICLE_DETAIL_ACTION_CLASS} gap-1.5 border border-border bg-card px-3.5 text-foreground hover:bg-muted`}
           >
-            <ArrowLeft className="h-4.5 w-4.5 group-hover:-translate-x-0.5 transition-transform" />
+            <Download className="h-4 w-4 shrink-0" />
+            <span>Export Options</span>
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
+
+          {isExportOpen && (
+            <div className="absolute right-0 mt-1.5 w-56 bg-card border border-border rounded-md shadow-lg py-2 z-20 text-xs font-bold">
+              <div className="px-3 py-1 text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-border mb-1">
+                Export Summary Card
+              </div>
+              <button
+                onClick={() => handleExportIndividualSummary("CSV")}
+                className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2"
+              >
+                Export Specs to CSV
+              </button>
+              <button
+                onClick={() => handleExportIndividualSummary("PDF")}
+                className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2"
+              >
+                Print Specs Sheet (PDF)
+              </button>
+
+              {isMultiaxel && (
+                <>
+                  <div className="px-3 py-1 text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-t border-border my-1">
+                    Export Axle Sets Config
+                  </div>
+                  <button
+                    onClick={() => handleExportAxleSets("CSV")}
+                    className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2"
+                  >
+                    Export Axles to CSV
+                  </button>
+                  <button
+                    onClick={() => handleExportAxleSets("PDF")}
+                    className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2"
+                  >
+                    Print Axles Config (PDF)
+                  </button>
+                </>
+              )}
+
+              <div className="px-3 py-1 text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-t border-border my-1">
+                Export Transaction List
+              </div>
+              <button
+                onClick={() => handleExportTransactions("CSV")}
+                className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2 disabled:opacity-50"
+                disabled={linkedTransactions.length === 0}
+              >
+                Export Transactions (CSV)
+              </button>
+              <button
+                onClick={() => handleExportTransactions("PDF")}
+                className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2 disabled:opacity-50"
+                disabled={linkedTransactions.length === 0}
+              >
+                Print Transactions PDF (PDF)
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Hero header card */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card border border-border rounded-md px-6 py-5 shadow-xs">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-full bg-muted border border-border text-info flex items-center justify-center shadow-inner shrink-0">
+            <Truck className="h-6 w-6" />
+          </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="bg-info/10 text-info text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-info/25">
-                {vehicle.id || "VEH-N/A"}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Vehicle ID: {vehicle.id || "VEH-N/A"}
               </span>
-              <h1 className="text-xl font-bold text-foreground tracking-tight sm:text-2xl">
-                {vehicle.name || "N/A"}
-              </h1>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
-                isMultiaxel 
-                  ? "bg-info/10 text-info border border-info/25" 
-                  : "bg-info/10 text-info border border-info/25"
-              }`}>
+              <StatusBadge status={vehicle.status} className="rounded-md" />
+              <span className="inline-flex items-center rounded-md border border-info/25 bg-info/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-info">
                 {vehicle.category || "Standard"}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground font-bold mt-0.5">
-              Registration: <span className="font-mono text-foreground">{vehicle.plateNumber}</span> &bull; Carter: <span className="text-foreground">{vehicle.carrierName}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center gap-2">
-          {/* Individual Export Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setIsExportOpen(!isExportOpen)}
-              className="rounded-md border border-border bg-card hover:bg-muted px-4 py-2 text-xs font-bold text-foreground transition flex items-center gap-1.5 select-none cursor-pointer"
-            >
-              <Download className="h-4 w-4 text-muted-foreground" />
-              Export Options
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
-
-            {isExportOpen && (
-              <div className="absolute right-0 mt-1.5 w-56 bg-card border border-border rounded-md shadow-lg py-2 z-20 text-xs font-bold">
-                <div className="px-3 py-1 text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-border mb-1">
-                  Export Summary Card
-                </div>
-                <button
-                  onClick={() => handleExportIndividualSummary("CSV")}
-                  className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2"
-                >
-                  Export Specs to CSV
-                </button>
-                <button
-                  onClick={() => handleExportIndividualSummary("PDF")}
-                  className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2"
-                >
-                  Print Specs Sheet (PDF)
-                </button>
-
-                {isMultiaxel && (
-                  <>
-                    <div className="px-3 py-1 text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-t border-border my-1">
-                      Export Axle Sets Config
-                    </div>
-                    <button
-                      onClick={() => handleExportAxleSets("CSV")}
-                      className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2"
-                    >
-                      Export Axles to CSV
-                    </button>
-                    <button
-                      onClick={() => handleExportAxleSets("PDF")}
-                      className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2"
-                    >
-                      Print Axles Config (PDF)
-                    </button>
-                  </>
-                )}
-
-                <div className="px-3 py-1 text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-t border-border my-1">
-                  Export Transaction List
-                </div>
-                <button
-                  onClick={() => handleExportTransactions("CSV")}
-                  className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2 disabled:opacity-50"
-                  disabled={linkedTransactions.length === 0}
-                >
-                  Export Transactions (CSV)
-                </button>
-                <button
-                  onClick={() => handleExportTransactions("PDF")}
-                  className="w-full text-left px-3.5 py-1.5 hover:bg-muted text-foreground flex items-center gap-2 disabled:opacity-50"
-                  disabled={linkedTransactions.length === 0}
-                >
-                  Print Transactions PDF (PDF)
-                </button>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2.5 mt-1">
+              <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
+                {vehicle.name || "N/A"}
+              </h1>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground bg-muted border border-border rounded-md px-2.5 py-1 select-none font-mono">
+                {vehicle.plateNumber}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* TOP: Vehicle Summary Card */}
-      <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden">
-        {/* Card Header Banner */}
-        <div className="px-6 py-4 border-b border-border bg-muted flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Truck className="h-5 w-5 text-info shrink-0" />
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Vehicle Spec Matrix Summary
-            </span>
+      {/* Main grid: left metadata (4) + right weight/compliance profile (8) */}
+      <div className="grid gap-6 lg:grid-cols-12 items-start">
+        <div className="lg:col-span-4 space-y-4">
+          <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-4">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-2">
+              Vehicle Details
+            </h3>
+            <div className="space-y-4 text-sm text-foreground font-normal">
+              <div className="flex items-start gap-2.5">
+                <Truck className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Vehicle ID</div>
+                  <div className="font-mono font-bold text-foreground">{vehicle.id || "N/A"}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Layers className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Category</div>
+                  <div className="font-bold text-info uppercase tracking-wider">{vehicle.category || "Standard"}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Vehicle Name</div>
+                  <div className="font-bold text-foreground">{vehicle.name || "N/A"}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <CheckCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Registration Plate</div>
+                  <div className="font-mono font-bold text-foreground">{vehicle.plateNumber}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Building className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Carter Partner</div>
+                  <div className="font-bold text-foreground">{vehicle.carrierName}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Truck className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Vehicle Type</div>
+                  <div className="font-semibold text-foreground">{vehicle.vehicleType}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Make and Model</div>
+                  <div className="font-semibold text-foreground">{vehicle.makeModel || "N/A"}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-muted-foreground font-semibold mb-0.5">Status</div>
+                  <StatusBadge status={vehicle.status} className="mt-0.5 rounded-md" />
+                </div>
+              </div>
+            </div>
           </div>
-          <span
-            className={`rounded px-2.5 py-0.5 text-xs font-bold border uppercase tracking-widest ${
-              vehicle.status === "Active"
-                ? "bg-success/10 text-success border-success/25"
-                : "bg-destructive/10 text-destructive border-destructive/25"
-            }`}
-          >
-            {vehicle.status}
-          </span>
+
+          <div className="bg-muted border border-border rounded-md p-4 text-xs space-y-2">
+            <span className="font-bold text-foreground block uppercase tracking-wider text-xs">
+              Fleet Snapshot
+            </span>
+            <div className="space-y-1.5 font-medium">
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Linked Transactions:</span>
+                <span className="text-foreground font-mono font-bold">{linkedTransactions.length}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Last Tare Calibration:</span>
+                <span className="text-foreground font-mono font-bold">{vehicle.lastTareDate || "Unknown"}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Vehicle State:</span>
+                <span className={vehicle.status === "Active" ? "text-success font-bold" : "text-destructive font-bold"}>
+                  {vehicle.status === "Active" ? "Operational" : vehicle.status}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Spec Information Details */}
-        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
-          {/* Group 1: Identity Specs */}
-          <div className="space-y-3 border-r border-border pr-4 last:border-0 last:pr-0">
-            <h4 className="text-xs font-bold text-info uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-border">
-              Vehicle Details
-            </h4>
-            <div className="space-y-2.5">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground font-bold">Vehicle ID:</span>
-                <span className="font-bold font-mono text-foreground">{vehicle.id || "N/A"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground font-bold">Category:</span>
-                <span className="font-bold text-info uppercase tracking-wider">{vehicle.category || "Standard"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground font-bold">Vehicle Name:</span>
-                <span className="font-bold text-foreground">{vehicle.name || "N/A"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground font-bold">Registration Plate:</span>
-                <span className="font-bold font-mono text-foreground bg-muted px-1.5 py-0.25 rounded border border-border">
-                  {vehicle.plateNumber}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground font-bold">Carter Partner:</span>
-                <span className="font-bold text-foreground underline decoration-dotted">
-                  {vehicle.carrierName}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground font-bold">Vehicle Type:</span>
-                <span className="font-bold text-foreground">{vehicle.vehicleType}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground font-bold">Make and Model:</span>
-                <span className="font-bold text-foreground">{vehicle.makeModel || "N/A"}</span>
-              </div>
+        <div className="lg:col-span-8 bg-card border border-border rounded-md shadow-xs overflow-hidden">
+          <div className="p-6 space-y-6 text-sm leading-relaxed text-foreground min-h-[360px]">
+            <div>
+              <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+                Weight Limits & Compliance Profile
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Legal-for-trade tare and max weight parameters applied during weighbridge validation for this plate.
+              </p>
             </div>
-          </div>
 
-          {/* Group 2: Weight Verification Metrics */}
-          <div className="space-y-3 border-r border-border pr-4 last:border-0 last:pr-0">
-            <h4 className="text-xs font-bold text-info uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-border">
-              Weight Details & Limits
-            </h4>
-            <div className="space-y-2.5">
+            <div className="rounded-md border border-info/25 bg-info/10 p-5 space-y-4">
+              <h4 className="text-xs font-bold text-info uppercase tracking-widest flex items-center gap-1">
+                <Scale className="h-3.5 w-3.5" />
+                Weight Details & Limits
+              </h4>
+
               {!isMultiaxel ? (
-                /* Standard Vehicle Weights */
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground font-bold flex items-center gap-1">
-                      <Scale className="h-3.5 w-3.5 text-muted-foreground" />
-                      Tare Weight:
-                    </span>
-                    <span className="font-bold font-mono text-foreground bg-muted border border-border px-2 py-0.5 rounded text-sm">
-                      {tareWeight.toFixed(2)} t
-                    </span>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tare Weight</div>
+                      <div className="text-lg font-bold font-mono text-foreground mt-1">{tareWeight.toFixed(2)} t</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Weight Max</div>
+                      <div className="text-lg font-bold font-mono text-info mt-1">{weightMax.toFixed(2)} t</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Variance Tolerance</div>
+                      <div className="text-lg font-bold font-mono text-warning mt-1">&plusmn; {variance.toFixed(2)} t</div>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground font-bold flex items-center gap-1">
-                      <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                      Weight Max:
-                    </span>
-                    <span className="font-bold font-mono text-foreground bg-info/10 border border-info/25 px-2 py-0.5 rounded text-sm">
-                      {weightMax.toFixed(2)} t
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground font-bold flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      Variance Tolerance:
-                    </span>
-                    <span className="font-bold font-mono text-warning bg-warning/10 border border-warning/30 px-2 py-0.5 rounded text-sm">
-                      &plusmn; {variance.toFixed(2)} t
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-[10.5px]">
-                    <span className="text-muted-foreground font-bold">Permissible Margin:</span>
-                    <span className="font-bold text-muted-foreground font-mono">
+                  <div className="border-t border-info/25 pt-4">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Permissible Margin</div>
+                    <div className="text-sm font-mono font-bold text-foreground mt-0.5">
                       {(weightMax - variance).toFixed(2)}t &mdash; {(weightMax + variance).toFixed(2)}t
-                    </span>
+                    </div>
                   </div>
-                </>
+                </div>
               ) : (
-                /* Multiaxel Vehicle Weights */
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground font-bold">Weighed As:</span>
-                    <span className="font-bold text-info">{vehicle.weighedAs || "Weighed as Whole"}</span>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Weighed As</div>
+                      <div className="text-sm font-bold text-info mt-1">{vehicle.weighedAs || "Weighed as Whole"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Combined Tare</div>
+                      <div className="text-lg font-bold font-mono text-foreground mt-1">{tareWeight.toFixed(2)} t</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gross Maximum</div>
+                      <div className="text-lg font-bold font-mono text-info mt-1">{weightMax.toFixed(2)} t</div>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground font-bold flex items-center gap-1">
-                      <Scale className="h-3.5 w-3.5 text-muted-foreground" />
-                      Combined Tare:
-                    </span>
-                    <span className="font-bold font-mono text-foreground bg-muted border border-border px-2 py-0.5 rounded text-sm">
-                      {tareWeight.toFixed(2)} t
-                    </span>
+                  <div className="border-t border-info/25 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Axle Sets Count</div>
+                      <div className="text-sm font-mono font-bold text-foreground mt-0.5">{vehicle.axleSets?.length || 0} Sets</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Combined Tare Mode</div>
+                      <div className="text-sm font-bold text-foreground mt-0.5">
+                        {vehicle.enableCombinedTare ? "ON (Automatic)" : "OFF (Manual)"}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground font-bold flex items-center gap-1">
-                      <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                      Gross Maximum:
-                    </span>
-                    <span className="font-bold font-mono text-foreground bg-info/10 border border-info/25 px-2 py-0.5 rounded text-sm">
-                      {weightMax.toFixed(2)} t
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground font-bold">Axle Sets Count:</span>
-                    <span className="font-bold text-foreground font-mono">{vehicle.axleSets?.length || 0} Sets</span>
-                  </div>
-                  <div className="p-2 bg-info/10 border border-info/25 rounded text-[10.5px] text-info font-bold">
-                    Combined Tare is sum: {vehicle.enableCombinedTare ? "ON (Automatic)" : "OFF (Manual)"}
-                  </div>
-                </>
+                </div>
               )}
             </div>
-          </div>
 
-          {/* Group 3: Operator Notes and Logs */}
-          <div className="space-y-3 pr-4">
-            <h4 className="text-xs font-bold text-info uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-border">
-              Compliance Notes
-            </h4>
-            <div className="space-y-2 bg-muted p-3 rounded-md border border-border h-28 overflow-y-auto">
-              {vehicle.notes ? (
-                <p className="font-bold text-muted-foreground leading-relaxed text-xs">
-                  {vehicle.notes}
-                </p>
-              ) : (
-                <p className="font-semibold text-muted-foreground italic">
-                  No additional special operational or routing compliance notes registered for this hauling plate.
-                </p>
-              )}
-            </div>
-            <div className="text-[9.5px] text-muted-foreground font-bold">
-              Last Tare calibration: <span className="font-mono text-muted-foreground">{vehicle.lastTareDate || "Unknown"}</span>
+            <div>
+              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">
+                Compliance Notes
+              </h4>
+              <div className="p-4 rounded-md bg-warning/10 border border-warning/30 text-xs font-medium italic text-warning">
+                &ldquo;{vehicle.notes || "No additional special operational or routing compliance notes registered for this hauling plate."}&rdquo;
+              </div>
+              <span className="text-xs text-muted-foreground block mt-2">
+                Last Tare calibration: <span className="font-mono font-bold">{vehicle.lastTareDate || "Unknown"}</span>
+              </span>
             </div>
           </div>
         </div>
