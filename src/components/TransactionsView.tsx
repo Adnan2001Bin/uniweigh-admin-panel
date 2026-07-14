@@ -687,7 +687,6 @@ export default function TransactionsView({
           "Pending",
           "Approved",
           "Cancelled",
-          "Committed",
           "Invoiced"
         ].map((chip) => {
           const isActive = activeChip === chip;
