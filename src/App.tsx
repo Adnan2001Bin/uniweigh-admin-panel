@@ -36,7 +36,7 @@ import {
 } from "./data";
 import { INITIAL_JOBS } from "./data_jobs";
 import { Transaction, Product, Customer, Site, Job, ProductLot, Carrier, Driver, Vehicle, DocketConfig, AdminUser } from "./types";
-import { canAccessView, canEnterClerkMode, canAccessAdminPanel, getDefaultViewForRole, isOperatorRole, shouldStartInClerkMode } from "./lib/role-access";
+import { canAccessView, canEnterClerkMode, canAccessAdminPanel, getDefaultViewForRole, isOperatorRole, shouldStartInClerkMode, getVisibleSites } from "./lib/role-access";
 import { loadTextSize, saveTextSize, type TextSize } from "./lib/text-size";
 
 
@@ -361,24 +361,26 @@ export default function App() {
 
   // Handle site selection fallback when active developer lock constraints or site lock states change
   useEffect(() => {
+    const visibleSites = getVisibleSites(sites);
+
     if (selectedSite === "All Sites") {
-      const fallbackSite = sites.find((s, idx) => idx < siteLimit && s.status === "Active") ?? sites[0];
+      const fallbackSite =
+        visibleSites.find((s, idx) => idx < siteLimit && s.status === "Active") ?? visibleSites[0];
       if (fallbackSite) setSelectedSite(fallbackSite.name);
       return;
     }
 
-    const currentIdx = sites.findIndex((s) => s.name === selectedSite);
-    const currentObj = sites[currentIdx];
+    const currentIdx = visibleSites.findIndex((s) => s.name === selectedSite);
+    const currentObj = visibleSites[currentIdx];
     const isRestrictedByLimit = currentIdx >= siteLimit;
     const isLockedOrMaint = currentObj && currentObj.status !== "Active";
 
     if (currentIdx === -1 || isRestrictedByLimit || isLockedOrMaint) {
-      // Find the first operational site under the current limit to act as fallback
-      const fallbackSite = sites.find((s, idx) => idx < siteLimit && s.status === "Active");
+      const fallbackSite = visibleSites.find((s, idx) => idx < siteLimit && s.status === "Active");
       if (fallbackSite) {
         setSelectedSite(fallbackSite.name);
-      } else if (sites[0]) {
-        setSelectedSite(sites[0].name);
+      } else if (visibleSites[0]) {
+        setSelectedSite(visibleSites[0].name);
       }
     }
   }, [sites, siteLimit, selectedSite]);

@@ -1,6 +1,4 @@
-export type AppRole = "Administrator" | "Weighbridge Operator" | "Billing Auditor";
-
-const ADMIN_VIEWS = "all" as const;
+export type AppRole = "Administrator" | "Developer" | "Weighbridge Operator" | "Billing Auditor";
 
 const OPERATOR_VIEWS = new Set([
   "dashboard",
@@ -26,8 +24,33 @@ const OPERATOR_SECTIONS = new Set(["operations"]);
 const AUDITOR_SECTIONS = new Set(["operations", "reports"]);
 
 export function normalizeRole(role: string): AppRole {
-  if (role === "Weighbridge Operator" || role === "Billing Auditor") return role;
+  if (
+    role === "Developer" ||
+    role === "Weighbridge Operator" ||
+    role === "Billing Auditor"
+  ) {
+    return role;
+  }
   return "Administrator";
+}
+
+/** Full admin-panel access (Administrator and Developer). */
+export function isAdminLikeRole(role: string): boolean {
+  const normalized = normalizeRole(role);
+  return normalized === "Administrator" || normalized === "Developer";
+}
+
+export function isDeveloperRole(role: string): boolean {
+  return normalizeRole(role) === "Developer";
+}
+
+/** Sites that appear in the header selector and elsewhere in the app. */
+export function isOperationalSiteStatus(status: string): boolean {
+  return status !== "PendingApproval" && status !== "Inactive";
+}
+
+export function getVisibleSites<T extends { status: string }>(sites: T[]): T[] {
+  return sites.filter((site) => isOperationalSiteStatus(site.status));
 }
 
 export function isOperatorRole(role: string): boolean {
@@ -48,21 +71,21 @@ export function getDefaultViewForRole(role: string): string {
 
 export function canAccessView(role: string, viewId: string): boolean {
   const normalized = normalizeRole(role);
-  if (normalized === "Administrator") return true;
+  if (isAdminLikeRole(normalized)) return true;
   if (normalized === "Weighbridge Operator") return OPERATOR_VIEWS.has(viewId);
   return AUDITOR_VIEWS.has(viewId);
 }
 
 export function canAccessSidebarSection(role: string, sectionId: string): boolean {
   const normalized = normalizeRole(role);
-  if (normalized === "Administrator") return true;
+  if (isAdminLikeRole(normalized)) return true;
   if (normalized === "Weighbridge Operator") return OPERATOR_SECTIONS.has(sectionId);
   return AUDITOR_SECTIONS.has(sectionId);
 }
 
 export function canEnterClerkMode(role: string): boolean {
   const normalized = normalizeRole(role);
-  return normalized === "Administrator" || normalized === "Weighbridge Operator";
+  return isAdminLikeRole(normalized) || normalized === "Weighbridge Operator";
 }
 
 export function getRoleDashboardCopy(role: string): { title: string; description: string } {
@@ -77,6 +100,12 @@ export function getRoleDashboardCopy(role: string): { title: string; description
     return {
       title: "Billing & Audit Console",
       description: "Review approved tickets, export reports, and manage invoicing queues."
+    };
+  }
+  if (normalized === "Developer") {
+    return {
+      title: "Developer Console",
+      description: "Full system access for configuration, diagnostics, and back-office operations."
     };
   }
   return {

@@ -195,7 +195,7 @@ export interface AdminUser {
 export interface Site {
   id: string;
   name: string;
-  status: "Active" | "Locked" | "Maintenance";
+  status: "Active" | "Locked" | "Maintenance" | "PendingApproval" | "Inactive";
   scaleCount: number;
   operatorName: string;
 }

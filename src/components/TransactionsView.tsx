@@ -81,6 +81,11 @@ export default function TransactionsView({
   // Row selection checkboxes state for Exporting
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  // Clear checkbox selection whenever the category filter changes
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [activeChip]);
+
   // Bulk actions states
   const [showBulkCommentModal, setShowBulkCommentModal] = useState<boolean>(false);
   const [bulkCommentText, setBulkCommentText] = useState<string>("");

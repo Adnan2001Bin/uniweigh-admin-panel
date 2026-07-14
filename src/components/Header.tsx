@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/src/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { TEXT_SIZE_OPTIONS, type TextSize } from "@/src/lib/text-size";
+import { getVisibleSites } from "@/src/lib/role-access";
 
 interface HeaderProps {
   adminUser: AdminUser;
@@ -64,6 +65,7 @@ export default function Header({
 }: HeaderProps) {
   const [showSiteDropdown, setShowSiteDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const visibleSites = getVisibleSites(sites);
 
   const [notifications, setNotifications] = useState([
     {
@@ -162,15 +164,15 @@ export default function Header({
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Site Scale Operations
               </div>
-              {siteLimit < sites.length && (
+              {siteLimit < visibleSites.length && (
                 <div className="text-xs text-warning font-semibold flex items-center gap-1 mt-0.5">
                   <Lock className="h-3 w-3 shrink-0" />
-                  <span>Developer Access Locked ({siteLimit} of {sites.length} sites active)</span>
+                  <span>Developer Access Locked ({siteLimit} of {visibleSites.length} sites active)</span>
                 </div>
               )}
             </div>
 
-            {sites.map((site, index) => {
+            {visibleSites.map((site, index) => {
               const isLocked = site.status === "Locked";
               const isMaintenance = site.status === "Maintenance";
               const isRestrictedByLimit = index >= siteLimit;

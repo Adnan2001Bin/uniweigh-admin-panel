@@ -893,6 +893,12 @@ export const DEMO_LOGIN_ACCOUNTS: DemoLoginAccount[] = [
     password: "admin123"
   },
   {
+    role: "Developer",
+    name: "Dev User",
+    email: "dev.user@uniweigh.com",
+    password: "developer123"
+  },
+  {
     role: "Weighbridge Operator",
     name: "John Davis",
     email: "john.davis@uniweigh.com",
@@ -912,13 +918,15 @@ export function authenticateDemoUser(email: string, password: string): AdminUser
   );
   if (!account) return null;
 
+  const roleIds: Record<string, string> = {
+    Administrator: "AD-01",
+    Developer: "DV-01",
+    "Weighbridge Operator": "OP-01",
+    "Billing Auditor": "AU-01"
+  };
+
   return {
-    id:
-      account.role === "Administrator"
-        ? "AD-01"
-        : account.role === "Weighbridge Operator"
-        ? "OP-01"
-        : "AU-01",
+    id: roleIds[account.role] ?? "AD-01",
     name: account.name,
     role: account.role,
     email: account.email,
@@ -930,6 +938,7 @@ export function authenticateDemoUser(email: string, password: string): AdminUser
 
 export const MOCK_ROLES = [
   { name: "Administrator", description: "Full system administration access, user setup, database configuration, locking override, billing triggers.", usersCount: 2 },
+  { name: "Developer", description: "Full system access equivalent to Administrator, plus authority to approve new weighbridge sites for operational use.", usersCount: 1 },
   { name: "Weighbridge Operator", description: "Add transactions, weigh trucks on scale entry and exit, visual logs lookup.", usersCount: 8 },
   { name: "Billing Auditor", description: "Export CSV files, review approved tickets, transition to invoicing queues.", usersCount: 3 }
 ];

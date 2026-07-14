@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Lock, Mail, ShieldCheck, Scale, ClipboardCheck, ArrowRight } from "lucide-react";
+import { Lock, Mail, ShieldCheck, Scale, ClipboardCheck, Code2, ArrowRight } from "lucide-react";
 import { AdminUser } from "../types";
 import { DEMO_LOGIN_ACCOUNTS, authenticateDemoUser } from "../data";
 import { Input } from "@/src/components/ui/input";
@@ -39,6 +39,7 @@ export default function LoginView({ onLogin }: LoginViewProps) {
 
   const roleIcon = (role: string) => {
     if (role === "Administrator") return ShieldCheck;
+    if (role === "Developer") return Code2;
     if (role === "Weighbridge Operator") return Scale;
     return ClipboardCheck;
   };
@@ -62,7 +63,7 @@ export default function LoginView({ onLogin }: LoginViewProps) {
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-foreground">Sign in to UniWeigh</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Administrators and auditors access the admin panel. Weighbridge operators sign in to the clerk terminal only.
+              Administrators, developers, and auditors access the admin panel. Weighbridge operators sign in to the clerk terminal only.
             </p>
           </div>
 

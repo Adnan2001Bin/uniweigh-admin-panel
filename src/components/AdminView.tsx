@@ -10,7 +10,6 @@ import {
   Wrench,
   Plus,
   UserPlus,
-  Trash,
   Edit3,
   Lock,
   ShieldCheck,
@@ -25,9 +24,9 @@ import {
 import { AdminUser, Site, DocketConfig } from "../types";
 import { MOCK_ROLES, INITIAL_TRANSACTIONS } from "../data";
 import { toast } from "sonner";
-import { confirmDialog } from "@/src/components/shared/dialog-service";
 import { SelectBox } from "@/src/components/ui/select";
 import { Checkbox } from "@/src/components/ui/checkbox";
+import { isDeveloperRole, getVisibleSites } from "@/src/lib/role-access";
 import { readDocketLogo, hasDocketLogo } from "@/src/lib/docket-logo";
 import { buildDeliveryDocketHtml } from "@/src/lib/delivery-docket";
 import { getPreviewIframeHeight } from "@/src/lib/print-preview";
@@ -48,6 +47,7 @@ const INITIAL_BACK_OFFICE_OPERATORS: BackOfficeOperator[] = [
   { id: "op-2", name: "Sarah JenkinsK", email: "sarah.k@uniweigh.com", role: "Weighbridge Operator", station: "Bayside Coastal Sands", active: "Scale-C1 active" },
   { id: "op-3", name: "Steve G", email: "steve.g@uniweigh.com", role: "Weighbridge Operator", station: "Western Eco-Recycling Depot", active: "Idle" },
   { id: "op-4", name: "Admin User", email: "admin.user@uniweigh.com", role: "Administrator", station: "HQ Corporate Services", active: "System config active" },
+  { id: "op-5", name: "Dev User", email: "dev.user@uniweigh.com", role: "Developer", station: "HQ Corporate Services", active: "System config active" },
 ];
 
 interface AdminViewProps {
@@ -170,7 +170,7 @@ export default function AdminView({
       email,
       role: newUserRole,
       station: newUserStation,
-      active: newUserRole === "Administrator" ? "System config active" : "Idle",
+      active: newUserRole === "Administrator" || newUserRole === "Developer" ? "System config active" : "Idle",
     };
 
     setOperators((prev) => [...prev, newOperator]);
@@ -203,6 +203,11 @@ export default function AdminView({
   };
 
   const mockBackOfficeUsers = operators;
+  const isDeveloper = isDeveloperRole(adminUser.role);
+  const visibleSitesForLimit = getVisibleSites(sites);
+  const visibleRoles = isDeveloper
+    ? MOCK_ROLES
+    : MOCK_ROLES.filter((role) => role.name !== "Developer");
 
   return (
     <div className="space-y-4">
@@ -319,7 +324,7 @@ export default function AdminView({
             <p className="text-xs text-muted-foreground mb-3">Role permissions defining weigh ticket adjustments and overrides:</p>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              {MOCK_ROLES.map((role, i) => (
+              {visibleRoles.map((role, i) => (
                 <div key={i} className="rounded-md border border-border p-4 space-y-3 shadow-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-bold text-foreground">{role.name}</span>
@@ -580,7 +585,9 @@ export default function AdminView({
                 </h3>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-3xl">
-                Configure concurrent site access restrictions to comply with site licensing limits. Restricting allowed sites locks all other quarry scale beds and restricts the active location selector in the header.
+                {isDeveloper
+                  ? "Configure concurrent site access restrictions to comply with site licensing limits. Restricting allowed sites locks all other quarry scale beds and restricts the active location selector in the header."
+                  : "View-only license status. Only a Developer can change the active site mode. The highlighted card shows the mode currently in effect."}
               </p>
 
               {/* Grid of Licensing Limit Options */}
@@ -588,15 +595,18 @@ export default function AdminView({
                 
                 {/* 1 Site Limit */}
                 <button
+                  type="button"
+                  disabled={!isDeveloper}
                   onClick={() => {
+                    if (!isDeveloper) return;
                     onUpdateSiteLimit(1);
                     toast.error("Developer System Lock updated: Access restricted to 1 Site only. Other weighbridge stations are locked.");
                   }}
-                  className={`flex flex-col text-left p-4 rounded-md border transition-all cursor-pointer ${
+                  className={`flex flex-col text-left p-4 rounded-md border transition-all ${
                     siteLimit === 1
                       ? "border-warning bg-warning/10 ring-2 ring-warning"
-                      : "border-border bg-card hover:border-input"
-                  }`}
+                      : "border-border bg-card"
+                  } ${isDeveloper ? "cursor-pointer hover:border-input" : "cursor-default opacity-90"}`}
                 >
                   <div className="flex items-center justify-between w-full mb-1">
                     <span className="text-xs font-bold text-foreground uppercase">Single Site Mode</span>
@@ -614,15 +624,18 @@ export default function AdminView({
 
                 {/* 2 Sites Limit */}
                 <button
+                  type="button"
+                  disabled={!isDeveloper}
                   onClick={() => {
+                    if (!isDeveloper) return;
                     onUpdateSiteLimit(2);
                     toast.error("Developer System Lock updated: Access restricted to 2 Sites only. Tertiary stations are locked.");
                   }}
-                  className={`flex flex-col text-left p-4 rounded-md border transition-all cursor-pointer ${
+                  className={`flex flex-col text-left p-4 rounded-md border transition-all ${
                     siteLimit === 2
                       ? "border-warning bg-warning/10 ring-2 ring-warning"
-                      : "border-border bg-card hover:border-input"
-                  }`}
+                      : "border-border bg-card"
+                  } ${isDeveloper ? "cursor-pointer hover:border-input" : "cursor-default opacity-90"}`}
                 >
                   <div className="flex items-center justify-between w-full mb-1">
                     <span className="text-xs font-bold text-foreground uppercase">Dual Site Mode</span>
@@ -640,19 +653,22 @@ export default function AdminView({
 
                 {/* Unlimited Limit */}
                 <button
+                  type="button"
+                  disabled={!isDeveloper}
                   onClick={() => {
+                    if (!isDeveloper) return;
                     onUpdateSiteLimit(99);
                     toast.success("Developer System Lock cleared: Unlimited access. All weighbridge sites operational.");
                   }}
-                  className={`flex flex-col text-left p-4 rounded-md border transition-all cursor-pointer ${
-                    siteLimit >= sites.length
+                  className={`flex flex-col text-left p-4 rounded-md border transition-all ${
+                    siteLimit >= visibleSitesForLimit.length
                       ? "border-success bg-success/10 ring-2 ring-success"
-                      : "border-border bg-card hover:border-input"
-                  }`}
+                      : "border-border bg-card"
+                  } ${isDeveloper ? "cursor-pointer hover:border-input" : "cursor-default opacity-90"}`}
                 >
                   <div className="flex items-center justify-between w-full mb-1">
                     <span className="text-xs font-bold text-foreground uppercase">Unlimited Enterprise</span>
-                    {siteLimit >= sites.length && (
+                    {siteLimit >= visibleSitesForLimit.length && (
                       <span className="inline-flex items-center rounded-full bg-success/10 text-success text-xs font-bold px-2 py-0.5">
                         No Lock
                       </span>
@@ -692,15 +708,18 @@ export default function AdminView({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border text-sm text-foreground">
-                    {sites.map((site, index) => {
-                      const isRestricted = index >= siteLimit;
+                    {sites.map((site) => {
+                      const visibleIndex = visibleSitesForLimit.findIndex((s) => s.id === site.id);
+                      const isPending = site.status === "PendingApproval";
+                      const isInactive = site.status === "Inactive";
+                      const isRestricted = !isPending && !isInactive && visibleIndex >= 0 && visibleIndex >= siteLimit;
                       const isEditing = editingSiteId === site.id;
 
                       return (
                         <tr
                           key={site.id}
                           className={`hover:bg-muted transition-colors ${
-                            isRestricted ? "bg-destructive/10 text-muted-foreground" : ""
+                            isRestricted || isInactive ? "bg-muted/60 text-muted-foreground" : ""
                           }`}
                         >
                           {/* Name field (supports editing) */}
@@ -722,7 +741,14 @@ export default function AdminView({
                               </div>
                             )}
                             <div className="font-mono text-xs text-muted-foreground mt-0.5">
-                              ID: {site.id} &bull; Position: Site #{index + 1}
+                              ID: {site.id}
+                              {!isPending && !isInactive && visibleIndex >= 0
+                                ? ` • Position: Site #${visibleIndex + 1}`
+                                : isPending
+                                ? " • Awaiting developer approval"
+                                : isInactive
+                                ? " • Hidden from all views"
+                                : ""}
                             </div>
                           </td>
 
@@ -751,7 +777,15 @@ export default function AdminView({
                           {/* Status and Locks */}
                           <td className="px-4 py-4">
                             <div className="flex flex-wrap gap-1.5">
-                              {isRestricted ? (
+                              {isPending ? (
+                                <span className="inline-flex items-center rounded-sm bg-warning/10 text-warning text-xs font-bold uppercase tracking-wider px-2 py-0.5 border border-warning/30">
+                                  Send for Approval
+                                </span>
+                              ) : isInactive ? (
+                                <span className="inline-flex items-center rounded-sm bg-muted text-muted-foreground text-xs font-bold uppercase tracking-wider px-2 py-0.5 border border-border">
+                                  Inactive
+                                </span>
+                              ) : isRestricted ? (
                                 <span className="inline-flex items-center rounded-sm bg-destructive/10 text-destructive text-xs font-bold uppercase tracking-wider px-2 py-0.5 border border-destructive/25">
                                   <Lock className="h-2.5 w-2.5 mr-1" />
                                   Access Locked
@@ -779,6 +813,7 @@ export default function AdminView({
                               {isEditing ? (
                                 <>
                                   <button
+                                    type="button"
                                     onClick={() => {
                                       if (!editingSiteName.trim()) {
                                         toast.error("Site name is required.");
@@ -803,6 +838,7 @@ export default function AdminView({
                                     <Save className="h-4 w-4" />
                                   </button>
                                   <button
+                                    type="button"
                                     onClick={() => setEditingSiteId(null)}
                                     className="p-1 rounded bg-muted text-muted-foreground hover:bg-secondary transition cursor-pointer"
                                     title="Cancel"
@@ -812,8 +848,8 @@ export default function AdminView({
                                 </>
                               ) : (
                                 <>
-                                  {/* Rename Edit Button */}
                                   <button
+                                    type="button"
                                     onClick={() => {
                                       setEditingSiteId(site.id);
                                       setEditingSiteName(site.name);
@@ -825,47 +861,91 @@ export default function AdminView({
                                     <Edit3 className="h-3.5 w-3.5" />
                                   </button>
 
-                                  {/* Toggle site lock/unlock */}
-                                  <button
-                                    onClick={() => {
-                                      const newStatus =
-                                        site.status === "Active"
-                                          ? "Locked"
-                                          : site.status === "Locked"
-                                          ? "Maintenance"
-                                          : "Active";
-                                      const updated = sites.map((s) =>
-                                        s.id === site.id ? { ...s, status: newStatus as any } : s
-                                      );
-                                      onUpdateSites(updated);
-                                    }}
-                                    className="rounded border border-border bg-card px-2 py-1 text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer"
-                                    title="Toggle operational states"
-                                  >
-                                    Cycle State
-                                  </button>
-
-                                  {/* Delete button */}
-                                  <button
-                                    onClick={async () => {
-                                      if (sites.length <= 1) {
-                                        toast.error("Error: Enterprise deployment must have at least 1 primary site.");
-                                        return;
-                                      }
-                                      if (
-                                        await confirmDialog(
-                                          `Are you sure you want to permanently delete the site "${site.name}"? This action is irreversible.`
-                                        )
-                                      ) {
-                                        const updated = sites.filter((s) => s.id !== site.id);
+                                  {isPending ? (
+                                    isDeveloper ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = sites.map((s) =>
+                                            s.id === site.id ? { ...s, status: "Active" as const } : s
+                                          );
+                                          onUpdateSites(updated);
+                                          toast.success(
+                                            `Site "${site.name}" approved. It is now operational and available everywhere.`
+                                          );
+                                        }}
+                                        className="rounded border border-success/25 bg-success/10 px-2 py-1 text-xs font-bold text-success hover:bg-success/10 transition cursor-pointer"
+                                        title="Approve site for operational use"
+                                      >
+                                        Approve
+                                      </button>
+                                    ) : (
+                                      <span className="text-xs font-medium text-muted-foreground px-1">
+                                        Awaiting developer
+                                      </span>
+                                    )
+                                  ) : isInactive ? null : (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newStatus =
+                                          site.status === "Active"
+                                            ? "Locked"
+                                            : site.status === "Locked"
+                                            ? "Maintenance"
+                                            : "Active";
+                                        const updated = sites.map((s) =>
+                                          s.id === site.id ? { ...s, status: newStatus } : s
+                                        );
                                         onUpdateSites(updated);
-                                      }
-                                    }}
-                                    className="p-1.5 rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
-                                    title="Delete site"
-                                  >
-                                    <Trash className="h-3.5 w-3.5" />
-                                  </button>
+                                      }}
+                                      className="rounded border border-border bg-card px-2 py-1 text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer"
+                                      title="Toggle operational states"
+                                    >
+                                      Cycle State
+                                    </button>
+                                  )}
+
+                                  {!isPending && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (isInactive) {
+                                          const updated = sites.map((s) =>
+                                            s.id === site.id ? { ...s, status: "Active" as const } : s
+                                          );
+                                          onUpdateSites(updated);
+                                          toast.success(
+                                            `Site "${site.name}" is active and available everywhere.`
+                                          );
+                                          return;
+                                        }
+
+                                        if (visibleSitesForLimit.length <= 1) {
+                                          toast.error(
+                                            "At least one active site must remain available across the platform."
+                                          );
+                                          return;
+                                        }
+
+                                        const updated = sites.map((s) =>
+                                          s.id === site.id ? { ...s, status: "Inactive" as const } : s
+                                        );
+                                        onUpdateSites(updated);
+                                        toast.info(
+                                          `Site "${site.name}" is inactive and hidden from all views.`
+                                        );
+                                      }}
+                                      className={`rounded border px-2 py-1 text-xs font-bold transition cursor-pointer ${
+                                        isInactive
+                                          ? "border-success/25 bg-success/10 text-success hover:bg-success/10"
+                                          : "border-border bg-card text-foreground hover:bg-muted"
+                                      }`}
+                                      title={isInactive ? "Set site active" : "Set site inactive"}
+                                    >
+                                      {isInactive ? "Set Active" : "Set Inactive"}
+                                    </button>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -887,7 +967,9 @@ export default function AdminView({
                     Register New Quarry Bed Site
                   </h4>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Instantly deploy a new weighbridge location point into the digital platform queue.
+                    {isDeveloper
+                      ? "Developer sites go operational immediately and appear in the location selector everywhere."
+                      : "Admin submissions are sent for developer approval. They will not appear elsewhere until approved."}
                   </p>
                 </div>
 
@@ -935,6 +1017,7 @@ export default function AdminView({
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => {
                         if (!newSiteName.trim()) {
                           toast.info("Please specify a site name.");
@@ -944,26 +1027,32 @@ export default function AdminView({
                           toast.info("Please select a scales count.");
                           return;
                         }
+                        const siteName = newSiteName.trim();
                         const newSiteObj: Site = {
                           id: `site-${Date.now().toString().slice(-4)}`,
-                          name: newSiteName.trim(),
-                          status: "Active",
+                          name: siteName,
+                          status: isDeveloper ? "Active" : "PendingApproval",
                           scaleCount: Number(newSiteScales),
                           operatorName: newSiteSupervisor.trim() || "Unassigned"
                         };
                         const updated = [...sites, newSiteObj];
                         onUpdateSites(updated);
-                        
-                        // Check and notify of potential lock conditions
-                        if (updated.length > siteLimit) {
-                          toast.error(
-                            `Site "${newSiteName}" registered successfully!\n\nNote: This site exceeds the active Developer access limit (${siteLimit} sites). It has been added but is currently LOCKED. Increase the allowed site limit inside the licensing dashboard above to unlock it.`
-                          );
+
+                        if (isDeveloper) {
+                          const visibleCount = getVisibleSites(updated).length;
+                          if (visibleCount > siteLimit) {
+                            toast.error(
+                              `Site "${siteName}" is operational, but exceeds the active Developer access limit (${siteLimit} sites). Increase the allowed site limit above to unlock it in the header.`
+                            );
+                          } else {
+                            toast.success(`Site "${siteName}" is now operational and available everywhere.`);
+                          }
                         } else {
-                          toast.info(`Site "${newSiteName}" is now active in the system!`);
+                          toast.info(
+                            `Site "${siteName}" submitted for approval. A developer must approve it before it becomes operational.`
+                          );
                         }
-                        
-                        // reset form
+
                         setNewSiteName("");
                         setNewSiteSupervisor("");
                         setNewSiteScales("");
@@ -971,7 +1060,7 @@ export default function AdminView({
                     className="h-9 shrink-0 rounded-md bg-primary hover:bg-primary/90 text-xs font-bold text-white px-4 flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Plus className="h-4 w-4" />
-                    Add Site
+                    {isDeveloper ? "Add Site" : "Send for Approval"}
                   </button>
                 </div>
               </div>
@@ -1036,7 +1125,7 @@ export default function AdminView({
                   className="h-9 w-full text-xs"
                 >
                   <option value="">Select role…</option>
-                  {MOCK_ROLES.map((role) => (
+                  {visibleRoles.map((role) => (
                     <option key={role.name} value={role.name}>{role.name}</option>
                   ))}
                 </SelectBox>
@@ -1051,7 +1140,7 @@ export default function AdminView({
                 >
                   <option value="">Select station…</option>
                   <option value="HQ Corporate Services">HQ Corporate Services</option>
-                  {sites.map((site) => (
+                  {visibleSitesForLimit.map((site) => (
                     <option key={site.id} value={site.name}>{site.name}</option>
                   ))}
                 </SelectBox>
