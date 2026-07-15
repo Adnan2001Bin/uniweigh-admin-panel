@@ -30,6 +30,7 @@ import { Textarea } from "@/src/components/ui/textarea";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { RadioBox } from "@/src/components/ui/radio-group";
 import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import StatusBadge from "@/src/components/shared/StatusBadge";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 import FormPage, {
   FORM_PAGE_INPUT_CLASS,
@@ -571,7 +572,7 @@ export default function VehiclesView({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Registered Fleet Vehicles"
         icon={Truck}
@@ -610,7 +611,7 @@ export default function VehiclesView({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="space-y-6"
+            className="space-y-4"
           >
           {/* Sync Ledger feedback */}
           {refreshNotification && (
@@ -620,10 +621,10 @@ export default function VehiclesView({
               </div>
             )}
 
-            {/* Toolbar — Products pattern */}
+            {/* Toolbar: Search + Filters + Columns + Refresh | Export */}
             <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
                   <div className="relative w-64">
                     <input
                       type="text"
@@ -717,6 +718,67 @@ export default function VehiclesView({
                   >
                     <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
                   </button>
+                </div>
+
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsExportDropdownOpen(!isExportDropdownOpen);
+                      setShowColumnsMenu(false);
+                    }}
+                    className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted cursor-pointer transition select-none"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Export Records</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  {isExportDropdownOpen && (
+                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                      <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Select Export Scope
+                      </div>
+                      <button
+                        type="button"
+                        disabled={selectedPlates.length === 0}
+                        onClick={() => {
+                          if (selectedPlates.length === 0) return;
+                          setIsExportDropdownOpen(false);
+                          setExportScope("selected");
+                        }}
+                        className={`w-full text-left px-3 py-2 hover:bg-muted ${
+                          selectedPlates.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
+                        }`}
+                      >
+                        Export Selected ({selectedPlates.length})
+                        {selectedPlates.length === 0 && (
+                          <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                            Check rows in the table first
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportScope("filtered");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                      >
+                        Export Filtered Results ({filteredVehicles.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportScope("all");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                      >
+                        Export All Records ({vehicles.length})
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -816,9 +878,9 @@ export default function VehiclesView({
 
             {/* Listing Grid */}
             <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden">
-              {/* Table summary / selection bar — matches Product Lots & Destinations */}
-              <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
-                {selectedPlates.length > 0 ? (
+              {/* Selection bar — only when rows are checked */}
+              {selectedPlates.length > 0 && (
+                <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2.5 animate-fade-in">
                     <div className="flex items-center gap-2">
                       <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs">
@@ -828,162 +890,40 @@ export default function VehiclesView({
                         Vehicle(s) selected
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsExportDropdownOpen(!isExportDropdownOpen);
-                            setShowColumnsMenu(false);
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-foreground bg-card border border-border hover:bg-muted cursor-pointer shadow-xs transition"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                          Export
-                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                        </button>
-                        {isExportDropdownOpen && (
-                          <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                            <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              Select Export Scope
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsExportDropdownOpen(false);
-                                setExportScope("selected");
-                              }}
-                              className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
-                            >
-                              Export Selected ({selectedPlates.length})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsExportDropdownOpen(false);
-                                setExportScope("filtered");
-                              }}
-                              className="w-full text-left px-3 py-2 hover:bg-muted"
-                            >
-                              Export Filtered Results ({filteredVehicles.length})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsExportDropdownOpen(false);
-                                setExportScope("all");
-                              }}
-                              className="w-full text-left px-3 py-2 hover:bg-muted"
-                            >
-                              Export All Records ({vehicles.length})
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPlates([])}
-                        className="text-xs font-bold text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-md hover:bg-card cursor-pointer transition"
-                      >
-                        Clear
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPlates([])}
+                      className="text-xs font-bold text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-md hover:bg-card cursor-pointer transition"
+                    >
+                      Clear
+                    </button>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between w-full gap-3">
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      Showing {filteredVehicles.length} of {vehicles.length} records found
-                      {(isFiltersActive || !!localSearch.trim() || !!topSearchQuery.trim()) && (
-                        <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
-                      )}
-                    </span>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsExportDropdownOpen(!isExportDropdownOpen);
-                          setShowColumnsMenu(false);
-                        }}
-                        className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        <span>Export Records</span>
-                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
-                      {isExportDropdownOpen && (
-                        <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                          <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                            Select Export Scope
-                          </div>
-                          <button
-                            type="button"
-                            disabled={selectedPlates.length === 0}
-                            onClick={() => {
-                              if (selectedPlates.length === 0) return;
-                              setIsExportDropdownOpen(false);
-                              setExportScope("selected");
-                            }}
-                            className={`w-full text-left px-3 py-2 hover:bg-muted ${
-                              selectedPlates.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
-                            }`}
-                          >
-                            Export Selected ({selectedPlates.length})
-                            {selectedPlates.length === 0 && (
-                              <span className="block text-xs font-normal text-muted-foreground mt-0.5">
-                                Check rows in the table first
-                              </span>
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsExportDropdownOpen(false);
-                              setExportScope("filtered");
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-muted"
-                          >
-                            Export Filtered Results ({filteredVehicles.length})
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsExportDropdownOpen(false);
-                              setExportScope("all");
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-muted"
-                          >
-                            Export All Records ({vehicles.length})
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+                <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-muted border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider select-none">
-                      <th className="px-5 py-3 w-10 text-center">
-                        <Checkbox checked={filteredVehicles.length > 0 && selectedPlates.length === filteredVehicles.length} onCheckedChange={(checked) => ((handleToggleSelectAll) as any)({ target: { checked } })} className="rounded text-info focus:ring-ring cursor-pointer h-3.5 w-3.5" />
+                      <th className="px-4 py-3.5 w-10 text-center">
+                        <Checkbox checked={filteredVehicles.length > 0 && selectedPlates.length === filteredVehicles.length} onCheckedChange={(checked) => ((handleToggleSelectAll) as any)({ target: { checked } })} className="rounded text-info focus:ring-ring cursor-pointer" />
                       </th>
-                      {visibleColumns.id && <th className="px-5 py-3">Vehicle ID</th>}
-                      {visibleColumns.name && <th className="px-5 py-3">Vehicle Name</th>}
-                      {visibleColumns.regNum && <th className="px-5 py-3">Registration Number</th>}
-                      {visibleColumns.category && <th className="px-5 py-3">Vehicle Category</th>}
-                      {visibleColumns.type && <th className="px-5 py-3">Vehicle Type</th>}
-                      {visibleColumns.carter && <th className="px-5 py-3">Carter</th>}
-                      {visibleColumns.tare && <th className="px-5 py-3">Tare Weight</th>}
-                      {visibleColumns.maxWeight && <th className="px-5 py-3">Gross Maximum</th>}
-                      {visibleColumns.status && <th className="px-5 py-3 text-center">Status</th>}
-                      {visibleColumns.actions && <th className="px-5 py-3 text-center">Actions</th>}
+                      {visibleColumns.id && <th className="px-4 py-3.5">Vehicle ID</th>}
+                      {visibleColumns.name && <th className="px-4 py-3.5">Vehicle Name</th>}
+                      {visibleColumns.regNum && <th className="px-4 py-3.5">Registration Number</th>}
+                      {visibleColumns.category && <th className="px-4 py-3.5">Vehicle Category</th>}
+                      {visibleColumns.type && <th className="px-4 py-3.5">Vehicle Type</th>}
+                      {visibleColumns.carter && <th className="px-4 py-3.5">Carter</th>}
+                      {visibleColumns.tare && <th className="px-4 py-3.5">Tare Weight</th>}
+                      {visibleColumns.maxWeight && <th className="px-4 py-3.5">Gross Maximum</th>}
+                      {visibleColumns.status && <th className="px-4 py-3.5 text-center">Status</th>}
+                      {visibleColumns.actions && <th className="px-4 py-3.5 text-center">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filteredVehicles.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="py-12 text-center text-xs text-muted-foreground font-medium">
+                        <td colSpan={11} className="py-16 text-center text-xs text-muted-foreground">
                           No Vehicles found matching your search criteria or active filters.
                         </td>
                       </tr>
@@ -995,58 +935,62 @@ export default function VehiclesView({
                         return (
                           <tr
                             key={v.plateNumber}
-                            className={`hover:bg-muted transition duration-150 ${isChecked ? "bg-info/10" : ""}`}
+                            className={`group select-none transition-colors hover:bg-muted ${isChecked ? "bg-info/10" : ""}`}
                           >
-                            <td className="px-5 py-4 text-center">
-                              <Checkbox checked={isChecked} onCheckedChange={(checked) => ((() => handleToggleSelectRow(v.plateNumber)) as any)({ target: { checked } })} className="rounded text-info focus:ring-ring cursor-pointer h-3.5 w-3.5" />
+                            <td className="px-4 py-4 text-center">
+                              <Checkbox checked={isChecked} onCheckedChange={(checked) => ((() => handleToggleSelectRow(v.plateNumber)) as any)({ target: { checked } })} className="rounded text-info focus:ring-ring cursor-pointer" />
                             </td>
                             {visibleColumns.id && (
-                              <td className="px-5 py-4 font-bold font-mono text-foreground">{v.id || "N/A"}</td>
+                              <td className="px-4 py-4">
+                                <span className="font-mono text-sm font-bold text-foreground">{v.id || "N/A"}</span>
+                              </td>
                             )}
                             {visibleColumns.name && (
-                              <td className="px-5 py-4 font-bold text-foreground">{v.name || "N/A"}</td>
+                              <td className="px-4 py-4">
+                                <span className="text-sm font-bold text-foreground">{v.name || "N/A"}</span>
+                              </td>
                             )}
                             {visibleColumns.regNum && (
-                              <td className="px-5 py-4 font-bold font-mono text-foreground">{v.plateNumber}</td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <span className="font-mono text-sm font-bold text-foreground">{v.plateNumber}</span>
+                              </td>
                             )}
                             {visibleColumns.category && (
-                              <td className="px-5 py-4">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
-                                  cat === "Multiaxel"
-                                    ? "bg-info/10 text-info border border-info/25"
-                                    : "bg-info/10 text-info border border-info/25"
-                                }`}>
+                              <td className="px-4 py-4">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-info/10 text-info border border-info/25">
                                   {cat}
                                 </span>
                               </td>
                             )}
                             {visibleColumns.type && (
-                              <td className="px-5 py-4 font-semibold text-muted-foreground">{v.vehicleType || "Truck"}</td>
+                              <td className="px-4 py-4">
+                                <span className="text-sm font-medium text-muted-foreground">{v.vehicleType || "Truck"}</span>
+                              </td>
                             )}
                             {visibleColumns.carter && (
-                              <td className="px-5 py-4 font-semibold text-foreground">{v.carrierName}</td>
+                              <td className="px-4 py-4">
+                                <span className="text-sm font-semibold text-foreground">{v.carrierName}</span>
+                              </td>
                             )}
                             {visibleColumns.tare && (
-                              <td className="px-5 py-4 font-bold font-mono text-foreground">{v.tareWeight.toFixed(2)} t</td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <span className="text-sm font-bold font-mono text-foreground">{v.tareWeight.toFixed(2)}</span>
+                                <span className="text-xs text-muted-foreground ml-0.5">t</span>
+                              </td>
                             )}
                             {visibleColumns.maxWeight && (
-                              <td className="px-5 py-4 font-bold font-mono text-muted-foreground">{maxWeight.toFixed(2)} t</td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <span className="text-sm font-bold font-mono text-muted-foreground">{maxWeight.toFixed(2)}</span>
+                                <span className="text-xs text-muted-foreground ml-0.5">t</span>
+                              </td>
                             )}
                             {visibleColumns.status && (
-                              <td className="px-5 py-4 text-center">
-                                <span
-                                  className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-bold border uppercase tracking-wider ${
-                                    v.status === "Active"
-                                      ? "bg-success/10 text-success border-success/25"
-                                      : "bg-destructive/10 text-destructive border-destructive/25"
-                                  }`}
-                                >
-                                  {v.status}
-                                </span>
+                              <td className="px-4 py-4 text-center">
+                                <StatusBadge status={v.status} />
                               </td>
                             )}
                             {visibleColumns.actions && (
-                              <td className="px-5 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                              <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-center gap-1">
                                   <button
                                     type="button"

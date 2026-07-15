@@ -51,6 +51,7 @@ import { RadioBox } from "@/src/components/ui/radio-group";
 import { Slider } from "@/src/components/ui/slider";
 import { openDeliveryDocketPrint } from "@/src/lib/delivery-docket";
 import { isOperatorRole } from "@/src/lib/role-access";
+import type { ClerkScreen } from "@/src/lib/app-routes";
 
 interface ClerkViewProps {
   adminUser: { name: string; role: string; avatarUrl?: string };
@@ -73,6 +74,20 @@ interface ClerkViewProps {
   onExit: () => void;
   transactions?: Transaction[];
   docketConfig?: DocketConfig;
+  /** Nested URL screen from App (`/clerk`, `/clerk/account`, …) */
+  routeScreen?: ClerkScreen;
+  routeTicketId?: string | null;
+  onRouteChange?: (screen: ClerkScreen, ticketId?: string | null) => void;
+}
+
+function screenModeFromRoute(screen: ClerkScreen): "home" | "transaction" | "success" {
+  if (screen === "account" || screen === "cash") return "transaction";
+  if (screen === "success") return "success";
+  return "home";
+}
+
+function txTypeFromRoute(screen: ClerkScreen): "Account" | "Cash" {
+  return screen === "cash" ? "Cash" : "Account";
 }
 
 export default function ClerkView({
@@ -95,12 +110,45 @@ export default function ClerkView({
   onAddTransaction,
   onExit,
   transactions = [],
-  docketConfig
+  docketConfig,
+  routeScreen = "home",
+  routeTicketId = null,
+  onRouteChange,
 }: ClerkViewProps) {
   // --- View States ---
   // "home" (card selection) | "transaction" | "success"
-  const [screenMode, setScreenMode] = useState<"home" | "transaction" | "success">("home");
-  const [selectedTxType, setSelectedTxType] = useState<"Account" | "Cash">("Account");
+  const [screenMode, setScreenMode] = useState<"home" | "transaction" | "success">(
+    () => screenModeFromRoute(routeScreen)
+  );
+  const [selectedTxType, setSelectedTxType] = useState<"Account" | "Cash">(
+    () => txTypeFromRoute(routeScreen)
+  );
+
+  const navigateClerk = (screen: ClerkScreen, ticketId: string | null = null) => {
+    if (screen === "account" || screen === "cash") {
+      setSelectedTxType(screen === "cash" ? "Cash" : "Account");
+      setScreenMode("transaction");
+    } else if (screen === "success") {
+      setScreenMode("success");
+    } else {
+      setScreenMode("home");
+    }
+    onRouteChange?.(screen, ticketId);
+  };
+
+  // Browser back/forward: App updates routeScreen; mirror into local screens
+  useEffect(() => {
+    if (routeScreen === "account" || routeScreen === "cash") {
+      setSelectedTxType(txTypeFromRoute(routeScreen));
+      setScreenMode("transaction");
+      return;
+    }
+    if (routeScreen === "success") {
+      setScreenMode("success");
+      return;
+    }
+    setScreenMode("home");
+  }, [routeScreen]);
 
   // --- Searchable dropdown lists state ---
   const [localDestinations, setLocalDestinations] = useState<Destination[]>(() => {
@@ -164,7 +212,26 @@ export default function ClerkView({
   };
 
   // Success screen saved transaction detail placeholder
-  const [lastSavedTx, setLastSavedTx] = useState<Transaction | null>(null);
+  const [lastSavedTx, setLastSavedTx] = useState<Transaction | null>(() => {
+    if (routeScreen !== "success" || !routeTicketId) return null;
+    return transactions.find((tx) => tx.ticketNo === routeTicketId || tx.id === routeTicketId) ?? null;
+  });
+
+  // Deep-link / refresh on success: hydrate ticket from transactions list
+  useEffect(() => {
+    if (routeScreen !== "success") return;
+    if (lastSavedTx) return;
+    if (!routeTicketId) {
+      onRouteChange?.("home", null);
+      return;
+    }
+    const found = transactions.find((tx) => tx.ticketNo === routeTicketId || tx.id === routeTicketId);
+    if (found) {
+      setLastSavedTx(found);
+    } else {
+      onRouteChange?.("home", null);
+    }
+  }, [routeScreen, routeTicketId, transactions, lastSavedTx]);
 
   // --- Smart Workflow / Cascading Filter Logic ---
   // 1. Customer Selection
@@ -486,7 +553,7 @@ export default function ClerkView({
 
     onAddTransaction(newTx);
     setLastSavedTx(newTx);
-    setScreenMode("success");
+    navigateClerk("success", newTx.ticketNo);
     showToast(`Transaction ${statusToSave} saved successfully! Ticket code: ${ticketNumber}`);
   };
 
@@ -815,8 +882,7 @@ export default function ClerkView({
               {/* Account Card */}
               <button
                 onClick={() => {
-                  setSelectedTxType("Account");
-                  setScreenMode("transaction");
+                  navigateClerk("account");
                 }}
                 className="group relative flex flex-col items-start p-8 bg-card border-2 border-border rounded-lg hover:border-primary hover:shadow-lg text-left transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
               >
@@ -836,8 +902,7 @@ export default function ClerkView({
               {/* Cash Card */}
               <button
                 onClick={() => {
-                  setSelectedTxType("Cash");
-                  setScreenMode("transaction");
+                  navigateClerk("cash");
                 }}
                 className="group relative flex flex-col items-start p-8 bg-card border-2 border-border rounded-lg hover:border-warning hover:shadow-lg text-left transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
               >
@@ -963,7 +1028,7 @@ export default function ClerkView({
                     onClick={async () => {
                       if (await confirmDialog("Are you sure you want to cancel this entry? All unsaved inputs will be lost.")) {
                         handleResetForm();
-                        setScreenMode("home");
+                        navigateClerk("home");
                       }
                     }}
                     className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-xs font-bold uppercase tracking-wider cursor-pointer"
@@ -1939,7 +2004,8 @@ export default function ClerkView({
               <button
                 onClick={() => {
                   handleResetForm();
-                  setScreenMode("home");
+                  setLastSavedTx(null);
+                  navigateClerk("home");
                 }}
                 className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-lg text-sm transition select-none cursor-pointer shadow-sm"
               >
@@ -1971,7 +2037,7 @@ export default function ClerkView({
               onClick={async () => {
                 if (await confirmDialog("Are you sure you want to cancel?")) {
                   handleResetForm();
-                  setScreenMode("home");
+                  navigateClerk("home");
                 }
               }}
               className="flex items-center gap-1.5 border border-sidebar-border hover:border-border text-sidebar-accent-foreground font-bold px-4 h-11 rounded-md text-xs uppercase tracking-wider transition cursor-pointer select-none"

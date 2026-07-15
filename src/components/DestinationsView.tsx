@@ -43,6 +43,8 @@ interface DestinationsViewProps {
   transactions: Transaction[];
   onViewTicketDetails: (ticketId: string) => void;
   searchQuery: string;
+  routeDetailId?: string | null;
+  onRouteDetailChange?: (id: string | null) => void;
 }
 
 export default function DestinationsView({
@@ -50,7 +52,9 @@ export default function DestinationsView({
   jobs,
   transactions,
   onViewTicketDetails,
-  searchQuery: externalSearchQuery
+  searchQuery: externalSearchQuery,
+  routeDetailId = null,
+  onRouteDetailChange,
 }: DestinationsViewProps) {
   // Destinations State (with LocalStorage persistence)
   const [destinations, setDestinations] = useState<Destination[]>(() => {
@@ -64,12 +68,24 @@ export default function DestinationsView({
 
   // UI state
   // Navigation: 'list' | 'add' | 'edit' | 'detail'
-  const [currentMode, setCurrentMode] = useState<"list" | "add" | "edit" | "detail">("list");
-  const [selectedDestId, setSelectedDestId] = useState<string | null>(null);
+  const [currentMode, setCurrentMode] = useState<"list" | "add" | "edit" | "detail">(
+    routeDetailId ? "detail" : "list"
+  );
+  const [selectedDestId, setSelectedDestId] = useState<string | null>(routeDetailId);
   const [checkedDestIds, setCheckedDestIds] = useState<string[]>([]);
   
   // Detail page Tab: 'transactions' | 'jobs'
   const [detailTab, setDetailTab] = useState<"transactions" | "jobs">("transactions");
+
+  useEffect(() => {
+    if (routeDetailId) {
+      setSelectedDestId(routeDetailId);
+      setCurrentMode("detail");
+    } else if (currentMode === "detail") {
+      setCurrentMode("list");
+      setSelectedDestId(null);
+    }
+  }, [routeDetailId]);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -128,9 +144,13 @@ export default function DestinationsView({
   // Combined Search
   const activeSearchQuery = externalSearchQuery || localSearchQuery;
 
-  // Filtered Destinations for list
+  // Filtered Destinations for list (scoped to jobs linked to the selected site)
+  const siteJobIds = useMemo(() => new Set(jobs.map((j) => j.id)), [jobs]);
+
   const filteredDestinations = useMemo(() => {
     return destinations.filter((d) => {
+      if (!siteJobIds.has(d.jobId)) return false;
+
       const q = activeSearchQuery.toLowerCase();
       const matchesSearch =
         d.id.toLowerCase().includes(q) ||
@@ -145,7 +165,7 @@ export default function DestinationsView({
 
       return matchesSearch && matchesStatus && matchesCustomer;
     });
-  }, [destinations, activeSearchQuery, statusFilter, customerFilter]);
+  }, [destinations, activeSearchQuery, statusFilter, customerFilter, siteJobIds]);
 
   const hasDestFilters = statusFilter !== "All" || customerFilter !== "All";
 
@@ -327,6 +347,7 @@ export default function DestinationsView({
       showToast(`Destination [${selectedDestId}] successfully updated.`);
       setCurrentMode("list");
       setSelectedDestId(null);
+      onRouteDetailChange?.(null);
     }
   };
 
@@ -503,7 +524,7 @@ Notes:     ${d.notes || "None registered"}
   };
 
   return (
-    <div className="space-y-6" id="destinations-module-container">
+    <div className="space-y-4" id="destinations-module-container">
       {/* Toast Alert */}
       <AnimatePresence>
         {toastMessage && (
@@ -543,6 +564,7 @@ Notes:     ${d.notes || "None registered"}
               onClick={() => {
                 setCurrentMode("list");
                 setSelectedDestId(null);
+                onRouteDetailChange?.(null);
               }}
               className={`${DESTINATION_FORM_ACTION_CLASS} gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted`}
               id="btn-back-to-listing"
@@ -565,10 +587,10 @@ Notes:     ${d.notes || "None registered"}
             transition={{ duration: 0.2 }}
             className="space-y-4"
           >
-            {/* SEARCH AND FILTERS TOOLBAR — Products pattern */}
+            {/* Toolbar: Search + Filters + Refresh | Export */}
             <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
                   <div className="relative w-64">
                     <input
                       type="text"
@@ -614,6 +636,67 @@ Notes:     ${d.notes || "None registered"}
                   >
                     <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
                   </button>
+                </div>
+
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted cursor-pointer transition select-none"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Export Records</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  {showExportMenu && (
+                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                      <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Select Export Scope
+                      </div>
+                      <button
+                        type="button"
+                        disabled={checkedDestIds.length === 0}
+                        onClick={() => {
+                          if (checkedDestIds.length === 0) return;
+                          setShowExportMenu(false);
+                          setExportScope("selected");
+                          setShowExportModal(true);
+                        }}
+                        className={`w-full text-left px-3 py-2 hover:bg-muted ${
+                          checkedDestIds.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
+                        }`}
+                      >
+                        Export Selected ({checkedDestIds.length})
+                        {checkedDestIds.length === 0 && (
+                          <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                            Check rows in the table first
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          setExportScope("filtered");
+                          setShowExportModal(true);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                      >
+                        Export Filtered Results ({filteredDestinations.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          setExportScope("current");
+                          setShowExportModal(true);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                      >
+                        Export All Records ({destinations.length})
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -667,9 +750,9 @@ Notes:     ${d.notes || "None registered"}
 
             {/* DESTINATIONS TABLE LEDGER */}
             <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden">
-              {/* Table summary / selection bar — matches Transactions */}
-              <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
-                {checkedDestIds.length > 0 ? (
+              {/* Selection bar — only when rows are checked */}
+              {checkedDestIds.length > 0 && (
+                <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2.5 animate-fade-in">
                     <div className="flex items-center gap-2">
                       <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs">
@@ -679,160 +762,38 @@ Notes:     ${d.notes || "None registered"}
                         Destination(s) selected
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setShowExportMenu(!showExportMenu)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-foreground bg-card border border-border hover:bg-muted cursor-pointer shadow-xs transition"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                          Export
-                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                        </button>
-                        {showExportMenu && (
-                          <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                            <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              Select Export Scope
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowExportMenu(false);
-                                setExportScope("selected");
-                                setShowExportModal(true);
-                              }}
-                              className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
-                            >
-                              Export Selected ({checkedDestIds.length})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowExportMenu(false);
-                                setExportScope("filtered");
-                                setShowExportModal(true);
-                              }}
-                              className="w-full text-left px-3 py-2 hover:bg-muted"
-                            >
-                              Export Filtered Results ({filteredDestinations.length})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowExportMenu(false);
-                                setExportScope("current");
-                                setShowExportModal(true);
-                              }}
-                              className="w-full text-left px-3 py-2 hover:bg-muted"
-                            >
-                              Export All Records ({destinations.length})
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setCheckedDestIds([])}
-                        className="text-xs font-bold text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-md hover:bg-card cursor-pointer transition"
-                      >
-                        Clear
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCheckedDestIds([])}
+                      className="text-xs font-bold text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-md hover:bg-card cursor-pointer transition"
+                    >
+                      Clear
+                    </button>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between w-full gap-3">
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      Showing {filteredDestinations.length} of {destinations.length} records found
-                      {(hasDestFilters || !!localSearchQuery.trim()) && (
-                        <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
-                      )}
-                    </span>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setShowExportMenu(!showExportMenu)}
-                        className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        <span>Export Records</span>
-                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
-                      {showExportMenu && (
-                        <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                          <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                            Select Export Scope
-                          </div>
-                          <button
-                            type="button"
-                            disabled={checkedDestIds.length === 0}
-                            onClick={() => {
-                              if (checkedDestIds.length === 0) return;
-                              setShowExportMenu(false);
-                              setExportScope("selected");
-                              setShowExportModal(true);
-                            }}
-                            className={`w-full text-left px-3 py-2 hover:bg-muted ${
-                              checkedDestIds.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
-                            }`}
-                          >
-                            Export Selected ({checkedDestIds.length})
-                            {checkedDestIds.length === 0 && (
-                              <span className="block text-xs font-normal text-muted-foreground mt-0.5">
-                                Check rows in the table first
-                              </span>
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowExportMenu(false);
-                              setExportScope("filtered");
-                              setShowExportModal(true);
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-muted"
-                          >
-                            Export Filtered Results ({filteredDestinations.length})
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowExportMenu(false);
-                              setExportScope("current");
-                              setShowExportModal(true);
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-muted"
-                          >
-                            Export All Records ({destinations.length})
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse" id="destinations-table">
                   <thead>
-                    <tr className="bg-muted border-b border-border text-xs font-bold uppercase text-muted-foreground tracking-wider">
-                      <th className="px-4 py-3 text-center w-10">
+                    <tr className="bg-muted border-b border-border text-xs font-bold uppercase text-muted-foreground tracking-wider select-none">
+                      <th className="px-4 py-3.5 text-center w-10">
                         <Checkbox checked={filteredDestinations.length > 0 && checkedDestIds.length === filteredDestinations.length} onCheckedChange={(checked) => ((handleToggleCheckAll) as any)({ target: { checked } })} className="rounded text-info focus:ring-ring cursor-pointer" />
                       </th>
-                      <th className="px-4 py-3">Destination ID</th>
-                      <th className="px-4 py-3">Destination Name</th>
-                      <th className="px-4 py-3">Job</th>
-                      <th className="px-4 py-3">Customer</th>
-                      <th className="px-4 py-3">Address</th>
-                      <th className="px-4 py-3">Phone</th>
-                      <th className="px-4 py-3 text-center">Status</th>
-                      <th className="px-4 py-3 text-center">Actions</th>
+                      <th className="px-4 py-3.5">Destination ID</th>
+                      <th className="px-4 py-3.5">Destination Name</th>
+                      <th className="px-4 py-3.5">Job</th>
+                      <th className="px-4 py-3.5">Customer</th>
+                      <th className="px-4 py-3.5">Address</th>
+                      <th className="px-4 py-3.5">Phone</th>
+                      <th className="px-4 py-3.5 text-center">Status</th>
+                      <th className="px-4 py-3.5 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border text-xs font-semibold text-foreground">
+                  <tbody className="divide-y divide-border">
                     {filteredDestinations.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground font-medium">
+                        <td colSpan={9} className="py-16 text-center text-xs text-muted-foreground">
                           No destinations matched the given filters or search inputs.
                         </td>
                       </tr>
@@ -843,65 +804,59 @@ Notes:     ${d.notes || "None registered"}
                         return (
                           <tr
                             key={d.id}
-                            className={`hover:bg-muted transition-colors ${
+                            className={`group select-none transition-colors hover:bg-muted ${
                               isChecked ? "bg-info/10" : ""
                             }`}
                           >
                             {/* Checkbox */}
-                            <td className="px-4 py-3.5 text-center">
+                            <td className="px-4 py-4 text-center">
                               <Checkbox checked={isChecked} onCheckedChange={(checked) => ((() => handleToggleCheckOne(d.id)) as any)({ target: { checked } })} className="rounded text-info focus:ring-ring cursor-pointer" />
                             </td>
 
                             {/* Destination ID */}
-                            <td className="px-4 py-3.5 font-mono text-info">
-                              {d.id}
+                            <td className="px-4 py-4">
+                              <span className="font-mono text-sm font-bold text-info">{d.id}</span>
                             </td>
 
                             {/* Destination Name */}
-                            <td className="px-4 py-3.5 text-foreground font-bold max-w-[200px] truncate">
-                              {d.name}
+                            <td className="px-4 py-4 max-w-[200px] truncate">
+                              <span className="text-sm font-bold text-foreground">{d.name}</span>
                             </td>
 
                             {/* Linked Job */}
-                            <td className="px-4 py-3.5">
-                              <span className="inline-flex items-center gap-1 bg-muted text-foreground px-2 py-0.5 rounded-full font-mono text-xs">
+                            <td className="px-4 py-4">
+                              <span className="inline-flex items-center gap-1 bg-muted text-foreground px-2 py-0.5 rounded-md border border-border font-mono text-xs font-bold">
                                 {d.jobId}
                               </span>
-                              <span className="block text-xs text-muted-foreground font-medium mt-0.5">
+                              <div className="text-xs text-muted-foreground font-medium mt-0.5">
                                 Ref: {d.jobRef}
-                              </span>
+                              </div>
                             </td>
 
                             {/* Customer */}
-                            <td className="px-4 py-3.5 text-muted-foreground font-medium max-w-[160px] truncate">
-                              {d.customerName}
+                            <td className="px-4 py-4 max-w-[160px] truncate">
+                              <span className="text-sm font-semibold text-foreground">{d.customerName}</span>
                             </td>
 
                             {/* Address */}
-                            <td className="px-4 py-3.5 text-muted-foreground max-w-[220px] truncate" title={formattedAddress}>
-                              {formattedAddress}
+                            <td className="px-4 py-4 max-w-[220px] truncate" title={formattedAddress}>
+                              <span className="text-sm font-medium text-muted-foreground">{formattedAddress}</span>
                             </td>
 
                             {/* Phone */}
-                            <td className="px-4 py-3.5 text-muted-foreground font-mono">
-                              {d.phone || <span className="text-muted-foreground">N/A</span>}
-                            </td>
-
-                            {/* Status */}
-                            <td className="px-4 py-3.5 text-center">
-                              <span
-                                className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                                  d.status === "Active"
-                                    ? "bg-success/10 text-success border border-success/25"
-                                    : "bg-destructive/10 text-destructive border border-destructive/25"
-                                }`}
-                              >
-                                {d.status}
+                            <td className="px-4 py-4">
+                              <span className="text-sm font-medium font-mono text-muted-foreground">
+                                {d.phone || "N/A"}
                               </span>
                             </td>
 
+                            {/* Status */}
+                            <td className="px-4 py-4 text-center">
+                              <StatusBadge status={d.status} />
+                            </td>
+
                             {/* Actions */}
-                            <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
                                 <button
                                   type="button"
@@ -909,6 +864,7 @@ Notes:     ${d.notes || "None registered"}
                                     setSelectedDestId(d.id);
                                     setDetailTab("transactions");
                                     setCurrentMode("detail");
+                                    onRouteDetailChange?.(d.id);
                                   }}
                                   className={TABLE_ACTION_ICON_BUTTON_CLASS}
                                   title="View Destination Summary & Logs"
@@ -934,9 +890,10 @@ Notes:     ${d.notes || "None registered"}
               </div>
 
               {/* Table Footer */}
-              <div className="bg-muted border-t border-border px-4 py-3 text-xs text-muted-foreground font-medium">
-                Showing <span className="font-bold text-foreground">{filteredDestinations.length}</span> of{" "}
-                <span className="font-bold text-foreground">{destinations.length}</span> logistics destinations.
+              <div className="border-t border-border px-5 py-3.5 flex items-center justify-between bg-muted">
+                <span className="text-xs text-muted-foreground font-medium">
+                  Showing {filteredDestinations.length} of {destinations.length} logistics destinations.
+                </span>
               </div>
             </div>
           </motion.div>
@@ -1187,6 +1144,7 @@ Notes:     ${d.notes || "None registered"}
                     onClick={() => {
                       setCurrentMode("list");
                       setSelectedDestId(null);
+                      onRouteDetailChange?.(null);
                     }}
                     className={`${DESTINATION_FORM_ACTION_CLASS} border border-border bg-card px-4 text-foreground shadow-xs hover:bg-muted`}
                   >

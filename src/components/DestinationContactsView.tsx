@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
   Plus,
@@ -55,6 +55,8 @@ interface DestinationContactsViewProps {
   customers: Customer[];
   searchQuery: string;
   transactions: Transaction[];
+  routeDetailId?: string | null;
+  onRouteDetailChange?: (id: string | null) => void;
 }
 
 const DEFAULT_CONTACTS: DestinationContact[] = [
@@ -170,7 +172,9 @@ const DEFAULT_CONTACTS: DestinationContact[] = [
 export default function DestinationContactsView({
   customers,
   searchQuery: globalSearchQuery,
-  transactions
+  transactions,
+  routeDetailId = null,
+  onRouteDetailChange,
 }: DestinationContactsViewProps) {
   // Load initial state
   const [contacts, setContacts] = useState<DestinationContact[]>(() => {
@@ -184,9 +188,34 @@ export default function DestinationContactsView({
   }, [contacts]);
 
   // Views management: "list" | "detail" | "form"
-  const [currentMode, setCurrentMode] = useState<"list" | "detail" | "form">("list");
-  const [selectedContact, setSelectedContact] = useState<DestinationContact | null>(null);
+  const [currentMode, setCurrentMode] = useState<"list" | "detail" | "form">(
+    routeDetailId ? "detail" : "list"
+  );
+  const [selectedContact, setSelectedContact] = useState<DestinationContact | null>(() =>
+    routeDetailId ? DEFAULT_CONTACTS.find((c) => c.id === routeDetailId) || null : null
+  );
   const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (routeDetailId) {
+      const found = contacts.find((c) => c.id === routeDetailId) || null;
+      setSelectedContact(found);
+      if (found) setCurrentMode("detail");
+    } else if (currentMode === "detail") {
+      setCurrentMode("list");
+    }
+  }, [routeDetailId, contacts]);
+
+  const openContactDetail = (contact: DestinationContact) => {
+    setSelectedContact(contact);
+    setCurrentMode("detail");
+    onRouteDetailChange?.(contact.id);
+  };
+
+  const closeContactDetail = () => {
+    setCurrentMode("list");
+    onRouteDetailChange?.(null);
+  };
 
   // Search & Filters
   const [localSearchQuery, setLocalSearchQuery] = useState<string>("");
@@ -404,9 +433,12 @@ export default function DestinationContactsView({
     }
   };
 
-  // Filter application
+  // Filter application — contacts for customers linked to the selected site only
+  const siteCustomerIds = useMemo(() => new Set(customers.map((c) => c.id)), [customers]);
   const activeSearch = localSearchQuery || globalSearchQuery;
   const filteredContacts = contacts.filter(c => {
+    if (!siteCustomerIds.has(c.customerId)) return false;
+
     // Search
     if (activeSearch) {
       const q = activeSearch.toLowerCase();
@@ -574,7 +606,7 @@ export default function DestinationContactsView({
   };
 
   return (
-    <div className="space-y-6" id="destination-contacts-module">
+    <div className="space-y-4" id="destination-contacts-module">
       
       {/* Toast Notification */}
       <AnimatePresence>
@@ -630,10 +662,10 @@ export default function DestinationContactsView({
       {currentMode === "list" && (
         <div className="space-y-4">
 
-          {/* Search, Filter Toolbar — Products pattern */}
+          {/* Toolbar: Search + Filters + Refresh | Export */}
           <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
                 <div className="relative w-64">
                   <input
                     type="text"
@@ -702,6 +734,47 @@ export default function DestinationContactsView({
                 >
                   <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
                 </button>
+              </div>
+
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+                  className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted cursor-pointer transition select-none"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Export Records</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+                {isExportDropdownOpen && (
+                  <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                    <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Select Export Scope
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportDropdownOpen(false);
+                        setExportType("filtered");
+                        setShowExportModal(true);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                    >
+                      Export Filtered Results ({filteredContacts.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportDropdownOpen(false);
+                        setExportType("all");
+                        setShowExportModal(true);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-muted"
+                    >
+                      Export All Records ({contacts.length})
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -839,86 +912,27 @@ export default function DestinationContactsView({
 
           {/* Table Directory */}
           <div className="bg-card border border-border rounded-md overflow-hidden shadow-xs">
-            {/* Table summary + export (Filtered / All) */}
-            <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
-              <div className="flex items-center justify-between w-full gap-3">
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Showing {filteredContacts.length} of {contacts.length} records found
-                  {(filterCustomer !== "All" ||
-                    filterStatus !== "All" ||
-                    filterSafety !== "All" ||
-                    filterSiteAccess !== "All" ||
-                    filterEmergency !== "All" ||
-                    filterCreatedDate !== "All" ||
-                    filterLastUsedDate !== "All" ||
-                    !!localSearchQuery.trim()) && (
-                    <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
-                  )}
-                </span>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
-                    className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Export Records</span>
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                  {isExportDropdownOpen && (
-                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                      <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Select Export Scope
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsExportDropdownOpen(false);
-                          setExportType("filtered");
-                          setShowExportModal(true);
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
-                      >
-                        Export Filtered Results ({filteredContacts.length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsExportDropdownOpen(false);
-                          setExportType("all");
-                          setShowExportModal(true);
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted"
-                      >
-                        Export All Records ({contacts.length})
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-border bg-muted text-xs font-bold uppercase text-muted-foreground tracking-wider">
-                    <th className="px-4 py-3.5">Contact ID</th>
-                    <th className="px-4 py-3.5">Contact Name</th>
-                    <th className="px-4 py-3.5">Associated Company / Customer</th>
-                    <th className="px-4 py-3.5">Phone</th>
-                    <th className="px-4 py-3.5">Mobile</th>
-                    <th className="px-4 py-3.5">Email</th>
-                    <th className="px-4 py-3.5 text-center">Safety Contact</th>
-                    <th className="px-4 py-3.5 text-center">Site Access Contact</th>
-                    <th className="px-4 py-3.5 text-center">Emergency Contact</th>
-                    <th className="px-4 py-3.5">Status</th>
-                    <th className="px-4 py-3.5 text-center w-28">Actions</th>
+                  <tr className="border-b border-border bg-muted text-xs font-bold uppercase text-muted-foreground tracking-wider select-none">
+                    <th className="px-4 py-3.5 whitespace-nowrap">Contact ID</th>
+                    <th className="px-4 py-3.5 whitespace-nowrap">Contact Name</th>
+                    <th className="px-4 py-3.5 whitespace-nowrap">Company / Customer</th>
+                    <th className="px-4 py-3.5 whitespace-nowrap">Phone</th>
+                    <th className="px-4 py-3.5 whitespace-nowrap">Mobile</th>
+                    <th className="px-4 py-3.5 whitespace-nowrap">Email</th>
+                    <th className="px-4 py-3.5 text-center whitespace-nowrap">Safety</th>
+                    <th className="px-4 py-3.5 text-center whitespace-nowrap">Site Access</th>
+                    <th className="px-4 py-3.5 text-center whitespace-nowrap">Emergency</th>
+                    <th className="px-4 py-3.5 text-center whitespace-nowrap">Status</th>
+                    <th className="px-4 py-3.5 text-center whitespace-nowrap w-24">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border text-xs text-foreground">
+                <tbody className="divide-y divide-border">
                   {filteredContacts.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="px-6 py-12 text-center text-muted-foreground font-medium">
+                      <td colSpan={11} className="py-16 text-center text-xs text-muted-foreground">
                         No destination contacts matched the given filters or search inputs.
                       </td>
                     </tr>
@@ -927,84 +941,70 @@ export default function DestinationContactsView({
                       return (
                         <tr
                           key={c.id}
-                          className="hover:bg-muted transition-colors cursor-pointer"
-                          onClick={() => {
-                            setSelectedContact(c);
-                            setDetailTab("overview");
-                            setCurrentMode("detail");
-                          }}
+                          className="group cursor-pointer select-none transition-colors hover:bg-muted"
+                          onClick={() => openContactDetail(c)}
                         >
-                          <td className="px-4 py-3.5 font-mono font-bold text-muted-foreground">
-                            {c.id}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="font-mono text-sm font-bold text-foreground">{c.id}</span>
                           </td>
-                          <td className="px-4 py-3.5 font-bold text-foreground hover:text-info hover:underline">
-                            {c.name}
-                          </td>
-                          <td className="px-4 py-3.5 font-medium text-foreground">
-                            {c.customerName}
-                          </td>
-                          <td className="px-4 py-3.5 font-mono text-muted-foreground">
-                            {c.phone || "N/A"}
-                          </td>
-                          <td className="px-4 py-3.5 font-mono text-muted-foreground">
-                            {c.mobile || "N/A"}
-                          </td>
-                          <td className="px-4 py-3.5 font-mono text-foreground select-all">
-                            {c.email || "N/A"}
-                          </td>
-                          <td className="px-4 py-3.5 text-center">
-                            {c.isSafetyContact ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-success bg-success/10 border border-success/25 rounded px-1.5 py-0.5">
-                                Yes
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5">
-                                No
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3.5 text-center">
-                            {c.isSiteAccessContact ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-info bg-info/10 border border-info/25 rounded px-1.5 py-0.5">
-                                Yes
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5">
-                                No
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3.5 text-center">
-                            {c.isEmergencyContact ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-destructive bg-destructive/10 border border-destructive/25 rounded px-1.5 py-0.5">
-                                Yes
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5">
-                                No
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span
-                              className={`inline-flex items-center rounded-sm px-1.5 py-0.2 text-xs font-bold uppercase tracking-wider ${
-                                c.status === "Active"
-                                  ? "bg-success/10 text-success border border-success/25"
-                                  : "bg-destructive/10 text-destructive border border-destructive/25"
-                              }`}
-                            >
-                              {c.status}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="text-sm font-bold text-foreground group-hover:text-info transition-colors">
+                              {c.name}
                             </span>
                           </td>
-                          <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-4 py-4 whitespace-nowrap max-w-[180px] truncate" title={c.customerName}>
+                            <span className="text-sm font-semibold text-foreground">{c.customerName}</span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="text-sm font-medium font-mono text-muted-foreground">{c.phone || "N/A"}</span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="text-sm font-medium font-mono text-muted-foreground">{c.mobile || "N/A"}</span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap max-w-[200px] truncate" title={c.email || undefined}>
+                            <span className="text-sm font-medium text-muted-foreground select-all">{c.email || "N/A"}</span>
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            {c.isSafetyContact ? (
+                              <span className="inline-flex items-center text-xs font-bold text-success bg-success/10 border border-success/25 rounded px-1.5 py-0.5">
+                                Yes
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-xs font-bold text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5">
+                                No
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            {c.isSiteAccessContact ? (
+                              <span className="inline-flex items-center text-xs font-bold text-success bg-success/10 border border-success/25 rounded px-1.5 py-0.5">
+                                Yes
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-xs font-bold text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5">
+                                No
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            {c.isEmergencyContact ? (
+                              <span className="inline-flex items-center text-xs font-bold text-success bg-success/10 border border-success/25 rounded px-1.5 py-0.5">
+                                Yes
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-xs font-bold text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5">
+                                No
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            <StatusBadge status={c.status} />
+                          </td>
+                          <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1">
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setSelectedContact(c);
-                                  setDetailTab("overview");
-                                  setCurrentMode("detail");
-                                }}
+                                onClick={() => openContactDetail(c)}
                                 className={TABLE_ACTION_ICON_BUTTON_CLASS}
                                 title="View Contact Details"
                               >
@@ -1029,10 +1029,10 @@ export default function DestinationContactsView({
             </div>
 
             {/* Selection info and pagination bottom bar */}
-            <div className="bg-muted border-t border-border px-4 py-3 flex items-center justify-between text-xs text-muted-foreground font-medium">
-              <div>
-                Showing <span className="font-bold text-foreground">{filteredContacts.length}</span> of <span className="font-bold text-foreground">{contacts.length}</span> registered contacts.
-              </div>
+            <div className="border-t border-border px-5 py-3.5 flex items-center justify-between bg-muted">
+              <span className="text-xs text-muted-foreground font-medium">
+                Showing {filteredContacts.length} of {contacts.length} registered contacts.
+              </span>
             </div>
 
           </div>
@@ -1047,7 +1047,7 @@ export default function DestinationContactsView({
           {/* Return Navigation */}
           <button
             type="button"
-            onClick={() => setCurrentMode("list")}
+            onClick={() => closeContactDetail()}
             className="group inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-info transition bg-card border border-border rounded-md px-3.5 py-2 shadow-xs cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />

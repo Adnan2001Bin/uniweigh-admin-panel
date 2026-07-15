@@ -20,14 +20,12 @@ import {
   User,
   ShieldCheck,
   Ban,
-  Search,
   Plus,
   Filter,
   Download,
   RefreshCw,
-  SlidersHorizontal,
+  Sliders,
   ChevronDown,
-  Check,
   Edit,
   Trash2,
   Briefcase,
@@ -37,7 +35,6 @@ import {
   History,
   Clock,
   MoreVertical,
-  XCircle,
   FileSpreadsheet,
   Settings,
   HelpCircle
@@ -48,6 +45,7 @@ import { toast } from "sonner";
 import { SelectBox } from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/src/components/ui/textarea";
+import { Checkbox } from "@/src/components/ui/checkbox";
 import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
 import StatusBadge from "@/src/components/shared/StatusBadge";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
@@ -67,18 +65,42 @@ interface CustomersViewProps {
   onUpdateCustomer: (updatedCustomer: Customer) => void;
   searchQuery: string;
   transactions?: Transaction[];
+  routeDetailId?: string | null;
+  onRouteDetailChange?: (id: string | null) => void;
 }
 
 export default function CustomersView({
   customers,
   onUpdateCustomer,
   searchQuery: topSearchQuery,
-  transactions = []
+  transactions = [],
+  routeDetailId = null,
+  onRouteDetailChange,
 }: CustomersViewProps) {
   // Core UI layout states
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(routeDetailId);
+  const [showPreview, setShowPreview] = useState<boolean>(Boolean(routeDetailId));
   const [previewTab, setPreviewTab] = useState<"overview" | "commercial" | "related" | "audit">("overview");
+
+  useEffect(() => {
+    if (routeDetailId) {
+      setSelectedCustomerId(routeDetailId);
+      setShowPreview(true);
+    } else {
+      setShowPreview(false);
+    }
+  }, [routeDetailId]);
+
+  const openCustomerDetail = (id: string) => {
+    setSelectedCustomerId(id);
+    setShowPreview(true);
+    onRouteDetailChange?.(id);
+  };
+
+  const closeCustomerDetail = () => {
+    setShowPreview(false);
+    onRouteDetailChange?.(null);
+  };
 
   // Filter States
   const [localSearch, setLocalSearch] = useState<string>("");
@@ -95,24 +117,12 @@ export default function CustomersView({
   const [showColumnDropdown, setShowColumnDropdown] = useState<boolean>(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     id: true,
-    code: true,
-    clientNumber: true,
     name: true,
     contact: true,
-    phone: false,
-    mobile: false,
-    email: false,
-    address: true, // Primary Address (enabled by default)
-    suburb: false,
-    state: false,
-    pricingTier: true,
-    contracts: true, // Active Contract
-    balance: true, // Account Balances
-    pricingTierOrState: true,
+    phone: true,
+    email: true,
     status: true,
-    lastTx: true, // Last Transaction Date
-    createdOn: false,
-    actions: true
+    actions: true,
   });
 
   // Checklist Selection for bulk/selected operations
@@ -142,8 +152,9 @@ export default function CustomersView({
   const [formNotes, setFormNotes] = useState<string>("");
 
   // Export states
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
-  const [exportScope, setExportScope] = useState<"current" | "selected" | "filtered" | "profile" | "txSummary" | "jobsReport">("current");
+  const [exportScope, setExportScope] = useState<"current" | "selected" | "filtered" | "profile" | "txSummary" | "jobsReport">("filtered");
   const [exportFormat, setExportFormat] = useState<"CSV" | "Excel" | "PDF">("CSV");
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportProgress, setExportProgress] = useState<number>(0);
@@ -364,7 +375,7 @@ export default function CustomersView({
     setFormBalance(c.accountBalance || 0);
     setFormStatus(c.status);
     setFormNotes(c.notes || "");
-    setShowPreview(false);
+    closeCustomerDetail();
     setCurrentMode("edit");
   };
 
@@ -528,8 +539,8 @@ export default function CustomersView({
         <button
           type="button"
           onClick={() => {
-            setShowPreview(false);
-            setPreviewTab("jobs");
+            closeCustomerDetail();
+            setPreviewTab("overview");
           }}
           className="group inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-info transition bg-card border border-border rounded-md px-3.5 py-2 shadow-xs cursor-pointer"
           title="Return to customer registry"
@@ -1002,27 +1013,287 @@ export default function CustomersView({
 
           {currentMode === "list" && (
             <>
-              {/* Top toolbar */}
-              <div className="bg-card border border-border rounded-md p-4 shadow-xs flex flex-wrap gap-3 items-center justify-between">
-                {/* Search Input bar */}
-                <div className="relative w-full sm:max-w-xs shrink-0">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search customers..."
-                    value={localSearch}
-                    onChange={(e) => setLocalSearch(e.target.value)}
-                    className="w-full rounded-md border border-border bg-card pl-9.5 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition"
-                  />
-                  {(localSearch || topSearchQuery) && (
-                    <button 
-                      onClick={() => setLocalSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground p-0.5 rounded"
+              {/* Toolbar: Search + Filters + Columns + Refresh | Export */}
+              <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    <div className="relative w-64">
+                      <input
+                        type="text"
+                        placeholder="Search customers..."
+                        value={localSearch}
+                        onChange={(e) => setLocalSearch(e.target.value)}
+                        className="w-full bg-muted border border-border hover:border-input focus:bg-card rounded-md pl-3 pr-8 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                      {(localSearch || topSearchQuery) && (
+                        <button
+                          type="button"
+                          onClick={() => setLocalSearch("")}
+                          className="absolute right-2.5 top-2 text-muted-foreground hover:text-muted-foreground"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowFilters(!showFilters)}
+                      className={`rounded-md border px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 select-none ${
+                        showFilters || isFiltersActive
+                          ? "bg-info/10 border-info/25 text-info hover:bg-info/10"
+                          : "bg-card border-border text-foreground hover:bg-muted"
+                      }`}
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <Filter className="h-3.5 w-3.5" />
+                      Filters
+                      {isFiltersActive && (
+                        <span className="bg-primary text-white font-mono text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                          {[
+                            filterStatus !== "All",
+                            filterPricingTier !== "All",
+                            filterActiveContracts !== "All",
+                            filterAccountBalance !== "All",
+                            filterState !== "All",
+                            filterCreatedDate !== "",
+                            filterLastTxDate !== "",
+                          ].filter(Boolean).length}
+                        </span>
+                      )}
                     </button>
-                  )}
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowColumnDropdown(!showColumnDropdown);
+                          setIsExportDropdownOpen(false);
+                        }}
+                        className="rounded-md border border-border bg-card hover:bg-muted px-3 py-1.5 text-xs font-bold text-foreground transition flex items-center gap-1.5 select-none"
+                      >
+                        <Sliders className="h-3.5 w-3.5 text-muted-foreground" />
+                        Columns
+                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+
+                      {showColumnDropdown && (
+                        <div className="absolute left-0 mt-1.5 w-48 bg-card border border-border rounded-md shadow-lg py-1.5 z-25 text-xs">
+                          <div className="px-3 py-1 font-bold text-muted-foreground text-xs uppercase tracking-widest border-b border-border mb-1">
+                            Toggle Columns
+                          </div>
+                          {Object.keys(visibleColumns).map((col) => (
+                            <label
+                              key={col}
+                              className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-muted cursor-pointer font-bold text-foreground"
+                            >
+                              <Checkbox
+                                checked={visibleColumns[col]}
+                                onCheckedChange={() =>
+                                  setVisibleColumns((prev) => ({
+                                    ...prev,
+                                    [col]: !prev[col],
+                                  }))
+                                }
+                                className="rounded text-info focus:ring-ring"
+                              />
+                              {col === "id"
+                                ? "Customer ID"
+                                : col === "name"
+                                ? "Customer Name"
+                                : col === "contact"
+                                ? "Primary Contact"
+                                : col === "phone"
+                                ? "Phone Number"
+                                : col === "email"
+                                ? "Email Address"
+                                : col === "status"
+                                ? "Status"
+                                : col === "actions"
+                                ? "Actions"
+                                : col}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRefreshDataset}
+                      className="rounded-md border border-border bg-card hover:bg-muted p-1.5 text-xs font-bold text-foreground transition flex items-center justify-center select-none"
+                      title="Refresh dataset"
+                    >
+                      <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
+                    </button>
+                  </div>
+
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportDropdownOpen(!isExportDropdownOpen);
+                        setShowColumnDropdown(false);
+                      }}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted cursor-pointer transition select-none"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Export Records</span>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+
+                    {isExportDropdownOpen && (
+                      <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                        <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Select Export Scope
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsExportDropdownOpen(false);
+                            setExportScope("filtered");
+                            setShowExportModal(true);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                        >
+                          Export Filtered Results ({filteredCustomers.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsExportDropdownOpen(false);
+                            setExportScope("current");
+                            setShowExportModal(true);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted"
+                        >
+                          Export All Records ({customers.length})
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {(showFilters || isFiltersActive) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-muted border border-border p-3.5 rounded-md text-xs">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                        Status
+                      </label>
+                      <SelectBox
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+                      >
+                        <option value="All">All Statuses</option>
+                        <option value="Active">Active</option>
+                        <option value="Suspended">Suspended</option>
+                      </SelectBox>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                        Pricing Tier
+                      </label>
+                      <SelectBox
+                        value={filterPricingTier}
+                        onChange={(e) => setFilterPricingTier(e.target.value)}
+                        className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+                      >
+                        <option value="All">All Tiers</option>
+                        <option value="Tier 1">Tier 1</option>
+                        <option value="Tier 2">Tier 2</option>
+                        <option value="Tier 3">Tier 3</option>
+                        <option value="Tier 4">Tier 4</option>
+                      </SelectBox>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                        Active Contracts
+                      </label>
+                      <SelectBox
+                        value={filterActiveContracts}
+                        onChange={(e) => setFilterActiveContracts(e.target.value)}
+                        className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+                      >
+                        <option value="All">All Customers</option>
+                        <option value="Has Contracts">Has Contracts</option>
+                        <option value="No Contracts">No Contracts</option>
+                      </SelectBox>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                        Account Balance
+                      </label>
+                      <SelectBox
+                        value={filterAccountBalance}
+                        onChange={(e) => setFilterAccountBalance(e.target.value)}
+                        className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+                      >
+                        <option value="All">All Balances</option>
+                        <option value="Debit Balance">Debit Balance</option>
+                        <option value="Credit Balance">Credit Balance</option>
+                        <option value="Zero Balance">Zero Balance</option>
+                      </SelectBox>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                        State
+                      </label>
+                      <SelectBox
+                        value={filterState}
+                        onChange={(e) => setFilterState(e.target.value)}
+                        className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+                      >
+                        <option value="All">All States</option>
+                        <option value="VIC">VIC</option>
+                        <option value="NSW">NSW</option>
+                        <option value="QLD">QLD</option>
+                        <option value="SA">SA</option>
+                        <option value="WA">WA</option>
+                        <option value="TAS">TAS</option>
+                        <option value="NT">NT</option>
+                        <option value="ACT">ACT</option>
+                      </SelectBox>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                        Created Date
+                      </label>
+                      <input
+                        type="date"
+                        value={filterCreatedDate}
+                        onChange={(e) => setFilterCreatedDate(e.target.value)}
+                        className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                        Last Transaction Date
+                      </label>
+                      <input
+                        type="date"
+                        value={filterLastTxDate}
+                        onChange={(e) => setFilterLastTxDate(e.target.value)}
+                        className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2 md:col-span-4 flex justify-end gap-1.5 pt-2 border-t border-border">
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="text-muted-foreground hover:text-foreground font-bold px-2 py-1 text-xs"
+                      >
+                        Reset All Filters
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Customers Registry Table */}
@@ -1031,21 +1302,20 @@ export default function CustomersView({
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-border bg-muted text-xs font-bold text-muted-foreground uppercase tracking-wider select-none">
-                        <th className="px-4 py-3.5">Customer ID</th>
-                        <th className="px-4 py-3.5">Customer Name</th>
-                        <th className="px-4 py-3.5">Primary Contact</th>
-                        <th className="px-4 py-3.5">Phone Number</th>
-                        <th className="px-4 py-3.5">Email Address</th>
-                        <th className="px-4 py-3.5 text-center">Status</th>
-                        <th className="px-4 py-3.5 text-right">Actions</th>
+                        {visibleColumns.id && <th className="px-4 py-3.5">Customer ID</th>}
+                        {visibleColumns.name && <th className="px-4 py-3.5">Customer Name</th>}
+                        {visibleColumns.contact && <th className="px-4 py-3.5">Primary Contact</th>}
+                        {visibleColumns.phone && <th className="px-4 py-3.5">Phone Number</th>}
+                        {visibleColumns.email && <th className="px-4 py-3.5">Email Address</th>}
+                        {visibleColumns.status && <th className="px-4 py-3.5 text-center">Status</th>}
+                        {visibleColumns.actions && <th className="px-4 py-3.5 text-center">Actions</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                       {filteredCustomers.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="text-center py-10 text-muted-foreground font-medium text-xs">
-                            <XCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                            <span>No customer records matching search criteria.</span>
+                          <td colSpan={Object.values(visibleColumns).filter(Boolean).length || 1} className="py-16 text-center text-xs text-muted-foreground">
+                            No customer records matching search criteria.
                           </td>
                         </tr>
                       ) : (
@@ -1053,53 +1323,63 @@ export default function CustomersView({
                           return (
                             <tr
                               key={c.id}
-                              className="group text-xs transition-colors hover:bg-muted cursor-pointer"
-                              onClick={() => {
-                                setSelectedCustomerId(c.id);
-                                setShowPreview(true);
-                              }}
+                              className="group cursor-pointer select-none transition-colors hover:bg-muted"
+                              onClick={() => openCustomerDetail(c.id)}
                             >
-                              <td className="px-4 py-3.5 font-mono font-bold text-muted-foreground">{c.id}</td>
-                              <td className="px-4 py-3.5 font-bold text-foreground group-hover:text-info hover:underline transition-colors">
-                                {c.name}
-                              </td>
-                              <td className="px-4 py-3.5 font-semibold text-foreground">{c.contactPerson}</td>
-                              <td className="px-4 py-3.5 text-muted-foreground font-medium">{c.phone || "N/A"}</td>
-                              <td className="px-4 py-3.5 text-muted-foreground select-all font-medium">{c.email || "N/A"}</td>
-                              <td className="px-4 py-3.5 text-center">
-                                <span
-                                  className={`inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${
-                                    c.status === "Active"
-                                      ? "bg-success/10 text-success border border-success/25"
-                                      : "bg-destructive/10 text-destructive border border-destructive/25"
-                                  }`}
-                                >
-                                  {c.status}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3.5 text-right font-semibold text-muted-foreground" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex justify-end gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedCustomerId(c.id);
-                                      setShowPreview(true);
-                                    }}
-                                    className={TABLE_ACTION_ICON_BUTTON_CLASS}
-                                    title="View Customer Details"
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => openEditModal(c, e)}
-                                    className={TABLE_ACTION_ICON_BUTTON_CLASS}
-                                    title="Edit Customer Details"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </td>
+                              {visibleColumns.id && (
+                                <td className="px-4 py-4">
+                                  <span className="font-mono text-sm font-bold text-foreground">{c.id}</span>
+                                </td>
+                              )}
+                              {visibleColumns.name && (
+                                <td className="px-4 py-4">
+                                  <span className="text-sm font-bold text-foreground group-hover:text-info transition-colors">
+                                    {c.name}
+                                  </span>
+                                </td>
+                              )}
+                              {visibleColumns.contact && (
+                                <td className="px-4 py-4">
+                                  <span className="text-sm font-semibold text-foreground">{c.contactPerson}</span>
+                                </td>
+                              )}
+                              {visibleColumns.phone && (
+                                <td className="px-4 py-4">
+                                  <span className="text-sm font-medium text-muted-foreground">{c.phone || "N/A"}</span>
+                                </td>
+                              )}
+                              {visibleColumns.email && (
+                                <td className="px-4 py-4">
+                                  <span className="text-sm font-medium text-muted-foreground select-all">{c.email || "N/A"}</span>
+                                </td>
+                              )}
+                              {visibleColumns.status && (
+                                <td className="px-4 py-4 text-center">
+                                  <StatusBadge status={c.status} />
+                                </td>
+                              )}
+                              {visibleColumns.actions && (
+                                <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => openCustomerDetail(c.id)}
+                                      className={TABLE_ACTION_ICON_BUTTON_CLASS}
+                                      title="View Customer Details"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => openEditModal(c, e)}
+                                      className={TABLE_ACTION_ICON_BUTTON_CLASS}
+                                      title="Edit Customer Details"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           );
                         })
@@ -1109,9 +1389,12 @@ export default function CustomersView({
                 </div>
 
                 {/* Pagination / Table Summary Footer */}
-                <div className="border-t border-border px-5 py-3 flex items-center justify-between bg-muted">
-                  <span className="text-xs text-muted-foreground font-semibold">
+                <div className="border-t border-border px-5 py-3.5 flex items-center justify-between bg-muted">
+                  <span className="text-xs text-muted-foreground font-medium">
                     Showing {filteredCustomers.length} of {customers.length} customer records
+                    {(isFiltersActive || !!localSearch.trim() || !!topSearchQuery.trim()) && (
+                      <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
+                    )}
                   </span>
                   <div className="flex gap-1">
                     <button disabled className="rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground cursor-not-allowed">

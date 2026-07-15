@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Package,
@@ -26,6 +26,7 @@ import { Input } from "@/src/components/ui/input";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { Textarea } from "@/src/components/ui/textarea";
 import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import StatusBadge from "@/src/components/shared/StatusBadge";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 import FormPage, {
   FORM_PAGE_INPUT_CLASS,
@@ -45,6 +46,8 @@ interface ProductsViewProps {
   onUpdateProduct: (updatedProduct: Product, oldId?: string) => void;
   searchQuery: string;
   onViewProductDetails: (id: string) => void;
+  /** Header Site Scale Operations — keeps local site filter in sync. */
+  selectedSite?: string;
 }
 
 export default function ProductsView({
@@ -52,6 +55,7 @@ export default function ProductsView({
   onUpdateProduct,
   searchQuery: globalSearchQuery,
   onViewProductDetails,
+  selectedSite,
 }: ProductsViewProps) {
   // Local states
   const [localSearchQuery, setLocalSearchQuery] = useState("");
@@ -59,7 +63,7 @@ export default function ProductsView({
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filters state
-  const [filterSite, setFilterSite] = useState<string | null>(null);
+  const [filterSite, setFilterSite] = useState<string | null>(selectedSite ?? null);
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterProduct, setFilterProduct] = useState("All");
   const [filterProductCode, setFilterProductCode] = useState("All");
@@ -103,13 +107,19 @@ export default function ProductsView({
   const [formCertificates, setFormCertificates] = useState<LotCertificate[]>([]);
   const [isCertificateUploading, setIsCertificateUploading] = useState(false);
 
+  useEffect(() => {
+    if (selectedSite) setFilterSite(selectedSite);
+  }, [selectedSite]);
+
   // Get distinct list values for toolbar drop-downs
   const distinctSites = useMemo(() => {
     const sites = products.map((p) => p.site || "Unknown").filter(Boolean);
+    // Always include the header site so the filter can stay aligned even if the catalog is empty for it
+    if (selectedSite && !sites.includes(selectedSite)) sites.push(selectedSite);
     return Array.from(new Set(sites));
-  }, [products]);
+  }, [products, selectedSite]);
 
-  const activeFilterSite = filterSite ?? distinctSites[0] ?? "";
+  const activeFilterSite = filterSite ?? selectedSite ?? distinctSites[0] ?? "";
 
   const distinctNames = useMemo(() => {
     return Array.from(new Set(products.map((p) => p.name)));
@@ -172,7 +182,7 @@ export default function ProductsView({
       setEditingProduct(null);
       setFormName("");
       setFormProductCode("");
-      setFormSite("Melbourne Eastern Quarry");
+      setFormSite(selectedSite || "Melbourne Eastern Quarry");
       setFormUnit("Tonnes");
       setFormStatus("Active");
       setFormNotes("");
@@ -642,11 +652,10 @@ export default function ProductsView({
             transition={{ duration: 0.2 }}
             className="space-y-4"
           >
-            {/* PatternFly Enterprise Toolbar */}
+            {/* Toolbar: Search + Filters + Columns + Refresh | Export */}
             <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Search, Filters toggle, Column visibility */}
-                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
                   <div className="relative w-64">
                     <input
                       type="text"
@@ -739,6 +748,48 @@ export default function ProductsView({
                     <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
                   </button>
                 </div>
+
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsExportDropdownOpen(!isExportDropdownOpen);
+                      setIsColumnDropdownOpen(false);
+                    }}
+                    className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted cursor-pointer transition select-none"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Export Records</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  {isExportDropdownOpen && (
+                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                      <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Select Export Scope
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportScope("filtered");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                      >
+                        Export Filtered Results ({filteredProducts.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportScope("all");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                      >
+                        Export All Records ({products.length})
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Expanded Filters Drawer */}
@@ -818,79 +869,23 @@ export default function ProductsView({
 
             {/* Main Enterprise Listing Table */}
             <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden">
-              {/* Table summary + export (Filtered / All only — no row selection) */}
-              <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
-                <div className="flex items-center justify-between w-full gap-3">
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    Showing {filteredProducts.length} of {products.length} records found
-                    {(filterStatus !== "All" ||
-                      filterProduct !== "All" ||
-                      filterProductCode !== "All" ||
-                      !!localSearchQuery.trim()) && (
-                      <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
-                    )}
-                  </span>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsExportDropdownOpen(!isExportDropdownOpen);
-                        setIsColumnDropdownOpen(false);
-                      }}
-                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      <span>Export Records</span>
-                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                    </button>
-                    {isExportDropdownOpen && (
-                      <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                        <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Select Export Scope
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsExportDropdownOpen(false);
-                            setExportScope("filtered");
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
-                        >
-                          Export Filtered Results ({filteredProducts.length})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsExportDropdownOpen(false);
-                            setExportScope("all");
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-muted"
-                        >
-                          Export All Records ({products.length})
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+                <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-border bg-muted text-xs font-bold text-muted-foreground uppercase tracking-wider select-none">
-                      {visibleColumns.id && <th className="px-6 py-3">Product ID</th>}
-                      {visibleColumns.productCode && <th className="px-6 py-3">Product Code</th>}
-                      {visibleColumns.name && <th className="px-6 py-3">Product Name</th>}
-                      {visibleColumns.site && <th className="px-6 py-3">Site</th>}
-                      {visibleColumns.defaultPrice && <th className="px-6 py-3 text-right">Default Price</th>}
-                      {visibleColumns.status && <th className="px-6 py-3 text-center">Status</th>}
-                      {visibleColumns.actions && <th className="px-6 py-3 text-center">Actions</th>}
+                      {visibleColumns.id && <th className="px-4 py-3.5">Product ID</th>}
+                      {visibleColumns.productCode && <th className="px-4 py-3.5">Product Code</th>}
+                      {visibleColumns.name && <th className="px-4 py-3.5">Product Name</th>}
+                      {visibleColumns.site && <th className="px-4 py-3.5">Site</th>}
+                      {visibleColumns.defaultPrice && <th className="px-4 py-3.5 text-right">Default Price</th>}
+                      {visibleColumns.status && <th className="px-4 py-3.5 text-center">Status</th>}
+                      {visibleColumns.actions && <th className="px-4 py-3.5 text-center">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filteredProducts.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-xs text-muted-foreground font-medium">
+                        <td colSpan={7} className="py-16 text-center text-xs text-muted-foreground">
                           No material records found matching current query or filters.
                         </td>
                       </tr>
@@ -900,48 +895,48 @@ export default function ProductsView({
                         return (
                           <tr
                             key={p.id}
-                            className="hover:bg-muted transition duration-150 group"
+                            className="group cursor-pointer select-none transition-colors hover:bg-muted"
                           >
                             {visibleColumns.id && (
-                              <td className="px-6 py-4 font-bold text-foreground font-mono">
-                                {p.id}
+                              <td className="px-4 py-4">
+                                <span className="font-mono text-sm font-bold text-foreground">{p.id}</span>
                               </td>
                             )}
                             {visibleColumns.productCode && (
-                              <td className="px-6 py-4 font-bold text-muted-foreground font-mono">
-                                {p.productCode || p.id}
-                              </td>
-                            )}
-                            {visibleColumns.name && (
-                              <td className="px-6 py-4 font-bold text-foreground group-hover:text-info transition">
-                                {p.name}
-                              </td>
-                            )}
-                            {visibleColumns.site && (
-                              <td className="px-6 py-4 font-medium text-muted-foreground">
-                                {p.site || "Melbourne Eastern Quarry"}
-                              </td>
-                            )}
-                            {visibleColumns.defaultPrice && (
-                              <td className="px-6 py-4 text-right font-mono font-bold text-info">
-                                ${defaultPriceVal.toFixed(2)}
-                              </td>
-                            )}
-                            {visibleColumns.status && (
-                              <td className="px-6 py-4 text-center">
-                                <span
-                                  className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold border ${
-                                    p.status === "Active"
-                                      ? "bg-success/10 text-success border-success/25"
-                                      : "bg-destructive/10 text-destructive border-destructive/25"
-                                  }`}
-                                >
-                                  {p.status}
+                              <td className="px-4 py-4">
+                                <span className="font-mono text-sm font-bold text-muted-foreground">
+                                  {p.productCode || p.id}
                                 </span>
                               </td>
                             )}
+                            {visibleColumns.name && (
+                              <td className="px-4 py-4">
+                                <span className="text-sm font-bold text-foreground group-hover:text-info transition-colors">
+                                  {p.name}
+                                </span>
+                              </td>
+                            )}
+                            {visibleColumns.site && (
+                              <td className="px-4 py-4">
+                                <span className="text-sm font-medium text-muted-foreground">
+                                  {p.site || "Melbourne Eastern Quarry"}
+                                </span>
+                              </td>
+                            )}
+                            {visibleColumns.defaultPrice && (
+                              <td className="px-4 py-4 text-right">
+                                <span className="text-sm font-bold font-mono text-info">
+                                  ${defaultPriceVal.toFixed(2)}
+                                </span>
+                              </td>
+                            )}
+                            {visibleColumns.status && (
+                              <td className="px-4 py-4 text-center">
+                                <StatusBadge status={p.status} />
+                              </td>
+                            )}
                             {visibleColumns.actions && (
-                              <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                              <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-center gap-1">
                                   <button
                                     type="button"
@@ -971,15 +966,20 @@ export default function ProductsView({
               </div>
 
               {/* Enterprise Bottom Pagination */}
-              <div className="border-t border-border px-5 py-3 flex items-center justify-between bg-muted">
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Showing <strong className="text-foreground">{filteredProducts.length}</strong> of{" "}
-                  <strong className="text-foreground">{products.length}</strong> active product definitions
+              <div className="border-t border-border px-5 py-3.5 flex items-center justify-between bg-muted">
+                <span className="text-xs text-muted-foreground font-medium">
+                  Showing {filteredProducts.length} of {products.length} active product definitions
                 </span>
                 <div className="flex gap-1">
-                  <button className="rounded border border-border bg-card p-1 px-2 hover:bg-muted font-bold">◀</button>
-                  <button className="rounded border border-ring bg-info/10 p-1 px-2 text-xs font-bold text-info">1</button>
-                  <button className="rounded border border-border bg-card p-1 px-2 hover:bg-muted font-bold">▶</button>
+                  <button disabled className="rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground cursor-not-allowed">
+                    Previous
+                  </button>
+                  <button disabled className="rounded border border-primary bg-info/10 px-2.5 py-1 text-xs text-info font-bold">
+                    1
+                  </button>
+                  <button disabled className="rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground cursor-not-allowed">
+                    Next
+                  </button>
                 </div>
               </div>
             </div>

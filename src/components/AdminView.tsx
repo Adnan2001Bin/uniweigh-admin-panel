@@ -77,6 +77,8 @@ const DUTY_STATUS_OPTIONS = [
 interface AdminViewProps {
   adminUser: AdminUser;
   subView: "users" | "roles" | "sites" | "docket";
+  /** Keep sidebar `activeView` in sync when switching tabs inside the page. */
+  onSubViewChange?: (subView: "users" | "roles" | "sites" | "docket") => void;
   sites: Site[];
   onUpdateSites: (updatedSites: Site[]) => void;
   siteLimit: number;
@@ -88,6 +90,7 @@ interface AdminViewProps {
 export default function AdminView({
   adminUser,
   subView,
+  onSubViewChange,
   sites,
   onUpdateSites,
   siteLimit,
@@ -108,6 +111,11 @@ export default function AdminView({
   useEffect(() => {
     setActiveTab(subView);
   }, [subView]);
+
+  const switchTab = (tab: "users" | "roles" | "sites" | "docket") => {
+    setActiveTab(tab);
+    onSubViewChange?.(tab);
+  };
 
   const docketPreviewHtml = useMemo(
     () =>
@@ -174,7 +182,9 @@ export default function AdminView({
     setNewUserName(operator.name);
     setNewUserEmail(operator.email);
     setNewUserRole(operator.role);
-    setNewUserStation(operator.station);
+    // Station must come from Site Scale Operations sites only
+    const stationIsOperational = getVisibleSites(sites).some((s) => s.name === operator.station);
+    setNewUserStation(stationIsOperational ? operator.station : "");
     setNewUserDutyStatus(operator.active);
     setEditingOperatorId(operator.id);
     setIsAddingUser(true);
@@ -351,7 +361,8 @@ export default function AdminView({
       {/* Nav internal tabs */}
       <div className="flex border-b border-border text-xs sm:text-sm bg-card p-1 rounded-md border max-w-xl flex-wrap gap-1">
         <button
-          onClick={() => setActiveTab("users")}
+          type="button"
+          onClick={() => switchTab("users")}
           className={`flex-1 min-w-[80px] py-1.5 text-center font-semibold rounded-md transition ${
             activeTab === "users" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
           }`}
@@ -359,7 +370,8 @@ export default function AdminView({
           Operators
         </button>
         <button
-          onClick={() => setActiveTab("roles")}
+          type="button"
+          onClick={() => switchTab("roles")}
           className={`flex-1 min-w-[70px] py-1.5 text-center font-semibold rounded-md transition ${
             activeTab === "roles" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
           }`}
@@ -367,7 +379,8 @@ export default function AdminView({
           Roles
         </button>
         <button
-          onClick={() => setActiveTab("sites")}
+          type="button"
+          onClick={() => switchTab("sites")}
           className={`flex-1 min-w-[100px] py-1.5 text-center font-semibold rounded-md transition ${
             activeTab === "sites" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
           }`}
@@ -375,7 +388,8 @@ export default function AdminView({
           Sites & Locks
         </button>
         <button
-          onClick={() => setActiveTab("docket")}
+          type="button"
+          onClick={() => switchTab("docket")}
           className={`flex-1 min-w-[140px] py-1.5 text-center font-semibold rounded-md transition ${
             activeTab === "docket" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
           }`}
@@ -535,7 +549,7 @@ export default function AdminView({
                     className={`h-9 ${FORM_PAGE_SELECT_CLASS}`}
                   >
                     <option value="">Select station…</option>
-                    <option value="HQ Corporate Services">HQ Corporate Services</option>
+                    {/* Same operational sites as Site Scale Operations in the navbar */}
                     {visibleSitesForLimit.map((site) => (
                       <option key={site.id} value={site.name}>{site.name}</option>
                     ))}

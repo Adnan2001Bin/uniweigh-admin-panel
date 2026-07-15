@@ -536,10 +536,10 @@ export default function TransactionsView({
         ]}
       />
 
-      {/* Products-style toolbar: Search + Filters + Columns + Refresh */}
+      {/* Toolbar: Search + Filters + Columns + Refresh | Export */}
       <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             <div className="relative w-64">
               <input
                 type="text"
@@ -646,6 +646,85 @@ export default function TransactionsView({
             >
               <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
             </button>
+          </div>
+
+          {/* Export — right side of filter toolbar */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              id="btn-export-dropdown"
+              onClick={() => {
+                setShowExportMenu(!showExportMenu);
+                setShowColumnsMenu(false);
+              }}
+              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted cursor-pointer transition select-none"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Export Records</span>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Select Export Scope
+                </div>
+                <button
+                  type="button"
+                  disabled={selectedIds.length === 0}
+                  onClick={() => {
+                    if (selectedIds.length === 0) return;
+                    setShowExportMenu(false);
+                    setExportScope("selected");
+                  }}
+                  className={`w-full text-left px-3 py-2 hover:bg-muted ${
+                    selectedIds.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
+                  }`}
+                >
+                  Export Selected ({selectedIds.length})
+                  {selectedIds.length === 0 && (
+                    <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                      Check rows in the table first
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    setExportScope("filtered");
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-muted"
+                >
+                  Export Filtered Results ({processedTransactions.length})
+                  {activeChip !== "All" && (
+                    <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                      Current filter: {activeChip}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    setExportScope("all");
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-muted"
+                >
+                  Export All Records ({transactions.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    setExportScope("invoicing");
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-muted text-info font-semibold border-t border-border mt-1 pt-2"
+                >
+                  Export for Invoicing
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -968,9 +1047,9 @@ export default function TransactionsView({
       <div className="w-full animate-fade-in">
         {/* Data Table Grid */}
         <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden w-full">
-          {/* Table summary header & Bulk operations bar */}
-          <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px] transition-colors duration-200">
-            {selectedIds.length > 0 ? (
+          {/* Selection bar — only when rows are checked */}
+          {selectedIds.length > 0 && (
+            <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px] transition-colors duration-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2.5 animate-fade-in">
                 <div className="flex items-center gap-2">
                   <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs">
@@ -987,7 +1066,7 @@ export default function TransactionsView({
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-primary-foreground bg-success hover:bg-success/90 cursor-pointer shadow-sm transition"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Approve Selected
+                    Approve
                   </button>
                   <button
                     type="button"
@@ -995,7 +1074,7 @@ export default function TransactionsView({
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-info bg-info/10 border border-info/25 hover:bg-info/10 cursor-pointer shadow-xs transition"
                   >
                     <FileText className="h-3.5 w-3.5" />
-                    Comment Selected
+                    Comment
                   </button>
                   <button
                     type="button"
@@ -1003,57 +1082,8 @@ export default function TransactionsView({
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-destructive bg-destructive/10 border border-destructive/25 hover:bg-destructive/15 cursor-pointer shadow-xs transition"
                   >
                     <X className="h-3.5 w-3.5" />
-                    Cancel Selected
+                    Cancel
                   </button>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      id="btn-export-dropdown-selected"
-                      onClick={() => setShowExportMenu(!showExportMenu)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-foreground bg-card border border-border hover:bg-muted cursor-pointer shadow-xs transition"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      Export
-                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                    </button>
-                    {showExportMenu && (
-                      <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                        <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Select Export Scope
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowExportMenu(false);
-                            setExportScope("selected");
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
-                        >
-                          Export Selected ({selectedIds.length})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowExportMenu(false);
-                            setExportScope("filtered");
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-muted"
-                        >
-                          Export Filtered Results ({processedTransactions.length})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowExportMenu(false);
-                            setExportScope("all");
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-muted"
-                        >
-                          Export All Records ({transactions.length})
-                        </button>
-                      </div>
-                    )}
-                  </div>
                   <button
                     type="button"
                     onClick={() => setSelectedIds([])}
@@ -1063,91 +1093,8 @@ export default function TransactionsView({
                   </button>
                 </div>
               </div>
-            ) : (
-              <div className="flex items-center justify-between w-full gap-3">
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Showing {processedTransactions.length} of {transactions.length} records found
-                  {(hasActiveFilters || !!activeSearchQuery.trim()) && (
-                    <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
-                  )}
-                </span>
-                <div className="relative">
-                  <button
-                    type="button"
-                    id="btn-export-dropdown"
-                    onClick={() => setShowExportMenu(!showExportMenu)}
-                    className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Export Records</span>
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-
-                  {showExportMenu && (
-                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                      <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Select Export Scope
-                      </div>
-                      <button
-                        type="button"
-                        disabled={selectedIds.length === 0}
-                        onClick={() => {
-                          if (selectedIds.length === 0) return;
-                          setShowExportMenu(false);
-                          setExportScope("selected");
-                        }}
-                        className={`w-full text-left px-3 py-2 hover:bg-muted ${
-                          selectedIds.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
-                        }`}
-                      >
-                        Export Selected ({selectedIds.length})
-                        {selectedIds.length === 0 && (
-                          <span className="block text-xs font-normal text-muted-foreground mt-0.5">
-                            Check rows in the table first
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowExportMenu(false);
-                          setExportScope("filtered");
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted"
-                      >
-                        Export Filtered Results ({processedTransactions.length})
-                        {activeChip !== "All" && (
-                          <span className="block text-xs font-normal text-muted-foreground mt-0.5">
-                            Current filter: {activeChip}
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowExportMenu(false);
-                          setExportScope("all");
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted"
-                      >
-                        Export All Records ({transactions.length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowExportMenu(false);
-                          setExportScope("invoicing");
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted text-info font-semibold border-t border-border mt-1 pt-2"
-                      >
-                        Export for Invoicing
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">

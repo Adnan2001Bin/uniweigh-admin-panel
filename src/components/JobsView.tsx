@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Briefcase,
   Eye,
@@ -60,6 +60,8 @@ interface JobsViewProps {
   onViewTicketDetails: (ticketId: string) => void;
   searchQuery: string;
   currentUserName?: string;
+  routeDetailId?: string | null;
+  onRouteDetailChange?: (id: string | null) => void;
 }
 
 // Simulated static destinations for each Job
@@ -96,12 +98,38 @@ export default function JobsView({
   onViewTicketDetails,
   searchQuery,
   currentUserName = "Admin User",
+  routeDetailId = null,
+  onRouteDetailChange,
 }: JobsViewProps) {
   // Navigation modes: 'list' | 'add' | 'edit' | 'detail'
-  const [currentMode, setCurrentMode] = useState<"list" | "add" | "edit" | "detail">("list");
+  const [currentMode, setCurrentMode] = useState<"list" | "add" | "edit" | "detail">(
+    routeDetailId ? "detail" : "list"
+  );
 
   // Selection (detail navigation only — list has no checkboxes)
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(routeDetailId);
+
+  useEffect(() => {
+    if (routeDetailId) {
+      setSelectedJobId(routeDetailId);
+      setCurrentMode("detail");
+    } else if (currentMode === "detail") {
+      setCurrentMode("list");
+      setSelectedJobId(null);
+    }
+  }, [routeDetailId]);
+
+  const openJobDetail = (id: string) => {
+    setSelectedJobId(id);
+    setCurrentMode("detail");
+    onRouteDetailChange?.(id);
+  };
+
+  const closeJobDetail = () => {
+    setCurrentMode("list");
+    setSelectedJobId(null);
+    onRouteDetailChange?.(null);
+  };
 
   // Tabs in Detail view: 'destinations' | 'transactions' | 'pricing' | 'logs'
   const [detailTab, setDetailTab] = useState<"destinations" | "transactions" | "pricing" | "logs">("destinations");
@@ -439,7 +467,7 @@ export default function JobsView({
   }, [selectedJobId, transactions]);
 
   return (
-    <div className="space-y-6" id="jobs-module-container">
+    <div className="space-y-4" id="jobs-module-container">
 
       <PageHeader
         title="Jobs"
@@ -464,6 +492,7 @@ export default function JobsView({
               onClick={() => {
                 setCurrentMode("list");
                 setSelectedJobId(null);
+                onRouteDetailChange?.(null);
               }}
               className={`${JOB_FORM_ACTION_CLASS} gap-2 border border-border bg-card px-3 text-foreground shadow-xs hover:bg-muted`}
             >
@@ -488,10 +517,10 @@ export default function JobsView({
             transition={{ duration: 0.2 }}
             className="space-y-4"
           >
-            {/* SEARCH AND FILTERS TOOLBAR — Products pattern */}
+            {/* Toolbar: Search + Filters + Refresh | Export */}
             <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
                   <div className="relative w-64">
                     <input
                       type="text"
@@ -537,6 +566,47 @@ export default function JobsView({
                   >
                     <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
                   </button>
+                </div>
+
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+                    className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted cursor-pointer transition select-none"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Export Records</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  {isExportDropdownOpen && (
+                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                      <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Select Export Scope
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportScope("filtered");
+                          setShowExportModal(true);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                      >
+                        Export Filtered Results ({filteredJobs.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportScope("all");
+                          setShowExportModal(true);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                      >
+                        Export All Records ({jobs.length})
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -591,62 +661,10 @@ export default function JobsView({
 
             {/* MAIN TABLE CANVAS */}
             <div className="bg-card border border-border rounded-md overflow-hidden shadow-xs">
-              {/* Table summary + export (Filtered / All) */}
-              <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
-                <div className="flex items-center justify-between w-full gap-3">
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    Showing {filteredJobs.length} of {jobs.length} records found
-                    {(hasJobFilters || !!localSearchQuery.trim()) && (
-                      <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
-                    )}
-                  </span>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
-                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      <span>Export Records</span>
-                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                    </button>
-                    {isExportDropdownOpen && (
-                      <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                        <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Select Export Scope
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsExportDropdownOpen(false);
-                            setExportScope("filtered");
-                            setShowExportModal(true);
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
-                        >
-                          Export Filtered Results ({filteredJobs.length})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsExportDropdownOpen(false);
-                            setExportScope("all");
-                            setShowExportModal(true);
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-muted"
-                        >
-                          Export All Records ({jobs.length})
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-border bg-muted text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                    <tr className="border-b border-border bg-muted text-xs font-bold uppercase text-muted-foreground tracking-wider select-none">
                       <th className="px-4 py-3.5">Job ID</th>
                       <th className="px-4 py-3.5">Order Reference Number</th>
                       <th className="px-4 py-3.5">Customer</th>
@@ -658,10 +676,10 @@ export default function JobsView({
                       <th className="px-4 py-3.5 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border text-xs text-foreground">
+                  <tbody className="divide-y divide-border">
                     {filteredJobs.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-6 py-12 text-center text-muted-foreground font-medium">
+                        <td colSpan={9} className="py-16 text-center text-xs text-muted-foreground">
                           No jobs found matching the search criteria or selected filters.
                         </td>
                       </tr>
@@ -672,7 +690,7 @@ export default function JobsView({
                         return (
                           <tr
                             key={j.id}
-                            className="hover:bg-muted transition-colors"
+                            className="group select-none transition-colors hover:bg-muted"
                           >
                             {/* Job ID */}
                             <td
@@ -680,56 +698,61 @@ export default function JobsView({
                                 setSelectedJobId(j.id);
                                 setDetailTab("destinations");
                                 setCurrentMode("detail");
+                                onRouteDetailChange?.(j.id);
                               }}
-                              className="px-4 py-3.5 font-mono font-bold text-info hover:text-info cursor-pointer hover:underline"
+                              className="px-4 py-4 cursor-pointer"
                             >
-                              {j.id}
-                            </td>
-
-                            {/* Order Reference Number */}
-                            <td className="px-4 py-3.5 font-semibold text-foreground">
-                              {j.customerOrderRef}
-                            </td>
-
-                            {/* Customer */}
-                            <td className="px-4 py-3.5 font-bold text-foreground">
-                              {j.customerName}
-                            </td>
-
-                            {/* Product */}
-                            <td className="px-4 py-3.5 text-muted-foreground">
-                              {j.productName}
-                            </td>
-
-                            {/* Order Quantity */}
-                            <td className="px-4 py-3.5 text-right font-mono font-bold text-foreground">
-                              {j.orderQty.toLocaleString()} t
-                            </td>
-
-                            {/* Delivered Quantity */}
-                            <td className="px-4 py-3.5 text-right font-mono text-success font-semibold">
-                              {deliveredQty.toLocaleString()} t
-                            </td>
-
-                            {/* Remaining Quantity */}
-                            <td className="px-4 py-3.5 text-right font-mono text-warning font-semibold">
-                              {remainingQty.toLocaleString()} t
-                            </td>
-
-                            {/* Status */}
-                            <td className="px-4 py-3.5 text-center">
-                              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${j.status === "Active"
-                                ? "bg-success/10 text-success border border-success/25"
-                                : j.status === "Completed"
-                                  ? "bg-info/10 text-info border border-info/25"
-                                  : "bg-destructive/10 text-destructive border border-destructive/25"
-                                }`}>
-                                {j.status}
+                              <span className="font-mono text-sm font-bold text-info group-hover:text-info transition-colors">
+                                {j.id}
                               </span>
                             </td>
 
+                            {/* Order Reference Number */}
+                            <td className="px-4 py-4">
+                              <span className="text-sm font-semibold text-foreground">{j.customerOrderRef}</span>
+                            </td>
+
+                            {/* Customer */}
+                            <td className="px-4 py-4">
+                              <span className="text-sm font-bold text-foreground">{j.customerName}</span>
+                            </td>
+
+                            {/* Product */}
+                            <td className="px-4 py-4">
+                              <span className="text-sm font-medium text-muted-foreground">{j.productName}</span>
+                            </td>
+
+                            {/* Order Quantity */}
+                            <td className="px-4 py-4 text-right">
+                              <span className="text-sm font-bold font-mono text-foreground">
+                                {j.orderQty.toLocaleString()}
+                              </span>
+                              <span className="text-xs text-muted-foreground ml-0.5">t</span>
+                            </td>
+
+                            {/* Delivered Quantity */}
+                            <td className="px-4 py-4 text-right">
+                              <span className="text-sm font-bold font-mono text-success">
+                                {deliveredQty.toLocaleString()}
+                              </span>
+                              <span className="text-xs text-muted-foreground ml-0.5">t</span>
+                            </td>
+
+                            {/* Remaining Quantity */}
+                            <td className="px-4 py-4 text-right">
+                              <span className="text-sm font-bold font-mono text-warning">
+                                {remainingQty.toLocaleString()}
+                              </span>
+                              <span className="text-xs text-muted-foreground ml-0.5">t</span>
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-4 py-4 text-center">
+                              <StatusBadge status={j.status} />
+                            </td>
+
                             {/* Actions */}
-                            <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
                                 <button
                                   type="button"
@@ -737,6 +760,7 @@ export default function JobsView({
                                     setSelectedJobId(j.id);
                                     setDetailTab("destinations");
                                     setCurrentMode("detail");
+                                    onRouteDetailChange?.(j.id);
                                   }}
                                   className={TABLE_ACTION_ICON_BUTTON_CLASS}
                                   title="View Job Details"
@@ -762,10 +786,10 @@ export default function JobsView({
               </div>
 
               {/* Table Footer */}
-              <div className="bg-muted border-t border-border px-4 py-3 flex items-center justify-between text-xs text-muted-foreground font-medium">
-                <div>
-                  Showing <span className="font-bold text-foreground">{filteredJobs.length}</span> of <span className="font-bold text-foreground">{jobs.length}</span> project contracts.
-                </div>
+              <div className="border-t border-border px-5 py-3.5 flex items-center justify-between bg-muted">
+                <span className="text-xs text-muted-foreground font-medium">
+                  Showing {filteredJobs.length} of {jobs.length} project contracts.
+                </span>
               </div>
             </div>
           </motion.div>
@@ -784,6 +808,7 @@ export default function JobsView({
               onCancel={() => {
                 setCurrentMode("list");
                 setSelectedJobId(null);
+                onRouteDetailChange?.(null);
               }}
               onSubmit={handleSaveJob}
               saveLabel="Save Supply Job Contract"

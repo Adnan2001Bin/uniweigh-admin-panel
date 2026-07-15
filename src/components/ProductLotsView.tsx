@@ -30,6 +30,7 @@ import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/src/components/ui/textarea";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import StatusBadge from "@/src/components/shared/StatusBadge";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
 import FormPage, {
   FORM_PAGE_INPUT_CLASS,
@@ -461,7 +462,7 @@ export default function ProductLotsView({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Product Lots"
         icon={Package}
@@ -500,13 +501,12 @@ export default function ProductLotsView({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="space-y-6"
+            className="space-y-4"
           >
-            {/* PatternFly 6 Enterprise Toolbar */}
+            {/* Toolbar: Search + Filters + Columns + Refresh | Export */}
       <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Main Controls: Search, Filters toggle, Column Visibility, Refresh */}
-          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             <div className="relative w-64">
               <input
                 type="text"
@@ -595,6 +595,67 @@ export default function ProductLotsView({
               <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
             </button>
           </div>
+
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setIsExportDropdownOpen(!isExportDropdownOpen);
+                setIsColumnDropdownOpen(false);
+              }}
+              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted cursor-pointer transition select-none"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Export Records</span>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+            {isExportDropdownOpen && (
+              <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Select Export Scope
+                </div>
+                <button
+                  type="button"
+                  disabled={selectedLotIds.length === 0}
+                  onClick={() => {
+                    if (selectedLotIds.length === 0) return;
+                    setIsExportDropdownOpen(false);
+                    setExportScope("selected");
+                  }}
+                  className={`w-full text-left px-3 py-2 hover:bg-muted ${
+                    selectedLotIds.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
+                  }`}
+                >
+                  Export Selected ({selectedLotIds.length})
+                  {selectedLotIds.length === 0 && (
+                    <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                      Check rows in the table first
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsExportDropdownOpen(false);
+                    setExportScope("filtered");
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-muted"
+                >
+                  Export Filtered Results ({filteredLots.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsExportDropdownOpen(false);
+                    setExportScope("all");
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-muted"
+                >
+                  Export All Records ({productLots.length})
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Filters Panel Drawer */}
@@ -674,9 +735,9 @@ export default function ProductLotsView({
 
       {/* Main Enterprise Listing Table */}
       <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden">
-        {/* Table summary / selection bar — matches Transactions & Destinations */}
-        <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
-          {selectedLotIds.length > 0 ? (
+        {/* Selection bar — only when rows are checked */}
+        {selectedLotIds.length > 0 && (
+          <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2.5 animate-fade-in">
               <div className="flex items-center gap-2">
                 <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs">
@@ -686,164 +747,38 @@ export default function ProductLotsView({
                   Product lot(s) selected
                 </span>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsExportDropdownOpen(!isExportDropdownOpen);
-                      setIsColumnDropdownOpen(false);
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-foreground bg-card border border-border hover:bg-muted cursor-pointer shadow-xs transition"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Export
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                  {isExportDropdownOpen && (
-                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                      <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Select Export Scope
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsExportDropdownOpen(false);
-                          setExportScope("selected");
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
-                      >
-                        Export Selected ({selectedLotIds.length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsExportDropdownOpen(false);
-                          setExportScope("filtered");
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted"
-                      >
-                        Export Filtered Results ({filteredLots.length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsExportDropdownOpen(false);
-                          setExportScope("all");
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted"
-                      >
-                        Export All Records ({productLots.length})
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedLotIds([])}
-                  className="text-xs font-bold text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-md hover:bg-card cursor-pointer transition"
-                >
-                  Clear
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedLotIds([])}
+                className="text-xs font-bold text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-md hover:bg-card cursor-pointer transition"
+              >
+                Clear
+              </button>
             </div>
-          ) : (
-            <div className="flex items-center justify-between w-full gap-3">
-              <span className="text-xs font-semibold text-muted-foreground">
-                Showing {filteredLots.length} of {productLots.length} records found
-                {(filterProduct !== "All" ||
-                  filterStatus !== "All" ||
-                  filterRemainingQty !== "All" ||
-                  !!filterCreatedDate ||
-                  !!localSearchQuery.trim()) && (
-                  <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
-                )}
-              </span>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsExportDropdownOpen(!isExportDropdownOpen);
-                    setIsColumnDropdownOpen(false);
-                  }}
-                  className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Export Records</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
-                {isExportDropdownOpen && (
-                  <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
-                    <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Select Export Scope
-                    </div>
-                    <button
-                      type="button"
-                      disabled={selectedLotIds.length === 0}
-                      onClick={() => {
-                        if (selectedLotIds.length === 0) return;
-                        setIsExportDropdownOpen(false);
-                        setExportScope("selected");
-                      }}
-                      className={`w-full text-left px-3 py-2 hover:bg-muted ${
-                        selectedLotIds.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
-                      }`}
-                    >
-                      Export Selected ({selectedLotIds.length})
-                      {selectedLotIds.length === 0 && (
-                        <span className="block text-xs font-normal text-muted-foreground mt-0.5">
-                          Check rows in the table first
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsExportDropdownOpen(false);
-                        setExportScope("filtered");
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-muted"
-                    >
-                      Export Filtered Results ({filteredLots.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsExportDropdownOpen(false);
-                        setExportScope("all");
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-muted"
-                    >
-                      Export All Records ({productLots.length})
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted text-xs font-bold text-muted-foreground uppercase tracking-wider select-none">
-                <th className="px-6 py-3 w-10 text-center">
+                <th className="px-4 py-3.5 w-10 text-center">
                   <Checkbox checked={filteredLots.length > 0 && selectedLotIds.length === filteredLots.length} onCheckedChange={(checked) => ((toggleSelectAll) as any)({ target: { checked } })} className="rounded text-info focus:ring-ring cursor-pointer" />
                 </th>
-                {visibleColumns.id && <th className="px-6 py-3">Product Lot ID</th>}
-                {visibleColumns.name && <th className="px-6 py-3">Product Lot Name</th>}
-                {visibleColumns.product && <th className="px-6 py-3">Product</th>}
-                {visibleColumns.orderQuantity && <th className="px-6 py-3 text-right">Order Qty</th>}
-                {visibleColumns.usedQuantity && <th className="px-6 py-3 text-right">Used Qty</th>}
-                {visibleColumns.remainingQuantity && <th className="px-6 py-3 text-right">Remaining Qty</th>}
-                {visibleColumns.status && <th className="px-6 py-3 text-center">Status</th>}
-                {visibleColumns.actions && <th className="px-6 py-3 text-center">Actions</th>}
+                {visibleColumns.id && <th className="px-4 py-3.5">Product Lot ID</th>}
+                {visibleColumns.name && <th className="px-4 py-3.5">Product Lot Name</th>}
+                {visibleColumns.product && <th className="px-4 py-3.5">Product</th>}
+                {visibleColumns.orderQuantity && <th className="px-4 py-3.5 text-right">Order Qty</th>}
+                {visibleColumns.usedQuantity && <th className="px-4 py-3.5 text-right">Used Qty</th>}
+                {visibleColumns.remainingQuantity && <th className="px-4 py-3.5 text-right">Remaining Qty</th>}
+                {visibleColumns.status && <th className="px-4 py-3.5 text-center">Status</th>}
+                {visibleColumns.actions && <th className="px-4 py-3.5 text-center">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filteredLots.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-xs text-muted-foreground font-medium">
+                  <td colSpan={9} className="py-16 text-center text-xs text-muted-foreground">
                     No product lot records found matching current query or filters.
                   </td>
                 </tr>
@@ -855,77 +790,84 @@ export default function ProductLotsView({
                   return (
                     <tr
                       key={lot.id}
-                      className={`hover:bg-muted transition duration-150 group ${
+                      className={`group select-none transition-colors hover:bg-muted ${
                         isSelected ? "bg-info/10" : ""
                       }`}
                     >
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-4 text-center">
                         <Checkbox checked={isSelected} onCheckedChange={(checked) => ((() => toggleSelectLot(lot.id)) as any)({ target: { checked } })} className="rounded text-info focus:ring-ring cursor-pointer" />
                       </td>
                       {visibleColumns.id && (
-                        <td className="px-6 py-4 font-bold text-foreground font-mono">
-                          {lot.id}
+                        <td className="px-4 py-4">
+                          <span className="font-mono text-sm font-bold text-foreground">{lot.id}</span>
                         </td>
                       )}
                       {visibleColumns.name && (
-                        <td className="px-6 py-4 font-bold text-foreground group-hover:text-info transition">
-                          {lot.name}
+                        <td className="px-4 py-4">
+                          <span className="text-sm font-bold text-foreground group-hover:text-info transition-colors">
+                            {lot.name}
+                          </span>
                         </td>
                       )}
                       {visibleColumns.product && (
-                        <td className="px-6 py-4 font-medium text-muted-foreground">
+                        <td className="px-4 py-4">
                           {parentProd ? (
-                            <span className="flex flex-col">
-                              <span className="font-bold text-foreground">{parentProd.name}</span>
-                              <span className="text-xs text-muted-foreground font-mono font-bold">
+                            <>
+                              <div className="text-sm font-bold text-foreground">{parentProd.name}</div>
+                              <div className="font-mono text-xs text-muted-foreground">
                                 Code: {parentProd.productCode || parentProd.id}
-                              </span>
-                            </span>
+                              </div>
+                            </>
                           ) : (
-                            <span className="text-muted-foreground">Unassigned</span>
+                            <span className="text-sm text-muted-foreground">Unassigned</span>
                           )}
                         </td>
                       )}
                       {visibleColumns.orderQuantity && (
-                        <td className="px-6 py-4 text-right font-mono font-bold text-foreground">
-                          {lot.orderQuantity.toFixed(2)} t
+                        <td className="px-4 py-4 text-right">
+                          <span className="text-sm font-bold font-mono text-foreground">
+                            {lot.orderQuantity.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-0.5">t</span>
                         </td>
                       )}
                       {visibleColumns.usedQuantity && (
-                        <td className="px-6 py-4 text-right font-mono text-success font-bold">
-                          {lot.usedQuantity.toFixed(2)} t
+                        <td className="px-4 py-4 text-right">
+                          <span className="text-sm font-bold font-mono text-success">
+                            {lot.usedQuantity.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-0.5">t</span>
                         </td>
                       )}
                       {visibleColumns.remainingQuantity && (
-                        <td
-                          className={`px-6 py-4 text-right font-mono font-bold ${
-                            lot.remainingQuantity < 0
-                              ? "text-destructive"
-                              : lot.remainingQuantity === 0
-                              ? "text-muted-foreground"
-                              : "text-info"
-                          }`}
-                        >
-                          {lot.remainingQuantity.toFixed(2)} t
+                        <td className="px-4 py-4 text-right">
+                          <span
+                            className={`text-sm font-bold font-mono ${
+                              lot.remainingQuantity < 0
+                                ? "text-destructive"
+                                : lot.remainingQuantity === 0
+                                ? "text-muted-foreground"
+                                : "text-info"
+                            }`}
+                          >
+                            {lot.remainingQuantity.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-0.5">t</span>
                         </td>
                       )}
                       {visibleColumns.status && (
-                        <td className="px-6 py-4 text-center">
-                          <span
-                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold border uppercase tracking-wide ${
-                              lot.status === "Completed"
-                                ? "bg-muted text-foreground border-border"
-                                : lot.status === "Active"
-                                ? "bg-success/10 text-success border-success/25"
-                                : "bg-warning/10 text-warning border-warning/30"
-                            }`}
-                          >
-                            {lot.status === "Completed" ? "Fully Used" : lot.status}
-                          </span>
+                        <td className="px-4 py-4 text-center">
+                          {lot.status === "Completed" ? (
+                            <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold border bg-muted text-foreground border-border uppercase tracking-wide">
+                              Fully Used
+                            </span>
+                          ) : (
+                            <StatusBadge status={lot.status} />
+                          )}
                         </td>
                       )}
                       {visibleColumns.actions && (
-                        <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
@@ -955,15 +897,20 @@ export default function ProductLotsView({
         </div>
 
         {/* Bottom Pagination Info */}
-        <div className="border-t border-border px-5 py-3 flex items-center justify-between bg-muted">
-          <span className="text-xs font-semibold text-muted-foreground">
-            Showing <strong className="text-foreground">{filteredLots.length}</strong> of{" "}
-            <strong className="text-foreground">{productLots.length}</strong> product lot definitions
+        <div className="border-t border-border px-5 py-3.5 flex items-center justify-between bg-muted">
+          <span className="text-xs text-muted-foreground font-medium">
+            Showing {filteredLots.length} of {productLots.length} product lot definitions
           </span>
           <div className="flex gap-1">
-            <button className="rounded border border-border bg-card p-1 px-2 hover:bg-muted font-bold">◀</button>
-            <button className="rounded border border-ring bg-info/10 p-1 px-2 text-xs font-bold text-info">1</button>
-            <button className="rounded border border-border bg-card p-1 px-2 hover:bg-muted font-bold">▶</button>
+            <button disabled className="rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground cursor-not-allowed">
+              Previous
+            </button>
+            <button disabled className="rounded border border-primary bg-info/10 px-2.5 py-1 text-xs text-info font-bold">
+              1
+            </button>
+            <button disabled className="rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground cursor-not-allowed">
+              Next
+            </button>
           </div>
         </div>
       </div>

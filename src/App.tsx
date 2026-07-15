@@ -38,14 +38,37 @@ import { INITIAL_JOBS } from "./data_jobs";
 import { Transaction, Product, Customer, Site, Job, ProductLot, Carrier, Driver, Vehicle, DocketConfig, AdminUser } from "./types";
 import { canAccessView, canEnterClerkMode, canAccessAdminPanel, getDefaultViewForRole, isOperatorRole, shouldStartInClerkMode, getVisibleSites } from "./lib/role-access";
 import { loadTextSize, saveTextSize, type TextSize } from "./lib/text-size";
+import {
+  pathFromRouteState,
+  routeStateFromLocation,
+  type AppRouteState,
+} from "./lib/app-routes";
 
+function readInitialRoute(): AppRouteState {
+  return routeStateFromLocation(window.location.pathname, window.location.search);
+}
 
 export default function App() {
+  const initialRouteRef = React.useRef<AppRouteState | null>(null);
+  if (!initialRouteRef.current) {
+    initialRouteRef.current = readInitialRoute();
+  }
+  const initialRoute = initialRouteRef.current;
+  const skipNextUrlPush = React.useRef(false);
+
   // Sidebar expanded / collapsed status
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
   // Clerk operator mode switcher state
-  const [isClerkMode, setIsClerkMode] = useState<boolean>(false);
+  const [isClerkMode, setIsClerkMode] = useState<boolean>(
+    () => initialRoute.mode === "clerk"
+  );
+  const [clerkScreen, setClerkScreen] = useState<AppRouteState["clerkScreen"]>(
+    () => (initialRoute.mode === "clerk" ? initialRoute.clerkScreen : "home")
+  );
+  const [clerkTicketId, setClerkTicketId] = useState<string | null>(
+    () => (initialRoute.mode === "clerk" ? initialRoute.clerkTicketId : null)
+  );
 
   // Demo authentication session
   const [authUser, setAuthUser] = useState<AdminUser | null>(() => {
@@ -58,14 +81,8 @@ export default function App() {
     }
   });
 
-  // Active view router state
-  const [activeView, setActiveView] = useState<string>(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("product_id")) {
-      return "product-details-standalone";
-    }
-    return "dashboard";
-  });
+  // Active view router state (seeded from the browser URL)
+  const [activeView, setActiveView] = useState<string>(() => initialRoute.view);
 
   useEffect(() => {
     if (authUser) {
@@ -86,16 +103,6 @@ export default function App() {
     }
   }, [authUser, activeView, isClerkMode]);
 
-  const handleLogin = (user: AdminUser) => {
-    setAuthUser(user);
-    if (shouldStartInClerkMode(user.role)) {
-      setIsClerkMode(true);
-      return;
-    }
-    setIsClerkMode(false);
-    setActiveView(getDefaultViewForRole(user.role));
-  };
-
   const handleClerkExit = () => {
     if (!authUser) return;
     if (isOperatorRole(authUser.role)) {
@@ -103,12 +110,17 @@ export default function App() {
       return;
     }
     setIsClerkMode(false);
+    setClerkScreen("home");
+    setClerkTicketId(null);
   };
 
   const handleLogout = () => {
     setIsClerkMode(false);
+    setClerkScreen("home");
+    setClerkTicketId(null);
     setAuthUser(null);
     setActiveView("dashboard");
+    window.history.replaceState(null, "", "/login");
   };
 
   // Cross-tab Synchronization Listener for Live Database Updates
@@ -127,9 +139,9 @@ export default function App() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  // Ticket details view state tracking
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  // Ticket / entity detail selection (seeded from URL when present)
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(() => initialRoute.ticketId);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(() => initialRoute.productId);
   const [prevViewBeforeDetails, setPrevViewBeforeDetails] = useState<string>("dashboard");
 
   // Global search queried from header
@@ -240,7 +252,9 @@ export default function App() {
     return initialLots;
   });
 
-  const [selectedProductLotId, setSelectedProductLotId] = useState<string | null>(null);
+  const [selectedProductLotId, setSelectedProductLotId] = useState<string | null>(
+    () => initialRoute.productLotId
+  );
 
   // Transport details (persistent & stateful datasets)
   const [carriers, setCarriers] = useState<Carrier[]>(() => {
@@ -295,9 +309,40 @@ export default function App() {
     });
   });
 
-  const [selectedCarterId, setSelectedCarterId] = useState<string | null>(null);
-  const [selectedVehiclePlate, setSelectedVehiclePlate] = useState<string | null>(null);
-  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [selectedCarterId, setSelectedCarterId] = useState<string | null>(
+    () => initialRoute.carterId
+  );
+  const [selectedVehiclePlate, setSelectedVehiclePlate] = useState<string | null>(
+    () => initialRoute.vehiclePlate
+  );
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(
+    () => initialRoute.driverId
+  );
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
+    () => initialRoute.customerId
+  );
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(
+    () => initialRoute.contactId
+  );
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(
+    () => initialRoute.jobId
+  );
+  const [selectedDestinationId, setSelectedDestinationId] = useState<string | null>(
+    () => initialRoute.destinationId
+  );
+
+  const clearRouteEntityIds = () => {
+    setSelectedTicketId(null);
+    setSelectedProductId(null);
+    setSelectedProductLotId(null);
+    setSelectedCarterId(null);
+    setSelectedDriverId(null);
+    setSelectedVehiclePlate(null);
+    setSelectedCustomerId(null);
+    setSelectedContactId(null);
+    setSelectedJobId(null);
+    setSelectedDestinationId(null);
+  };
 
   const [docketConfig, setDocketConfig] = useState<DocketConfig>(() => {
     const saved = localStorage.getItem("uniweigh_docket_config");
@@ -310,6 +355,160 @@ export default function App() {
     }
     return DEFAULT_DOCKET_CONFIG;
   });
+
+  const handleLogin = (user: AdminUser) => {
+    setAuthUser(user);
+    const fromUrl = routeStateFromLocation(window.location.pathname, window.location.search);
+    if (shouldStartInClerkMode(user.role)) {
+      setIsClerkMode(true);
+      setClerkScreen(fromUrl.mode === "clerk" ? fromUrl.clerkScreen : "home");
+      setClerkTicketId(fromUrl.mode === "clerk" ? fromUrl.clerkTicketId : null);
+      return;
+    }
+    if (fromUrl.mode === "clerk") {
+      setIsClerkMode(true);
+      setClerkScreen(fromUrl.clerkScreen);
+      setClerkTicketId(fromUrl.clerkTicketId);
+      return;
+    }
+    setIsClerkMode(false);
+    setClerkScreen("home");
+    setClerkTicketId(null);
+    if (fromUrl.mode === "app" && canAccessView(user.role, fromUrl.view)) {
+      setActiveView(fromUrl.view);
+      setSelectedTicketId(fromUrl.ticketId);
+      setSelectedProductId(fromUrl.productId);
+      setSelectedProductLotId(fromUrl.productLotId);
+      setSelectedCarterId(fromUrl.carterId);
+      setSelectedDriverId(fromUrl.driverId);
+      setSelectedVehiclePlate(fromUrl.vehiclePlate);
+      setSelectedCustomerId(fromUrl.customerId);
+      setSelectedContactId(fromUrl.contactId);
+      setSelectedJobId(fromUrl.jobId);
+      setSelectedDestinationId(fromUrl.destinationId);
+    } else {
+      setActiveView(getDefaultViewForRole(user.role));
+    }
+  };
+
+  // Keep the address bar in sync with the active page / detail
+  useEffect(() => {
+    if (skipNextUrlPush.current) {
+      skipNextUrlPush.current = false;
+      return;
+    }
+
+    // Logged-out: keep deep-link paths for post-login restore; only force /login from root
+    if (!authUser) {
+      const p = window.location.pathname.replace(/\/+$/, "") || "/";
+      if (p === "/" || p === "/dashboard") {
+        window.history.replaceState(null, "", "/login");
+      }
+      return;
+    }
+
+    let nextPath: string;
+    if (isClerkMode || isOperatorRole(authUser.role)) {
+      nextPath = pathFromRouteState({
+        view: activeView,
+        ticketId: null,
+        productId: null,
+        productLotId: null,
+        carterId: null,
+        driverId: null,
+        vehiclePlate: null,
+        customerId: null,
+        contactId: null,
+        jobId: null,
+        destinationId: null,
+        mode: "clerk",
+        clerkScreen,
+        clerkTicketId,
+      });
+    } else {
+      nextPath = pathFromRouteState({
+        view: activeView,
+        ticketId: selectedTicketId,
+        productId: selectedProductId,
+        productLotId: selectedProductLotId,
+        carterId: selectedCarterId,
+        driverId: selectedDriverId,
+        vehiclePlate: selectedVehiclePlate,
+        customerId: selectedCustomerId,
+        contactId: selectedContactId,
+        jobId: selectedJobId,
+        destinationId: selectedDestinationId,
+        mode: "app",
+        clerkScreen: "home",
+        clerkTicketId: null,
+      });
+    }
+
+    const current = window.location.pathname.replace(/\/+$/, "") || "/";
+    const normalizedNext = nextPath.replace(/\/+$/, "") || "/";
+    if (current.toLowerCase() === normalizedNext.toLowerCase()) {
+      // Drop leftover query (e.g. legacy product_id) once we have a clean path
+      if (window.location.search && !normalizedNext.includes("?")) {
+        window.history.replaceState(null, "", normalizedNext);
+      }
+      return;
+    }
+
+    window.history.pushState(null, "", nextPath);
+  }, [
+    authUser,
+    isClerkMode,
+    clerkScreen,
+    clerkTicketId,
+    activeView,
+    selectedTicketId,
+    selectedProductId,
+    selectedProductLotId,
+    selectedCarterId,
+    selectedDriverId,
+    selectedVehiclePlate,
+    selectedCustomerId,
+    selectedContactId,
+    selectedJobId,
+    selectedDestinationId,
+  ]);
+
+  // Browser back / forward
+  useEffect(() => {
+    const onPopState = () => {
+      const next = routeStateFromLocation(window.location.pathname, window.location.search);
+      skipNextUrlPush.current = true;
+
+      if (next.mode === "login") {
+        return;
+      }
+
+      if (next.mode === "clerk") {
+        if (authUser) setIsClerkMode(true);
+        setClerkScreen(next.clerkScreen);
+        setClerkTicketId(next.clerkTicketId);
+        return;
+      }
+
+      if (authUser) setIsClerkMode(false);
+      setClerkScreen("home");
+      setClerkTicketId(null);
+      setActiveView(next.view);
+      setSelectedTicketId(next.ticketId);
+      setSelectedProductId(next.productId);
+      setSelectedProductLotId(next.productLotId);
+      setSelectedCarterId(next.carterId);
+      setSelectedDriverId(next.driverId);
+      setSelectedVehiclePlate(next.vehiclePlate);
+      setSelectedCustomerId(next.customerId);
+      setSelectedContactId(next.contactId);
+      setSelectedJobId(next.jobId);
+      setSelectedDestinationId(next.destinationId);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [authUser]);
 
   // Save docketConfig modifications to localStorage
   useEffect(() => {
@@ -444,27 +643,82 @@ export default function App() {
     setActiveView("ticket-details");
   };
 
-  // Filter Transactions and entities by Selected Site globally before sending to views (if desired)
+  // Filter Transactions and related entities by Selected Site before sending to views
   const getFilteredTransactions = () => {
     return transactions.filter((t) => t.siteName === selectedSite);
   };
 
+  /** Entities linked to the header site (products by site; others via product / transactions). */
+  const getSiteScopedCollections = () => {
+    const siteFilteredTxs = getFilteredTransactions();
+    const siteFilteredProducts = products.filter((p) => (p.site || "") === selectedSite);
+    const siteProductIds = new Set(siteFilteredProducts.map((p) => p.id));
+    const siteFilteredLots = productLots.filter((l) => siteProductIds.has(l.productId));
+
+    const siteTxJobOrders = new Set(
+      siteFilteredTxs.map((t) => t.jobOrder).filter((id): id is string => Boolean(id))
+    );
+    const siteFilteredJobs = jobs.filter(
+      (j) => siteProductIds.has(j.productId) || siteTxJobOrders.has(j.id)
+    );
+
+    const siteCustomerIds = new Set<string>([
+      ...siteFilteredTxs.map((t) => t.customerId),
+      ...siteFilteredJobs.map((j) => j.customerId),
+    ]);
+    const siteFilteredCustomers = customers.filter((c) => siteCustomerIds.has(c.id));
+
+    const siteCarrierNames = new Set(siteFilteredTxs.map((t) => t.carrierName).filter(Boolean));
+    const siteDriverNames = new Set(siteFilteredTxs.map((t) => t.driverName).filter(Boolean));
+    const siteVehicleRegs = new Set(siteFilteredTxs.map((t) => t.vehicleReg).filter(Boolean));
+
+    const siteFilteredCarriers = carriers.filter((c) => siteCarrierNames.has(c.name));
+    const siteFilteredDrivers = drivers.filter(
+      (d) => siteDriverNames.has(d.name) || siteCarrierNames.has(d.carrierName)
+    );
+    const siteFilteredVehicles = vehicles.filter((v) => siteVehicleRegs.has(v.plateNumber));
+
+    return {
+      siteFilteredTxs,
+      siteFilteredProducts,
+      siteFilteredLots,
+      siteFilteredJobs,
+      siteFilteredCustomers,
+      siteFilteredCarriers,
+      siteFilteredDrivers,
+      siteFilteredVehicles,
+    };
+  };
+
   // Route switch viewport render
   const renderContentView = () => {
-    const siteFilteredTxs = getFilteredTransactions();
+    const {
+      siteFilteredTxs,
+      siteFilteredProducts,
+      siteFilteredLots,
+      siteFilteredJobs,
+      siteFilteredCustomers,
+      siteFilteredCarriers,
+      siteFilteredDrivers,
+      siteFilteredVehicles,
+    } = getSiteScopedCollections();
 
     switch (activeView) {
       case "dashboard":
         return (
           <DashboardView
             transactions={siteFilteredTxs}
-            products={products}
-            customers={customers}
+            products={siteFilteredProducts}
+            customers={siteFilteredCustomers}
             onViewChange={setActiveView}
             userRole={authUser.role}
             onEnterClerkMode={
           canAccessAdminPanel(authUser.role) && canEnterClerkMode(authUser.role)
-            ? () => setIsClerkMode(true)
+            ? () => {
+                setClerkScreen("home");
+                setClerkTicketId(null);
+                setIsClerkMode(true);
+              }
             : undefined
         }
           />
@@ -526,42 +780,50 @@ export default function App() {
       case "customers-list":
         return (
           <CustomersView
-            customers={customers}
+            customers={siteFilteredCustomers}
             onUpdateCustomer={handleUpdateCustomer}
             searchQuery={searchQuery}
-            transactions={transactions}
+            transactions={siteFilteredTxs}
+            routeDetailId={selectedCustomerId}
+            onRouteDetailChange={setSelectedCustomerId}
           />
         );
       case "customers-contacts":
         return (
           <DestinationContactsView
-            customers={customers}
+            customers={siteFilteredCustomers}
             searchQuery={searchQuery}
-            transactions={transactions}
+            transactions={siteFilteredTxs}
+            routeDetailId={selectedContactId}
+            onRouteDetailChange={setSelectedContactId}
           />
         );
       case "customers-jobs":
         return (
           <JobsView
-            jobs={jobs}
-            customers={customers}
-            products={products}
-            transactions={transactions}
+            jobs={siteFilteredJobs}
+            customers={siteFilteredCustomers}
+            products={siteFilteredProducts}
+            transactions={siteFilteredTxs}
             onAddJob={handleAddJob}
             onUpdateJob={handleUpdateJob}
             onViewTicketDetails={handleViewTicketDetails}
             searchQuery={searchQuery}
             currentUserName={authUser.name}
+            routeDetailId={selectedJobId}
+            onRouteDetailChange={setSelectedJobId}
           />
         );
       case "customers-destinations":
         return (
           <DestinationsView
-            customers={customers}
-            jobs={jobs}
-            transactions={transactions}
+            customers={siteFilteredCustomers}
+            jobs={siteFilteredJobs}
+            transactions={siteFilteredTxs}
             onViewTicketDetails={handleViewTicketDetails}
             searchQuery={searchQuery}
+            routeDetailId={selectedDestinationId}
+            onRouteDetailChange={setSelectedDestinationId}
           />
         );
 
@@ -570,9 +832,10 @@ export default function App() {
       case "products-list":
         return (
           <ProductsView
-            products={products}
+            products={siteFilteredProducts}
             onUpdateProduct={handleUpdateProduct}
             searchQuery={searchQuery}
+            selectedSite={selectedSite}
             onViewProductDetails={(id) => {
               setSelectedProductId(id);
               setActiveView("product-details");
@@ -583,9 +846,9 @@ export default function App() {
       case "products-lots":
         return (
           <ProductLotsView
-            productLots={productLots}
-            products={products}
-            transactions={transactions}
+            productLots={siteFilteredLots}
+            products={siteFilteredProducts}
+            transactions={siteFilteredTxs}
             onAddProductLot={(newLot) => {
               setProductLots((prev) => [newLot, ...prev]);
             }}
@@ -608,7 +871,7 @@ export default function App() {
             lotId={selectedProductLotId || ""}
             productLots={productLots}
             products={products}
-            transactions={transactions}
+            transactions={siteFilteredTxs}
             onBack={() => {
               setActiveView("products-lots");
             }}
@@ -623,7 +886,7 @@ export default function App() {
             onUpdateProduct={handleUpdateProduct}
             productId={selectedProductId || undefined}
             jobs={jobs}
-            transactions={transactions}
+            transactions={siteFilteredTxs}
             onBack={() => {
               setActiveView("products-list");
             }}
@@ -634,7 +897,7 @@ export default function App() {
       case "transport-carters":
         return (
           <CartersView
-            carriers={carriers}
+            carriers={siteFilteredCarriers}
             onAddCarter={(newC) => setCarriers(prev => [...prev, newC])}
             onUpdateCarter={(updC) => setCarriers(prev => prev.map(c => c.id === updC.id ? updC : c))}
             onViewCarterDetails={(id) => {
@@ -652,7 +915,7 @@ export default function App() {
             carriers={carriers}
             drivers={drivers}
             vehicles={vehicles}
-            transactions={transactions}
+            transactions={siteFilteredTxs}
             onBack={() => {
               setActiveView("transport-carters");
             }}
@@ -662,8 +925,8 @@ export default function App() {
       case "transport-drivers":
         return (
           <DriversView
-            drivers={drivers}
-            carriers={carriers}
+            drivers={siteFilteredDrivers}
+            carriers={siteFilteredCarriers}
             onAddDriver={(newDriver) => setDrivers((prev) => [...prev, newDriver])}
             onUpdateDriver={(updatedDriver) =>
               setDrivers((prev) =>
@@ -684,7 +947,7 @@ export default function App() {
             driverId={selectedDriverId || ""}
             drivers={drivers}
             carriers={carriers}
-            transactions={transactions}
+            transactions={siteFilteredTxs}
             onBack={() => {
               setActiveView("transport-drivers");
             }}
@@ -694,8 +957,8 @@ export default function App() {
       case "transport-vehicles":
         return (
           <VehiclesView
-            vehicles={vehicles}
-            carriers={carriers}
+            vehicles={siteFilteredVehicles}
+            carriers={siteFilteredCarriers}
             onAddVehicle={(newVehicle) => setVehicles((prev) => [...prev, newVehicle])}
             onUpdateVehicle={(updatedVehicle) =>
               setVehicles((prev) =>
@@ -716,7 +979,7 @@ export default function App() {
             plateNumber={selectedVehiclePlate || ""}
             vehicles={vehicles}
             carriers={carriers}
-            transactions={transactions}
+            transactions={siteFilteredTxs}
             onBack={() => {
               setActiveView("transport-vehicles");
             }}
@@ -730,8 +993,8 @@ export default function App() {
         return (
           <ReportsView
             transactions={siteFilteredTxs}
-            products={products}
-            customers={customers}
+            products={siteFilteredProducts}
+            customers={siteFilteredCustomers}
             subView="transactions"
             onViewTicketDetails={handleViewTicketDetails}
           />
@@ -740,8 +1003,8 @@ export default function App() {
         return (
           <ReportsView
             transactions={siteFilteredTxs}
-            products={products}
-            customers={customers}
+            products={siteFilteredProducts}
+            customers={siteFilteredCustomers}
             subView="products"
             onViewTicketDetails={handleViewTicketDetails}
           />
@@ -750,8 +1013,8 @@ export default function App() {
         return (
           <ReportsView
             transactions={siteFilteredTxs}
-            products={products}
-            customers={customers}
+            products={siteFilteredProducts}
+            customers={siteFilteredCustomers}
             subView="customers"
             onViewTicketDetails={handleViewTicketDetails}
           />
@@ -760,8 +1023,8 @@ export default function App() {
         return (
           <ReportsView
             transactions={siteFilteredTxs}
-            products={products}
-            customers={customers}
+            products={siteFilteredProducts}
+            customers={siteFilteredCustomers}
             subView="progress"
             onViewTicketDetails={handleViewTicketDetails}
           />
@@ -791,38 +1054,32 @@ export default function App() {
         );
       }
 
-      // Administration views
+      // Administration views — single AdminView instance so tab ↔ sidebar stay in sync
       case "admin-users":
-        return (
-          <AdminView
-            adminUser={authUser}
-            subView="users"
-            sites={sites}
-            onUpdateSites={setSites}
-            siteLimit={siteLimit}
-            onUpdateSiteLimit={setSiteLimit}
-            docketConfig={docketConfig}
-            onUpdateDocketConfig={setDocketConfig}
-          />
-        );
       case "admin-roles":
-        return (
-          <AdminView
-            adminUser={authUser}
-            subView="roles"
-            sites={sites}
-            onUpdateSites={setSites}
-            siteLimit={siteLimit}
-            onUpdateSiteLimit={setSiteLimit}
-            docketConfig={docketConfig}
-            onUpdateDocketConfig={setDocketConfig}
-          />
-        );
       case "admin-sites":
+      case "admin-docket": {
+        const adminSubView =
+          activeView === "admin-roles"
+            ? "roles"
+            : activeView === "admin-sites"
+              ? "sites"
+              : activeView === "admin-docket"
+                ? "docket"
+                : "users";
         return (
           <AdminView
             adminUser={authUser}
-            subView="sites"
+            subView={adminSubView}
+            onSubViewChange={(next) => {
+              const viewByTab = {
+                users: "admin-users",
+                roles: "admin-roles",
+                sites: "admin-sites",
+                docket: "admin-docket",
+              } as const;
+              setActiveView(viewByTab[next]);
+            }}
             sites={sites}
             onUpdateSites={setSites}
             siteLimit={siteLimit}
@@ -831,19 +1088,7 @@ export default function App() {
             onUpdateDocketConfig={setDocketConfig}
           />
         );
-      case "admin-docket":
-        return (
-          <AdminView
-            adminUser={authUser}
-            subView="docket"
-            sites={sites}
-            onUpdateSites={setSites}
-            siteLimit={siteLimit}
-            onUpdateSiteLimit={setSiteLimit}
-            docketConfig={docketConfig}
-            onUpdateDocketConfig={setDocketConfig}
-          />
-        );
+      }
 
       default:
         return (
@@ -889,6 +1134,12 @@ export default function App() {
         onExit={handleClerkExit}
           transactions={transactions}
           docketConfig={docketConfig}
+          routeScreen={clerkScreen}
+          routeTicketId={clerkTicketId}
+          onRouteChange={(screen, ticketId = null) => {
+            setClerkScreen(screen);
+            setClerkTicketId(ticketId);
+          }}
         />
       </>
     );
@@ -918,6 +1169,7 @@ export default function App() {
         activeView={activeView}
         onViewChange={(viewId) => {
           if (authUser && !canAccessView(authUser.role, viewId)) return;
+          clearRouteEntityIds();
           setActiveView(viewId);
           // Auto clear search results when changing view context
           setSearchQuery("");
@@ -926,7 +1178,11 @@ export default function App() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         onEnterClerkMode={
           canAccessAdminPanel(authUser.role) && canEnterClerkMode(authUser.role)
-            ? () => setIsClerkMode(true)
+            ? () => {
+                setClerkScreen("home");
+                setClerkTicketId(null);
+                setIsClerkMode(true);
+              }
             : undefined
         }
         userRole={authUser.role}
@@ -946,7 +1202,11 @@ export default function App() {
           siteLimit={siteLimit}
           onEnterClerkMode={
           canAccessAdminPanel(authUser.role) && canEnterClerkMode(authUser.role)
-            ? () => setIsClerkMode(true)
+            ? () => {
+                setClerkScreen("home");
+                setClerkTicketId(null);
+                setIsClerkMode(true);
+              }
             : undefined
         }
           onLogout={handleLogout}
