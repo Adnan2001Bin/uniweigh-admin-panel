@@ -36,7 +36,6 @@ import { SelectBox } from "@/src/components/ui/select";
 import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/src/components/ui/textarea";
 import { Checkbox } from "@/src/components/ui/checkbox";
-import { RadioBox } from "@/src/components/ui/radio-group";
 import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
 import StatusBadge from "@/src/components/shared/StatusBadge";
 import FormPage, {
@@ -200,9 +199,6 @@ export default function DestinationContactsView({
   const [filterLastUsedDate, setFilterLastUsedDate] = useState<string>("All");
   const [showFiltersDropdown, setShowFiltersDropdown] = useState<boolean>(false);
 
-  // Selection
-  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
-
   // Column Visibility
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     id: true,
@@ -236,7 +232,8 @@ export default function DestinationContactsView({
 
   // Export States
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
-  const [exportType, setExportType] = useState<string>("all_filtered"); // all_filtered, selected, safety, site_access, emergency, profile
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const [exportType, setExportType] = useState<"filtered" | "all" | "profile">("filtered");
   const [exportFormat, setExportFormat] = useState<"CSV" | "Excel" | "PDF">("CSV");
 
   // Form State
@@ -453,21 +450,6 @@ export default function DestinationContactsView({
     return true;
   });
 
-  // Batch Selection
-  const toggleSelectAll = () => {
-    if (selectedContactIds.length === filteredContacts.length) {
-      setSelectedContactIds([]);
-    } else {
-      setSelectedContactIds(filteredContacts.map(c => c.id));
-    }
-  };
-
-  const toggleSelectOne = (id: string) => {
-    setSelectedContactIds(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
-  };
-
   // Reset Filters
   const resetFilters = () => {
     setFilterCustomer("All");
@@ -477,6 +459,7 @@ export default function DestinationContactsView({
     setFilterEmergency("All");
     setFilterCreatedDate("All");
     setFilterLastUsedDate("All");
+    setLocalSearchQuery("");
     showToast("Filters successfully reset.");
   };
 
@@ -484,25 +467,20 @@ export default function DestinationContactsView({
   const handleExecuteExport = () => {
     let dataToExport: DestinationContact[] = [];
 
-    if (exportType === "all_filtered") {
+    if (exportType === "filtered") {
       dataToExport = filteredContacts;
-    } else if (exportType === "selected") {
-      dataToExport = contacts.filter(c => selectedContactIds.includes(c.id));
-      if (dataToExport.length === 0) {
-        showToast("Error: No contacts selected for export.");
-        setShowExportModal(false);
-        return;
-      }
-    } else if (exportType === "safety") {
-      dataToExport = contacts.filter(c => c.isSafetyContact);
-    } else if (exportType === "site_access") {
-      dataToExport = contacts.filter(c => c.isSiteAccessContact);
-    } else if (exportType === "emergency") {
-      dataToExport = contacts.filter(c => c.isEmergencyContact);
+    } else if (exportType === "all") {
+      dataToExport = contacts;
     } else if (exportType === "profile" && selectedContact) {
       dataToExport = [selectedContact];
     } else {
       dataToExport = filteredContacts;
+    }
+
+    if (dataToExport.length === 0) {
+      showToast("Error: No contacts available to export.");
+      setShowExportModal(false);
+      return;
     }
 
     const reportName = `Uniweigh_Contacts_Report_${exportType}_${new Date().toISOString().split('T')[0]}`;
@@ -626,24 +604,14 @@ export default function DestinationContactsView({
           ]}
           actions={
             currentMode === "list" ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleInitAddContact}
-                  className={PAGE_HEADER_ADD_BUTTON_CLASS}
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add New Contact</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRefresh}
-                  title="Synchronize Contacts list"
-                  className="rounded-md border border-border bg-card p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer shadow-xs"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-info" : ""}`} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleInitAddContact}
+                className={PAGE_HEADER_ADD_BUTTON_CLASS}
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add New Contact</span>
+              </button>
             ) : (
               <button
                 type="button"
@@ -662,94 +630,117 @@ export default function DestinationContactsView({
       {currentMode === "list" && (
         <div className="space-y-4">
 
-          {/* Search, Filter, Column Visibility Toolbar */}
-          <div className="bg-card border border-border rounded-md p-5 shadow-xs space-y-3">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              
-              {/* Search */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search contacts by name, role, email, phone or code..."
-                  value={localSearchQuery}
-                  onChange={(e) => setLocalSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 border border-border rounded-md text-xs placeholder:text-muted-foreground focus:outline-none focus:border-info focus:ring-1 focus:ring-info"
-                />
-                {activeSearch && (
-                  <button
-                    onClick={() => { setLocalSearchQuery(""); }}
-                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-muted-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+          {/* Search, Filter Toolbar — Products pattern */}
+          <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+                <div className="relative w-64">
+                  <input
+                    type="text"
+                    placeholder="Search contacts..."
+                    value={localSearchQuery}
+                    onChange={(e) => setLocalSearchQuery(e.target.value)}
+                    className="w-full bg-muted border border-border hover:border-input focus:bg-card rounded-md pl-3 pr-8 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  {localSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setLocalSearchQuery("")}
+                      className="absolute right-2.5 top-2 text-muted-foreground hover:text-muted-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
 
-              {/* Filters toggle & selections */}
-              <div className="flex flex-wrap items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => setShowFiltersDropdown(!showFiltersDropdown)}
-                  className={`rounded-md border px-4 py-2.5 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${showFiltersDropdown ? "bg-muted border-ring text-info" : "bg-card border-border text-foreground hover:bg-muted"}`}
+                  className={`rounded-md border px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 select-none ${
+                    showFiltersDropdown ||
+                    filterCustomer !== "All" ||
+                    filterStatus !== "All" ||
+                    filterSafety !== "All" ||
+                    filterSiteAccess !== "All" ||
+                    filterEmergency !== "All" ||
+                    filterCreatedDate !== "All" ||
+                    filterLastUsedDate !== "All"
+                      ? "bg-info/10 border-info/25 text-info hover:bg-info/10"
+                      : "bg-card border-border text-foreground hover:bg-muted"
+                  }`}
                 >
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <span>Filters</span>
-                  <ChevronDown className="h-3 w-3" />
+                  <Filter className="h-3.5 w-3.5" />
+                  Filters
+                  {[
+                    filterCustomer !== "All",
+                    filterStatus !== "All",
+                    filterSafety !== "All",
+                    filterSiteAccess !== "All",
+                    filterEmergency !== "All",
+                    filterCreatedDate !== "All",
+                    filterLastUsedDate !== "All",
+                  ].filter(Boolean).length > 0 && (
+                    <span className="bg-primary text-white font-mono text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                      {[
+                        filterCustomer !== "All",
+                        filterStatus !== "All",
+                        filterSafety !== "All",
+                        filterSiteAccess !== "All",
+                        filterEmergency !== "All",
+                        filterCreatedDate !== "All",
+                        filterLastUsedDate !== "All",
+                      ].filter(Boolean).length}
+                    </span>
+                  )}
                 </button>
 
                 <button
-                  onClick={() => {
-                    setExportType("all_filtered");
-                    setShowExportModal(true);
-                  }}
-                  className="rounded-md border border-border bg-card text-xs font-bold text-foreground px-4 py-2.5 hover:bg-muted transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  type="button"
+                  onClick={handleRefresh}
+                  className="rounded-md border border-border bg-card hover:bg-muted p-1.5 text-xs font-bold text-foreground transition flex items-center justify-center select-none"
+                  title="Refresh dataset"
                 >
-                  <Download className="h-4 w-4 text-info" />
-                  <span>Export Reports</span>
+                  <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
                 </button>
-
-                {/* Filter Chip Cleaners */}
-                {(filterCustomer !== "All" || filterStatus !== "All" || filterSafety !== "All" || filterSiteAccess !== "All" || filterEmergency !== "All" || filterCreatedDate !== "All" || filterLastUsedDate !== "All") && (
-                  <button
-                    onClick={resetFilters}
-                    className="text-xs text-info hover:text-info font-bold transition flex items-center gap-1"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    <span>Clear active filters</span>
-                  </button>
-                )}
               </div>
             </div>
 
             {/* Expanded Filters Drawer */}
-            {showFiltersDropdown && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-3 border-t border-border text-xs font-semibold text-foreground"
-              >
-                {/* Customer Selector */}
+            {(showFiltersDropdown ||
+              filterCustomer !== "All" ||
+              filterStatus !== "All" ||
+              filterSafety !== "All" ||
+              filterSiteAccess !== "All" ||
+              filterEmergency !== "All" ||
+              filterCreatedDate !== "All" ||
+              filterLastUsedDate !== "All") && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-muted border border-border p-3.5 rounded-md text-xs">
                 <div className="space-y-1">
-                  <label className="block text-xs uppercase text-muted-foreground">Company Customer</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                    Company Customer
+                  </label>
                   <SelectBox
                     value={filterCustomer}
                     onChange={(e) => setFilterCustomer(e.target.value)}
-                    className="w-full border border-border bg-card rounded-md p-1.5 focus:outline-none"
+                    className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
                   >
                     <option value="All">All Customers</option>
-                    {customers.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
                     ))}
                   </SelectBox>
                 </div>
 
-                {/* Status Selector */}
                 <div className="space-y-1">
-                  <label className="block text-xs uppercase text-muted-foreground">Communication Status</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                    Status
+                  </label>
                   <SelectBox
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="w-full border border-border bg-card rounded-md p-1.5 focus:outline-none"
+                    className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
                   >
                     <option value="All">All Statuses</option>
                     <option value="Active">Active</option>
@@ -757,55 +748,59 @@ export default function DestinationContactsView({
                   </SelectBox>
                 </div>
 
-                {/* Safety Contact Indicator */}
                 <div className="space-y-1">
-                  <label className="block text-xs uppercase text-muted-foreground">Safety contact</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                    Safety Contact
+                  </label>
                   <SelectBox
                     value={filterSafety}
                     onChange={(e) => setFilterSafety(e.target.value)}
-                    className="w-full border border-border bg-card rounded-md p-1.5 focus:outline-none"
+                    className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
                   >
                     <option value="All">All Roles</option>
-                    <option value="Yes">Yes (Safety Coordinator)</option>
+                    <option value="Yes">Yes</option>
                     <option value="No">No</option>
                   </SelectBox>
                 </div>
 
-                {/* Site Access Contact Indicator */}
                 <div className="space-y-1">
-                  <label className="block text-xs uppercase text-muted-foreground">Site access contact</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                    Site Access Contact
+                  </label>
                   <SelectBox
                     value={filterSiteAccess}
                     onChange={(e) => setFilterSiteAccess(e.target.value)}
-                    className="w-full border border-border bg-card rounded-md p-1.5 focus:outline-none"
+                    className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
                   >
                     <option value="All">All Access</option>
-                    <option value="Yes">Yes (Site Access Approved)</option>
+                    <option value="Yes">Yes</option>
                     <option value="No">No</option>
                   </SelectBox>
                 </div>
 
-                {/* Emergency Contact */}
                 <div className="space-y-1">
-                  <label className="block text-xs uppercase text-muted-foreground">Emergency dispatch contact</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                    Emergency Contact
+                  </label>
                   <SelectBox
                     value={filterEmergency}
                     onChange={(e) => setFilterEmergency(e.target.value)}
-                    className="w-full border border-border bg-card rounded-md p-1.5 focus:outline-none"
+                    className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
                   >
                     <option value="All">All Emergency</option>
-                    <option value="Yes">Yes (Emergency Responder)</option>
+                    <option value="Yes">Yes</option>
                     <option value="No">No</option>
                   </SelectBox>
                 </div>
 
-                {/* Created Date */}
                 <div className="space-y-1">
-                  <label className="block text-xs uppercase text-muted-foreground">Created Year</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                    Created Year
+                  </label>
                   <SelectBox
                     value={filterCreatedDate}
                     onChange={(e) => setFilterCreatedDate(e.target.value)}
-                    className="w-full border border-border bg-card rounded-md p-1.5 focus:outline-none"
+                    className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
                   >
                     <option value="All">All Dates</option>
                     <option value="2024">2024</option>
@@ -814,25 +809,95 @@ export default function DestinationContactsView({
                   </SelectBox>
                 </div>
 
-                {/* Last Used Date */}
                 <div className="space-y-1">
-                  <label className="block text-xs uppercase text-muted-foreground">Last Used Year</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                    Last Used Year
+                  </label>
                   <SelectBox
                     value={filterLastUsedDate}
                     onChange={(e) => setFilterLastUsedDate(e.target.value)}
-                    className="w-full border border-border bg-card rounded-md p-1.5 focus:outline-none"
+                    className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
                   >
                     <option value="All">All Dates</option>
                     <option value="2026">2026</option>
                     <option value="N/A">Unused (N/A)</option>
                   </SelectBox>
                 </div>
-              </motion.div>
+
+                <div className="sm:col-span-2 md:col-span-4 flex justify-end gap-1.5 pt-2 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="text-muted-foreground hover:text-foreground font-bold px-2 py-1 text-xs"
+                  >
+                    Reset All Filters
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
           {/* Table Directory */}
           <div className="bg-card border border-border rounded-md overflow-hidden shadow-xs">
+            {/* Table summary + export (Filtered / All) */}
+            <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
+              <div className="flex items-center justify-between w-full gap-3">
+                <span className="text-xs font-semibold text-muted-foreground">
+                  Showing {filteredContacts.length} of {contacts.length} records found
+                  {(filterCustomer !== "All" ||
+                    filterStatus !== "All" ||
+                    filterSafety !== "All" ||
+                    filterSiteAccess !== "All" ||
+                    filterEmergency !== "All" ||
+                    filterCreatedDate !== "All" ||
+                    filterLastUsedDate !== "All" ||
+                    !!localSearchQuery.trim()) && (
+                    <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
+                  )}
+                </span>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+                    className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Export Records</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  {isExportDropdownOpen && (
+                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                      <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Select Export Scope
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportType("filtered");
+                          setShowExportModal(true);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                      >
+                        Export Filtered Results ({filteredContacts.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportType("all");
+                          setShowExportModal(true);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                      >
+                        Export All Records ({contacts.length})
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -1539,64 +1604,14 @@ export default function DestinationContactsView({
 
               {/* Body */}
               <div className="p-5 space-y-4 font-semibold text-foreground">
-                
-                {/* Scope selector */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs uppercase text-muted-foreground tracking-wider">Report scope & Filter target</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 cursor-pointer hover:bg-muted p-1.5 rounded">
-                      <RadioBox checked={exportType === "all_filtered"} onChange={() => setExportType("all_filtered")} />
-                      <div>
-                        <span className="font-bold text-foreground block">All current directory entries ({filteredContacts.length})</span>
-                        <span className="text-xs text-muted-foreground font-medium">Exports all contacts matching current active search & filters.</span>
-                      </div>
-                    </label>
-
-                    {selectedContactIds.length > 0 && (
-                      <label className="flex items-center gap-2 cursor-pointer hover:bg-muted p-1.5 rounded">
-                        <RadioBox checked={exportType === "selected"} onChange={() => setExportType("selected")} />
-                        <div>
-                          <span className="font-bold text-info block">Selected entries ({selectedContactIds.length})</span>
-                          <span className="text-xs text-muted-foreground font-medium">Exports only checked table rows.</span>
-                        </div>
-                      </label>
-                    )}
-
-                    <label className="flex items-center gap-2 cursor-pointer hover:bg-muted p-1.5 rounded">
-                      <RadioBox checked={exportType === "safety"} onChange={() => setExportType("safety")} />
-                      <div>
-                        <span className="font-bold text-success block">Safety contacts report</span>
-                        <span className="text-xs text-muted-foreground font-medium">Generates listing focusing purely on safety coordinators.</span>
-                      </div>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer hover:bg-muted p-1.5 rounded">
-                      <RadioBox checked={exportType === "site_access"} onChange={() => setExportType("site_access")} />
-                      <div>
-                        <span className="font-bold text-info block">Site access contacts report</span>
-                        <span className="text-xs text-muted-foreground font-medium">Listing of contacts certified for driver induction gating.</span>
-                      </div>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer hover:bg-muted p-1.5 rounded">
-                      <RadioBox checked={exportType === "emergency"} onChange={() => setExportType("emergency")} />
-                      <div>
-                        <span className="font-bold text-destructive block">Emergency contacts report</span>
-                        <span className="text-xs text-muted-foreground font-medium">Evacuation and emergency responders dispatcher report.</span>
-                      </div>
-                    </label>
-
-                    {selectedContact && currentMode === "detail" && (
-                      <label className="flex items-center gap-2 cursor-pointer hover:bg-muted p-1.5 rounded">
-                        <RadioBox checked={exportType === "profile"} onChange={() => setExportType("profile")} />
-                        <div>
-                          <span className="font-bold text-info block">Individual Contact Profile card</span>
-                          <span className="text-xs text-muted-foreground font-medium">Export all safety, access, and details for {selectedContact.name}.</span>
-                        </div>
-                      </label>
-                    )}
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Exporting contacts based on selected scope:{" "}
+                  <span className="font-bold text-foreground uppercase bg-muted px-1.5 py-0.5 rounded">
+                    {exportType === "filtered" && "Filtered Results"}
+                    {exportType === "all" && "All Registry Data"}
+                    {exportType === "profile" && "Individual Profile Card"}
+                  </span>
+                </p>
 
                 {/* Format selection */}
                 <div className="space-y-1.5">

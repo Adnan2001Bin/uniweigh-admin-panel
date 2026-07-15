@@ -13,7 +13,6 @@ import {
   Truck,
   Grid,
   Filter,
-  Check,
   AlertTriangle,
   History,
   Download,
@@ -29,10 +28,11 @@ import {
   ArrowRight,
   ChevronDown,
   Trash2,
-  Play
+  Play,
+  Sliders,
+  RefreshCw
 } from "lucide-react";
 import { Transaction, TransactionStatus } from "../types";
-import { motion, AnimatePresence } from "motion/react";
 import StatusBadge from "@/src/components/shared/StatusBadge";
 import PageHeader from "@/src/components/shared/PageHeader";
 import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
@@ -76,6 +76,10 @@ export default function TransactionsView({
   const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [previewTab, setPreviewTab] = useState<"overview" | "pricing" | "weights" | "audit">("overview");
+
+  // Local list search (combined with header global search)
+  const [localSearchQuery, setLocalSearchQuery] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Advanced Filters toggle
   const [showFilters, setShowFilters] = useState<boolean>(false);
@@ -148,6 +152,12 @@ export default function TransactionsView({
     setAdvDateFrom("");
     setAdvDateTo("");
     setActiveChip("All");
+    setLocalSearchQuery("");
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 600);
   };
 
   // Check if any advanced filter is active
@@ -169,10 +179,12 @@ export default function TransactionsView({
     advDateTo !== ""
   ].filter(Boolean).length;
 
+  const hasActiveFilters = activeChip !== "All" || activeAdvancedFilterCount > 0;
+
   // Process and filter transactions
   let processedTransactions = transactions;
 
-  // 1. Chip Filter
+  // 1. Chip / category Filter
   if (activeChip !== "All") {
     if (activeChip === "Account") {
       processedTransactions = processedTransactions.filter((tx) => tx.type === "Account");
@@ -185,9 +197,10 @@ export default function TransactionsView({
     }
   }
 
-  // 2. Search Query (Global Filter)
-  if (searchQuery) {
-    const q = searchQuery.toLowerCase();
+  // 2. Search Query (local toolbar + global header)
+  const activeSearchQuery = localSearchQuery || searchQuery;
+  if (activeSearchQuery) {
+    const q = activeSearchQuery.toLowerCase();
     processedTransactions = processedTransactions.filter(
       (tx) =>
         tx.id.toLowerCase().includes(q) ||
@@ -196,7 +209,8 @@ export default function TransactionsView({
         tx.driverName.toLowerCase().includes(q) ||
         tx.customerName.toLowerCase().includes(q) ||
         tx.productName.toLowerCase().includes(q) ||
-        tx.carrierName.toLowerCase().includes(q)
+        tx.carrierName.toLowerCase().includes(q) ||
+        (tx.transactionCode || "").toLowerCase().includes(q)
     );
   }
 
@@ -270,21 +284,19 @@ export default function TransactionsView({
 
   // Handle Export download trigger
   const triggerExportDownload = (scope: string, format: string) => {
-    setIsExporting(true);
-    setExportScope(null); // hide choice modal
-    
     let scopeLabel = "";
     let itemsToExport = processedTransactions;
 
-    if (scope === "current") {
-      scopeLabel = "Current View";
+    if (scope === "current" || scope === "filtered") {
+      scopeLabel = scope === "filtered" ? "Filtered Results" : "Current View";
       itemsToExport = processedTransactions;
     } else if (scope === "selected") {
       scopeLabel = "Selected Rows";
       itemsToExport = transactions.filter((t) => selectedIds.includes(t.id));
-    } else if (scope === "filtered") {
-      scopeLabel = "Filtered Results";
-      itemsToExport = processedTransactions;
+      if (itemsToExport.length === 0) {
+        toast.error("No rows checked. Select records in the table first.");
+        return;
+      }
     } else if (scope === "all") {
       scopeLabel = "All Transactions";
       itemsToExport = transactions;
@@ -295,6 +307,13 @@ export default function TransactionsView({
       );
     }
 
+    if (itemsToExport.length === 0) {
+      toast.error("Nothing to export for the chosen scope.");
+      return;
+    }
+
+    setIsExporting(true);
+    setExportScope(null); // hide choice modal
     setExportMessage(`Pre-allocating buffers & formatting ${itemsToExport.length} entries as ${format}...`);
 
     setTimeout(() => {
@@ -360,6 +379,7 @@ export default function TransactionsView({
 
       setIsExporting(false);
       setShowExportMenu(false);
+      toast.success(`Exported ${itemsToExport.length} transaction(s) as ${format}.`);
     }, 1500);
   };
 
@@ -514,23 +534,46 @@ export default function TransactionsView({
           { label: "Operations" },
           { label: "Transactions Control Hub" },
         ]}
-        actions={
-          <div className="flex items-center gap-2 relative">
+      />
+
+      {/* Products-style toolbar: Search + Filters + Columns + Refresh */}
+      <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+            <div className="relative w-64">
+              <input
+                type="text"
+                placeholder="Search transactions..."
+                value={localSearchQuery}
+                onChange={(e) => setLocalSearchQuery(e.target.value)}
+                className="w-full bg-muted border border-border hover:border-input focus:bg-card rounded-md pl-3 pr-8 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              {localSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setLocalSearchQuery("")}
+                  className="absolute right-2.5 top-2 text-muted-foreground hover:text-muted-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
             <button
               id="btn-toggle-filters"
               type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold cursor-pointer transition ${
-                showFilters
-                  ? "border-ring bg-info/10 text-info"
-                  : "border-border bg-card text-foreground hover:bg-muted"
+              className={`rounded-md border px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 select-none ${
+                showFilters || hasActiveFilters
+                  ? "bg-info/10 border-info/25 text-info hover:bg-info/10"
+                  : "bg-card border-border text-foreground hover:bg-muted"
               }`}
             >
               <Filter className="h-3.5 w-3.5" />
-              <span>Advanced Filters</span>
-              {activeAdvancedFilterCount > 0 && (
-                <span className="ml-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                  {activeAdvancedFilterCount}
+              Filters
+              {(hasActiveFilters || activeAdvancedFilterCount > 0) && (
+                <span className="bg-primary text-white font-mono text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  {(activeChip !== "All" ? 1 : 0) + activeAdvancedFilterCount}
                 </span>
               )}
             </button>
@@ -539,60 +582,306 @@ export default function TransactionsView({
               <button
                 id="btn-toggle-columns"
                 type="button"
-                onClick={() => setShowColumnsMenu(!showColumnsMenu)}
-                className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition select-none"
+                onClick={() => {
+                  setShowColumnsMenu(!showColumnsMenu);
+                  setShowExportMenu(false);
+                }}
+                className="rounded-md border border-border bg-card hover:bg-muted px-3 py-1.5 text-xs font-bold text-foreground transition flex items-center gap-1.5 select-none"
               >
-                <span>Column Visibility</span>
+                <Sliders className="h-3.5 w-3.5 text-muted-foreground" />
+                Columns
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
 
               {showColumnsMenu && (
-                <div className="absolute right-0 mt-1.5 w-48 bg-card border border-border rounded-md shadow-lg py-2 z-20 text-xs">
-                  <div className="px-3.5 py-1 text-muted-foreground font-bold text-xs uppercase tracking-widest border-b border-border mb-1.5">
+                <div className="absolute left-0 mt-1.5 w-52 bg-card border border-border rounded-md shadow-lg py-1.5 z-25 text-xs">
+                  <div className="px-3 py-1 font-bold text-muted-foreground text-xs uppercase tracking-widest border-b border-border mb-1">
                     Toggle Columns
                   </div>
                   {Object.keys(visibleColumns).map((col) => (
-                    <button
+                    <label
                       key={col}
-                      type="button"
-                      onClick={() => {
-                        setVisibleColumns((prev) => ({
-                          ...prev,
-                          [col]: !prev[col]
-                        }));
-                      }}
-                      className="w-full text-left px-3.5 py-1.5 hover:bg-muted font-bold text-foreground flex items-center justify-between cursor-pointer"
+                      className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-muted cursor-pointer font-bold text-foreground"
                     >
-                      <span className="capitalize">
-                        {col === "ticketCode"
-                          ? "Ticket / Code"
-                          : col === "date"
-                          ? "Transaction Date"
-                          : col === "vehicleDriver"
-                          ? "Vehicle & Driver"
-                          : col === "customer"
-                          ? "Invoiced To"
-                          : col === "material"
-                          ? "Material"
-                          : col === "netWeight"
-                          ? "Net Weight"
-                          : col === "type"
-                          ? "Type"
-                          : col === "status"
-                          ? "Status"
-                          : col === "action"
-                          ? "Action"
-                          : col}
-                      </span>
-                      {visibleColumns[col] && <Check className="h-3.5 w-3.5 text-info shrink-0" />}
-                    </button>
+                      <Checkbox
+                        checked={visibleColumns[col]}
+                        onCheckedChange={() => {
+                          setVisibleColumns((prev) => ({
+                            ...prev,
+                            [col]: !prev[col],
+                          }));
+                        }}
+                        className="rounded text-info focus:ring-ring"
+                      />
+                      {col === "ticketCode"
+                        ? "Ticket / Code"
+                        : col === "date"
+                        ? "Transaction Date"
+                        : col === "vehicleDriver"
+                        ? "Vehicle & Driver"
+                        : col === "customer"
+                        ? "Invoiced To"
+                        : col === "material"
+                        ? "Material"
+                        : col === "netWeight"
+                        ? "Net Weight"
+                        : col === "type"
+                        ? "Type"
+                        : col === "status"
+                        ? "Status"
+                        : col === "action"
+                        ? "Action"
+                        : col}
+                    </label>
                   ))}
                 </div>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="rounded-md border border-border bg-card hover:bg-muted p-1.5 text-xs font-bold text-foreground transition flex items-center justify-center select-none"
+              title="Refresh dataset"
+            >
+              <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
+            </button>
           </div>
-        }
-      />
+        </div>
+
+        {/* Expanded Filters Drawer — Products pattern */}
+        {(showFilters || hasActiveFilters) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-muted border border-border p-3.5 rounded-md text-xs">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Category Filter
+              </label>
+              <SelectBox
+                value={activeChip}
+                onChange={(e) => {
+                  const chip = e.target.value;
+                  setActiveChip(chip);
+                  if (chip !== "All" && chip !== "Account" && chip !== "Cash") {
+                    setAdvStatus("All");
+                  }
+                }}
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+              >
+                <option value="All">All</option>
+                <option value="Account">Account</option>
+                <option value="Cash">Cash</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="Invoiced">Invoiced</option>
+              </SelectBox>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Transaction Type
+              </label>
+              <SelectBox
+                value={advType}
+                onChange={(e) => setAdvType(e.target.value)}
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+              >
+                <option value="All">All Types</option>
+                <option value="Account">Account</option>
+                <option value="Cash">Cash</option>
+              </SelectBox>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Operational Status
+              </label>
+              <SelectBox
+                value={advStatus}
+                onChange={(e) => setAdvStatus(e.target.value)}
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+              >
+                <option value="All">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="On Hold">On Hold</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="Invoiced">Invoiced</option>
+              </SelectBox>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Customer Name or ID
+              </label>
+              <input
+                type="text"
+                value={advCustomer}
+                onChange={(e) => setAdvCustomer(e.target.value)}
+                placeholder="e.g. Apex"
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Job / Order Number
+              </label>
+              <input
+                type="text"
+                value={advJobOrder}
+                onChange={(e) => setAdvJobOrder(e.target.value)}
+                placeholder="e.g. JOB-2026-01"
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Product / Material
+              </label>
+              <input
+                type="text"
+                value={advProduct}
+                onChange={(e) => setAdvProduct(e.target.value)}
+                placeholder="e.g. Crushed Rock"
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Lot Number
+              </label>
+              <input
+                type="text"
+                value={advLot}
+                onChange={(e) => setAdvLot(e.target.value)}
+                placeholder="e.g. LOT-A-42"
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Carter (Carrier Name)
+              </label>
+              <input
+                type="text"
+                value={advCarter}
+                onChange={(e) => setAdvCarter(e.target.value)}
+                placeholder="e.g. Star Bulk"
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Driver Name
+              </label>
+              <input
+                type="text"
+                value={advDriver}
+                onChange={(e) => setAdvDriver(e.target.value)}
+                placeholder="e.g. Peterson"
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Vehicle License Plate
+              </label>
+              <input
+                type="text"
+                value={advVehicle}
+                onChange={(e) => setAdvVehicle(e.target.value)}
+                placeholder="e.g. XY-99-ZZ"
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Ticket Number
+              </label>
+              <input
+                type="text"
+                value={advTicketNo}
+                onChange={(e) => setAdvTicketNo(e.target.value)}
+                placeholder="e.g. WB-991244"
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Transaction Code / ID
+              </label>
+              <input
+                type="text"
+                value={advTxCode}
+                onChange={(e) => setAdvTxCode(e.target.value)}
+                placeholder="e.g. TR-AC-912"
+                className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Account Balance Threshold
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  value={advBalanceMin}
+                  onChange={(e) => setAdvBalanceMin(e.target.value)}
+                  placeholder="Min $"
+                  className="w-1/2 rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <input
+                  type="number"
+                  value={advBalanceMax}
+                  onChange={(e) => setAdvBalanceMax(e.target.value)}
+                  placeholder="Max $"
+                  className="w-1/2 rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Weigh Date Interval
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={advDateFrom}
+                  onChange={(e) => setAdvDateFrom(e.target.value)}
+                  className="w-1/2 rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <span className="text-muted-foreground text-xs">to</span>
+                <input
+                  type="date"
+                  value={advDateTo}
+                  onChange={(e) => setAdvDateTo(e.target.value)}
+                  className="w-1/2 rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            </div>
+
+            <div className="sm:col-span-2 md:col-span-4 flex justify-end gap-1.5 pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="text-muted-foreground hover:text-foreground font-bold px-2 py-1 text-xs"
+              >
+                Reset All Filters
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* 3. Export Dialog Modal overlay */}
       {exportScope && (
@@ -675,283 +964,6 @@ export default function TransactionsView({
         </div>
       )}
 
-      {/* 4. Top Filtering Chips */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest mr-2 select-none">
-          Category Filters:
-        </span>
-        {[
-          "All",
-          "Account",
-          "Cash",
-          "Pending",
-          "Approved",
-          "Cancelled",
-          "Invoiced"
-        ].map((chip) => {
-          const isActive = activeChip === chip;
-          return (
-            <button
-              key={chip}
-              onClick={() => {
-                setActiveChip(chip);
-                // Clear state when user chooses standard status filters
-                if (chip !== "All" && chip !== "Account" && chip !== "Cash") {
-                  setAdvStatus("All");
-                }
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition cursor-pointer select-none ${
-                isActive
-                  ? "bg-primary border-primary text-white shadow-xs"
-                  : "bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              {chip}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 5. Advanced Filter Drawer Panel */}
-      <AnimatePresence>
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="rounded-md border border-border bg-muted p-4 shadow-inner space-y-4">
-              <div className="flex items-center justify-between border-b border-border pb-2">
-                <span className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  Advanced Multi-Criteria Filtering Engine
-                </span>
-                <button
-                  onClick={resetFilters}
-                  className="text-xs font-bold text-info hover:text-info hover:underline cursor-pointer"
-                >
-                  Clear All Filters
-                </button>
-              </div>
-
-              <div className="grid gap-3.5 sm:grid-cols-2 md:grid-cols-4">
-                {/* 1. Transaction Type */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Transaction Type
-                  </label>
-                  <SelectBox
-                    value={advType}
-                    onChange={(e) => setAdvType(e.target.value)}
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  >
-                    <option value="All">All Types</option>
-                    <option value="Account">Account</option>
-                    <option value="Cash">Cash</option>
-                  </SelectBox>
-                </div>
-
-                {/* 2. Status */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Operational Status
-                  </label>
-                  <SelectBox
-                    value={advStatus}
-                    onChange={(e) => setAdvStatus(e.target.value)}
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  >
-                    <option value="All">All Statuses</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="On Hold">On Hold</option>
-                    <option value="Cancelled">Cancelled</option>
-                    <option value="Committed">Committed</option>
-                    <option value="Invoiced">Invoiced</option>
-                  </SelectBox>
-                </div>
-
-                {/* 3. Customer */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Customer Name or ID
-                  </label>
-                  <input
-                    type="text"
-                    value={advCustomer}
-                    onChange={(e) => setAdvCustomer(e.target.value)}
-                    placeholder="e.g. Apex"
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  />
-                </div>
-
-                {/* 4. Job / Order */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Job / Order Number
-                  </label>
-                  <input
-                    type="text"
-                    value={advJobOrder}
-                    onChange={(e) => setAdvJobOrder(e.target.value)}
-                    placeholder="e.g. JOB-2026-01"
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  />
-                </div>
-
-                {/* 5. Product */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Product / Material
-                  </label>
-                  <input
-                    type="text"
-                    value={advProduct}
-                    onChange={(e) => setAdvProduct(e.target.value)}
-                    placeholder="e.g. Crushed Rock"
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  />
-                </div>
-
-                {/* 6. Lot */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Lot Number
-                  </label>
-                  <input
-                    type="text"
-                    value={advLot}
-                    onChange={(e) => setAdvLot(e.target.value)}
-                    placeholder="e.g. LOT-A-42"
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  />
-                </div>
-
-                {/* 7. Carter / Hauler */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Carter (Carrier Name)
-                  </label>
-                  <input
-                    type="text"
-                    value={advCarter}
-                    onChange={(e) => setAdvCarter(e.target.value)}
-                    placeholder="e.g. Star Bulk"
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  />
-                </div>
-
-                {/* 8. Driver */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Driver Name
-                  </label>
-                  <input
-                    type="text"
-                    value={advDriver}
-                    onChange={(e) => setAdvDriver(e.target.value)}
-                    placeholder="e.g. Peterson"
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  />
-                </div>
-
-                {/* 9. Vehicle */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Vehicle License Plate
-                  </label>
-                  <input
-                    type="text"
-                    value={advVehicle}
-                    onChange={(e) => setAdvVehicle(e.target.value)}
-                    placeholder="e.g. XY-99-ZZ"
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  />
-                </div>
-
-                {/* 10. Ticket Number */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Ticket Number
-                  </label>
-                  <input
-                    type="text"
-                    value={advTicketNo}
-                    onChange={(e) => setAdvTicketNo(e.target.value)}
-                    placeholder="e.g. WB-991244"
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  />
-                </div>
-
-                {/* 11. Transaction Code */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Transaction Code / ID
-                  </label>
-                  <input
-                    type="text"
-                    value={advTxCode}
-                    onChange={(e) => setAdvTxCode(e.target.value)}
-                    placeholder="e.g. TR-AC-912"
-                    className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                  />
-                </div>
-
-                {/* 12. Account Balance Range */}
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Account Balance Threshold
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      value={advBalanceMin}
-                      onChange={(e) => setAdvBalanceMin(e.target.value)}
-                      placeholder="Min $"
-                      className="w-1/2 rounded-md border border-border bg-card px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
-                    <input
-                      type="number"
-                      value={advBalanceMax}
-                      onChange={(e) => setAdvBalanceMax(e.target.value)}
-                      placeholder="Max $"
-                      className="w-1/2 rounded-md border border-border bg-card px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
-                  </div>
-                </div>
-
-                {/* 13. Date Range */}
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">
-                    Weigh Date Interval
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <div className="relative w-1/2">
-                      <input
-                        type="date"
-                        value={advDateFrom}
-                        onChange={(e) => setAdvDateFrom(e.target.value)}
-                        className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                      />
-                    </div>
-                    <span className="text-muted-foreground text-xs">to</span>
-                    <div className="relative w-1/2">
-                      <input
-                        type="date"
-                        value={advDateTo}
-                        onChange={(e) => setAdvDateTo(e.target.value)}
-                        className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* 6. Full-Width Transaction Ledger Table */}
       <div className="w-full animate-fade-in">
         {/* Data Table Grid */}
@@ -961,7 +973,7 @@ export default function TransactionsView({
             {selectedIds.length > 0 ? (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2.5 animate-fade-in">
                 <div className="flex items-center gap-2">
-                  <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
+                  <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs">
                     {selectedIds.length}
                   </span>
                   <span className="text-xs font-bold text-foreground">
@@ -970,13 +982,15 @@ export default function TransactionsView({
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
+                    type="button"
                     onClick={handleBulkApprove}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-white bg-success hover:bg-success/90 cursor-pointer shadow-sm transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-primary-foreground bg-success hover:bg-success/90 cursor-pointer shadow-sm transition"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Approve Selected
                   </button>
                   <button
+                    type="button"
                     onClick={() => setShowBulkCommentModal(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-info bg-info/10 border border-info/25 hover:bg-info/10 cursor-pointer shadow-xs transition"
                   >
@@ -984,13 +998,64 @@ export default function TransactionsView({
                     Comment Selected
                   </button>
                   <button
+                    type="button"
                     onClick={handleBulkCancel}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-destructive bg-destructive/10 border border-destructive/25 hover:bg-destructive/15 cursor-pointer shadow-xs transition"
                   >
                     <X className="h-3.5 w-3.5" />
                     Cancel Selected
                   </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      id="btn-export-dropdown-selected"
+                      onClick={() => setShowExportMenu(!showExportMenu)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-foreground bg-card border border-border hover:bg-muted cursor-pointer shadow-xs transition"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Export
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    {showExportMenu && (
+                      <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                        <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Select Export Scope
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowExportMenu(false);
+                            setExportScope("selected");
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                        >
+                          Export Selected ({selectedIds.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowExportMenu(false);
+                            setExportScope("filtered");
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted"
+                        >
+                          Export Filtered Results ({processedTransactions.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowExportMenu(false);
+                            setExportScope("all");
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted"
+                        >
+                          Export All Records ({transactions.length})
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <button
+                    type="button"
                     onClick={() => setSelectedIds([])}
                     className="text-xs font-bold text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-md hover:bg-card cursor-pointer transition"
                   >
@@ -999,12 +1064,16 @@ export default function TransactionsView({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-between w-full gap-3">
                 <span className="text-xs font-semibold text-muted-foreground">
                   Showing {processedTransactions.length} of {transactions.length} records found
+                  {(hasActiveFilters || !!activeSearchQuery.trim()) && (
+                    <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
+                  )}
                 </span>
                 <div className="relative">
                   <button
+                    type="button"
                     id="btn-export-dropdown"
                     onClick={() => setShowExportMenu(!showExportMenu)}
                     className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
@@ -1014,44 +1083,64 @@ export default function TransactionsView({
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
 
-                  {/* Export Dropdown list */}
                   {showExportMenu && (
-                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg ring-1 ring-black/5 animate-fade-in text-xs text-foreground">
+                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
                       <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         Select Export Scope
                       </div>
                       <button
-                        onClick={() => setExportScope("current")}
-                        className="w-full text-left px-3 py-2 hover:bg-muted flex items-center justify-between"
-                      >
-                        <span>Export Current View ({processedTransactions.length} items)</span>
-                      </button>
-                      <button
+                        type="button"
                         disabled={selectedIds.length === 0}
-                        onClick={() => setExportScope("selected")}
-                        className={`w-full text-left px-3 py-2 hover:bg-muted flex items-center justify-between ${
-                          selectedIds.length === 0 ? "opacity-40 cursor-not-allowed" : ""
+                        onClick={() => {
+                          if (selectedIds.length === 0) return;
+                          setShowExportMenu(false);
+                          setExportScope("selected");
+                        }}
+                        className={`w-full text-left px-3 py-2 hover:bg-muted ${
+                          selectedIds.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
                         }`}
                       >
-                        <span>Export Selected Rows ({selectedIds.length} items)</span>
+                        Export Selected ({selectedIds.length})
+                        {selectedIds.length === 0 && (
+                          <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                            Check rows in the table first
+                          </span>
+                        )}
                       </button>
                       <button
-                        onClick={() => setExportScope("filtered")}
-                        className="w-full text-left px-3 py-2 hover:bg-muted flex items-center justify-between"
+                        type="button"
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          setExportScope("filtered");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
                       >
-                        <span>Export Filtered Results ({processedTransactions.length} items)</span>
+                        Export Filtered Results ({processedTransactions.length})
+                        {activeChip !== "All" && (
+                          <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                            Current filter: {activeChip}
+                          </span>
+                        )}
                       </button>
                       <button
-                        onClick={() => setExportScope("all")}
-                        className="w-full text-left px-3 py-2 hover:bg-muted flex items-center justify-between"
+                        type="button"
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          setExportScope("all");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
                       >
-                        <span>Export All Transactions ({transactions.length} items)</span>
+                        Export All Records ({transactions.length})
                       </button>
                       <button
-                        onClick={() => setExportScope("invoicing")}
-                        className="w-full text-left px-3 py-2 hover:bg-muted flex items-center justify-between text-info hover:text-info font-semibold"
+                        type="button"
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          setExportScope("invoicing");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted text-info font-semibold border-t border-border mt-1 pt-2"
                       >
-                        <span>Export for Invoicing</span>
+                        Export for Invoicing
                       </button>
                     </div>
                   )}

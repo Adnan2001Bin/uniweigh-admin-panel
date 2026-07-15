@@ -21,7 +21,9 @@ import {
   FileText,
   ArrowLeft,
   Building,
-  Package
+  Package,
+  ChevronDown,
+  RefreshCw
 } from "lucide-react";
 import { Job, Customer, Product, Transaction, TransactionStatus } from "../types";
 import { motion, AnimatePresence } from "motion/react";
@@ -98,14 +100,16 @@ export default function JobsView({
   // Navigation modes: 'list' | 'add' | 'edit' | 'detail'
   const [currentMode, setCurrentMode] = useState<"list" | "add" | "edit" | "detail">("list");
 
-  // Selection
+  // Selection (detail navigation only — list has no checkboxes)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [checkedJobIds, setCheckedJobIds] = useState<string[]>([]);
 
   // Tabs in Detail view: 'destinations' | 'transactions' | 'pricing' | 'logs'
   const [detailTab, setDetailTab] = useState<"destinations" | "transactions" | "pricing" | "logs">("destinations");
 
   // Search & Status filters for Jobs
+  const [localSearchQuery, setLocalSearchQuery] = useState("");
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [customerFilter, setCustomerFilter] = useState<string>("All");
 
@@ -126,7 +130,8 @@ export default function JobsView({
 
   // Export states
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportScope, setExportScope] = useState<"current" | "selected" | "filtered" | "individual" | "txs" | "pricing">("current");
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<"all" | "filtered" | "individual" | "txs" | "pricing">("filtered");
   const [exportFormat, setExportFormat] = useState<"CSV" | "Excel" | "PDF">("CSV");
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -228,9 +233,11 @@ export default function JobsView({
 
   // Filter and search logic for Jobs
   const filteredJobs = useMemo(() => {
+    const activeSearch = localSearchQuery || searchQuery;
     return jobs.filter((j) => {
-      const q = searchQuery.toLowerCase();
+      const q = activeSearch.toLowerCase();
       const matchesSearch =
+        !q ||
         j.id.toLowerCase().includes(q) ||
         j.customerOrderRef.toLowerCase().includes(q) ||
         j.customerName.toLowerCase().includes(q) ||
@@ -241,7 +248,20 @@ export default function JobsView({
 
       return matchesSearch && matchesStatus && matchesCustomer;
     });
-  }, [jobs, searchQuery, statusFilter, customerFilter]);
+  }, [jobs, searchQuery, localSearchQuery, statusFilter, customerFilter]);
+
+  const hasJobFilters = statusFilter !== "All" || customerFilter !== "All";
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
+
+  const resetJobFilters = () => {
+    setStatusFilter("All");
+    setCustomerFilter("All");
+    setLocalSearchQuery("");
+  };
 
   // Start Form helper for adding job
   const handleOpenAddForm = () => {
@@ -380,9 +400,6 @@ export default function JobsView({
             } else if (scope === "pricing" && activeJob) {
               filename = `uniweigh_job_pricing_${activeJob.id}`;
               desc = `Contract pricing rule sheet for job ${activeJob.id}.`;
-            } else if (scope === "selected") {
-              filename = `uniweigh_selected_jobs_export`;
-              desc = `Export payload containing ${checkedJobIds.length} checked jobs.`;
             } else if (scope === "filtered") {
               filename = `uniweigh_filtered_jobs_export`;
               desc = `Export payload containing ${filteredJobs.length} filtered jobs.`;
@@ -405,23 +422,6 @@ export default function JobsView({
         return prev + 30;
       });
     }, 200);
-  };
-
-  // Helper toggle checkboxes
-  const handleToggleCheckAll = () => {
-    if (checkedJobIds.length === filteredJobs.length) {
-      setCheckedJobIds([]);
-    } else {
-      setCheckedJobIds(filteredJobs.map((j) => j.id));
-    }
-  };
-
-  const handleToggleCheckOne = (id: string) => {
-    if (checkedJobIds.includes(id)) {
-      setCheckedJobIds((prev) => prev.filter((item) => item !== id));
-    } else {
-      setCheckedJobIds((prev) => [...prev, id]);
-    }
   };
 
   // Get current active job destinations
@@ -488,74 +488,161 @@ export default function JobsView({
             transition={{ duration: 0.2 }}
             className="space-y-4"
           >
-            {/* SEARCH AND FILTERS TOOLBAR */}
-            <div className="bg-card border border-border rounded-md p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-3xl">
-                {/* Status Filter */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Status:</span>
-                  <SelectBox
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="bg-muted border border-border text-foreground rounded-md px-2.5 py-1.2 text-xs font-medium focus:ring-1 focus:ring-ring"
-                  >
-                    <option value="All">All Statuses</option>
-                    <option value="Active">Active</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Suspended">Suspended</option>
-                  </SelectBox>
-                </div>
+            {/* SEARCH AND FILTERS TOOLBAR — Products pattern */}
+            <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+                  <div className="relative w-64">
+                    <input
+                      type="text"
+                      placeholder="Search jobs..."
+                      value={localSearchQuery}
+                      onChange={(e) => setLocalSearchQuery(e.target.value)}
+                      className="w-full bg-muted border border-border hover:border-input focus:bg-card rounded-md pl-3 pr-8 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    {localSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setLocalSearchQuery("")}
+                        className="absolute right-2.5 top-2 text-muted-foreground hover:text-muted-foreground"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
 
-                {/* Customer Filter */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Customer:</span>
-                  <SelectBox
-                    value={customerFilter}
-                    onChange={(e) => setCustomerFilter(e.target.value)}
-                    className="bg-muted border border-border text-foreground rounded-md px-2.5 py-1.2 text-xs font-medium focus:ring-1 focus:ring-ring max-w-[180px]"
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                    className={`rounded-md border px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 select-none ${
+                      isFilterExpanded || hasJobFilters
+                        ? "bg-info/10 border-info/25 text-info hover:bg-info/10"
+                        : "bg-card border-border text-foreground hover:bg-muted"
+                    }`}
                   >
-                    <option value="All">All Customers</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </SelectBox>
+                    <Filter className="h-3.5 w-3.5" />
+                    Filters
+                    {hasJobFilters && (
+                      <span className="bg-primary text-white font-mono text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                        {[statusFilter !== "All", customerFilter !== "All"].filter(Boolean).length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleRefresh}
+                    className="rounded-md border border-border bg-card hover:bg-muted p-1.5 text-xs font-bold text-foreground transition flex items-center justify-center select-none"
+                    title="Refresh dataset"
+                  >
+                    <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {checkedJobIds.length > 0 && (
-                  <div className="flex items-center gap-2 bg-info/10 border border-info/25 px-3 py-1.5 rounded-md text-xs font-semibold text-info animate-fade-in">
-                    <span>{checkedJobIds.length} Job(s) selected</span>
-                    <div className="h-4 w-px bg-info/10 mx-1"></div>
-                    <button
-                      onClick={() => {
-                        setExportScope("selected");
-                        setShowExportModal(true);
-                      }}
-                      className="text-info hover:text-info font-bold hover:underline flex items-center gap-1 transition"
+              {(isFilterExpanded || hasJobFilters) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-muted border border-border p-3.5 rounded-md text-xs">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                      Status
+                    </label>
+                    <SelectBox
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
                     >
-                      <Download className="h-3.5 w-3.5" />
-                      <span>Export Selected</span>
+                      <option value="All">All Statuses</option>
+                      <option value="Active">Active</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Suspended">Suspended</option>
+                    </SelectBox>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                      Customer
+                    </label>
+                    <SelectBox
+                      value={customerFilter}
+                      onChange={(e) => setCustomerFilter(e.target.value)}
+                      className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+                    >
+                      <option value="All">All Customers</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </SelectBox>
+                  </div>
+
+                  <div className="sm:col-span-2 md:col-span-4 flex justify-end gap-1.5 pt-2 border-t border-border">
+                    <button
+                      type="button"
+                      onClick={resetJobFilters}
+                      className="text-muted-foreground hover:text-foreground font-bold px-2 py-1 text-xs"
+                    >
+                      Reset All Filters
                     </button>
                   </div>
-                )}
-
-                <button
-                  onClick={() => {
-                    setExportScope("filtered");
-                    setShowExportModal(true);
-                  }}
-                  className="rounded-md border border-border bg-card text-xs font-bold text-foreground px-4 py-2.5 hover:bg-muted transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  title="Export job ledger reports"
-                >
-                  <Download className="h-4 w-4 text-info" />
-                  <span>Export Reports</span>
-                </button>
-              </div>
+                </div>
+              )}
             </div>
 
             {/* MAIN TABLE CANVAS */}
             <div className="bg-card border border-border rounded-md overflow-hidden shadow-xs">
+              {/* Table summary + export (Filtered / All) */}
+              <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
+                <div className="flex items-center justify-between w-full gap-3">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Showing {filteredJobs.length} of {jobs.length} records found
+                    {(hasJobFilters || !!localSearchQuery.trim()) && (
+                      <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
+                    )}
+                  </span>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Export Records</span>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    {isExportDropdownOpen && (
+                      <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                        <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Select Export Scope
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsExportDropdownOpen(false);
+                            setExportScope("filtered");
+                            setShowExportModal(true);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                        >
+                          Export Filtered Results ({filteredJobs.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsExportDropdownOpen(false);
+                            setExportScope("all");
+                            setShowExportModal(true);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted"
+                        >
+                          Export All Records ({jobs.length})
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -679,18 +766,6 @@ export default function JobsView({
                 <div>
                   Showing <span className="font-bold text-foreground">{filteredJobs.length}</span> of <span className="font-bold text-foreground">{jobs.length}</span> project contracts.
                 </div>
-                {filteredJobs.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setExportScope("filtered");
-                      setShowExportModal(true);
-                    }}
-                    className="text-info hover:text-info font-bold transition flex items-center gap-1"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>Export Filtered ({filteredJobs.length})</span>
-                  </button>
-                )}
               </div>
             </div>
           </motion.div>
@@ -1529,29 +1604,21 @@ export default function JobsView({
             ) : (
               <div className="space-y-4">
 
-                {/* Export Source Scope selection */}
+                {/* Export Source Scope — locked from list/detail action */}
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                    Select Data Payload scope
+                    Data Payload Scope
                   </label>
-                  <SelectBox
-                    value={exportScope}
-                    onChange={(e) => setExportScope(e.target.value as any)}
-                    className="w-full bg-muted border border-border rounded-md p-2 text-xs font-semibold text-foreground focus:ring-1 focus:ring-ring"
-                  >
-                    <option value="current">All Jobs list directory ({jobs.length})</option>
-                    {checkedJobIds.length > 0 && (
-                      <option value="selected">Selected checked Jobs ({checkedJobIds.length})</option>
-                    )}
-                    <option value="filtered">Filtered jobs list ({filteredJobs.length})</option>
-                    {activeJob && (
-                      <>
-                        <option value="individual">Job {activeJob.id} Summary card</option>
-                        <option value="txs">Job {activeJob.id} Delivery Transaction ledger ({activeJobTransactions.length})</option>
-                        <option value="pricing">Job {activeJob.id} Contract Pricing audit rule sheet</option>
-                      </>
-                    )}
-                  </SelectBox>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Exporting based on:{" "}
+                    <span className="font-bold text-foreground uppercase bg-muted px-1.5 py-0.5 rounded">
+                      {exportScope === "filtered" && `Filtered Results (${filteredJobs.length})`}
+                      {exportScope === "all" && `All Records (${jobs.length})`}
+                      {exportScope === "individual" && activeJob && `Job ${activeJob.id} Summary`}
+                      {exportScope === "txs" && activeJob && `Job ${activeJob.id} Transactions`}
+                      {exportScope === "pricing" && activeJob && `Job ${activeJob.id} Pricing`}
+                    </span>
+                  </p>
                 </div>
 
                 {/* Export Format selection */}
@@ -1586,14 +1653,16 @@ export default function JobsView({
                 {/* Dialog actions */}
                 <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
                   <button
+                    type="button"
                     onClick={() => setShowExportModal(false)}
-                    className="px-3.5 py-1.8 bg-card border border-border text-foreground hover:bg-muted rounded-md font-semibold"
+                    className={`${JOB_FORM_ACTION_CLASS} gap-1.5 border border-border bg-card px-4 text-foreground shadow-xs hover:bg-muted`}
                   >
                     Cancel
                   </button>
                   <button
+                    type="button"
                     onClick={() => triggerExportSimulation(exportScope, exportFormat)}
-                    className="px-4 py-1.8 bg-primary hover:bg-info text-white font-bold rounded-md shadow-sm"
+                    className={`${JOB_FORM_ACTION_CLASS} gap-1.5 border border-primary bg-primary px-4 text-primary-foreground shadow-xs hover:bg-primary/90`}
                   >
                     Generate Report
                   </button>

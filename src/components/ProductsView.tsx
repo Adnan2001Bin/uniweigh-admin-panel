@@ -14,6 +14,8 @@ import {
   ChevronDown,
   Trash2,
   FileText,
+  FileSpreadsheet,
+  FileCheck,
   DollarSign,
   Upload,
 } from "lucide-react";
@@ -75,8 +77,10 @@ export default function ProductsView({
   });
   const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);
 
-  // Export dropdown state
+  // Export — Filtered / All (no row selection on this page)
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<"all" | "filtered" | null>(null);
+  const [exportFormat, setExportFormat] = useState<"CSV" | "Excel" | "PDF">("CSV");
 
   // Add/Edit Product form state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -263,17 +267,20 @@ export default function ProductsView({
     setEditingProduct(null);
   };
 
-  // Export functions
-  const triggerExport = (format: "CSV" | "Excel" | "PDF") => {
+  // Export functions — Filtered / All
+  const handleExport = (format: "CSV" | "Excel" | "PDF", scope: "all" | "filtered") => {
     setIsExportDropdownOpen(false);
+    setExportScope(null);
 
-    if (filteredProducts.length === 0) {
+    const listToExport = scope === "filtered" ? filteredProducts : products;
+
+    if (listToExport.length === 0) {
       toast.info("No product records available to export.");
       return;
     }
 
     const headers = ["Product ID", "Product Code", "Product Name", "Site", "Default Price", "Status", "Notes"];
-    const rows = filteredProducts.map((p) => [
+    const rows = listToExport.map((p) => [
       p.id,
       p.productCode || p.id,
       p.name,
@@ -283,20 +290,64 @@ export default function ProductsView({
       (p.notes ?? p.description ?? "").replace(/,/g, ";"),
     ]);
 
-    if (format === "CSV") {
+    const fileTitle = `Uniweigh_Products_${scope}_${new Date().toISOString().split("T")[0]}`;
+
+    if (format === "CSV" || format === "Excel") {
       const csvContent =
         "data:text/csv;charset=utf-8," +
         [headers.join(","), ...rows.map((e) => e.map((val) => `"${val}"`).join(","))].join("\n");
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `uniweigh_products_export_${Date.now()}.csv`);
+      link.setAttribute("download", `${fileTitle}.${format === "CSV" ? "csv" : "xlsx"}`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      toast.success(`Exported ${listToExport.length} product(s) as ${format}.`);
     } else {
-      // Trigger a styled mock download alert representing Excel or PDF files
-      toast.info(`Preparing ${format} document of the Product Listing (${filteredProducts.length} items). Download will begin in a moment.`);
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("Pop-up blocked. Please allow pop-ups to view/print reports.");
+        return;
+      }
+      const htmlRows = rows
+        .map(
+          (r) => `
+        <tr style="border-bottom: 1px solid #ddd; font-size: 11px;">
+          <td style="padding: 6px; font-family: monospace; font-weight: bold;">${r[0]}</td>
+          <td style="padding: 6px; font-family: monospace;">${r[1]}</td>
+          <td style="padding: 6px; font-weight: bold;">${r[2]}</td>
+          <td style="padding: 6px;">${r[3]}</td>
+          <td style="padding: 6px; text-align: right; font-family: monospace;">${r[4]}</td>
+          <td style="padding: 6px; text-align: center;">${r[5]}</td>
+        </tr>`
+        )
+        .join("");
+      printWindow.document.write(`
+        <html><head><title>${fileTitle}</title></head>
+        <body style="font-family: system-ui, sans-serif; padding: 24px;">
+          <h1 style="font-size: 18px; margin-bottom: 4px;">UniWeigh Product Catalog</h1>
+          <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
+            Scope: ${scope} · ${listToExport.length} record(s) · ${new Date().toLocaleString()}
+          </p>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #f3f4f6; text-align: left; font-size: 11px; text-transform: uppercase;">
+                <th style="padding: 8px;">Product ID</th>
+                <th style="padding: 8px;">Code</th>
+                <th style="padding: 8px;">Name</th>
+                <th style="padding: 8px;">Site</th>
+                <th style="padding: 8px; text-align: right;">Default Price</th>
+                <th style="padding: 8px; text-align: center;">Status</th>
+              </tr>
+            </thead>
+            <tbody>${htmlRows}</tbody>
+          </table>
+        </body></html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
     }
   };
 
@@ -593,7 +644,7 @@ export default function ProductsView({
           >
             {/* PatternFly Enterprise Toolbar */}
             <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 {/* Search, Filters toggle, Column visibility */}
                 <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
                   <div className="relative w-64">
@@ -688,50 +739,6 @@ export default function ProductsView({
                     <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
                   </button>
                 </div>
-
-                {/* Export Dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => {
-                      setIsExportDropdownOpen(!isExportDropdownOpen);
-                      setIsColumnDropdownOpen(false);
-                    }}
-                    className="rounded-md border border-border bg-card hover:bg-muted px-3.5 py-1.5 text-xs font-bold text-foreground transition flex items-center gap-1.5 select-none"
-                  >
-                    <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                    Export
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-
-                  {isExportDropdownOpen && (
-                    <div className="absolute right-0 mt-1.5 w-40 bg-card border border-border rounded-md shadow-lg py-1 z-25 text-xs">
-                      <div className="px-3 py-1 font-bold text-muted-foreground text-xs uppercase tracking-widest border-b border-border mb-1">
-                        Download Formats
-                      </div>
-                      <button
-                        onClick={() => triggerExport("CSV")}
-                        className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2"
-                      >
-                        <FileText className="h-3.5 w-3.5 text-success" />
-                        Export as CSV
-                      </button>
-                      <button
-                        onClick={() => triggerExport("Excel")}
-                        className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2"
-                      >
-                        <FileText className="h-3.5 w-3.5 text-info" />
-                        Export as Excel
-                      </button>
-                      <button
-                        onClick={() => triggerExport("PDF")}
-                        className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2"
-                      >
-                        <FileText className="h-3.5 w-3.5 text-destructive" />
-                        Export as PDF
-                      </button>
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Expanded Filters Drawer */}
@@ -811,6 +818,62 @@ export default function ProductsView({
 
             {/* Main Enterprise Listing Table */}
             <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden">
+              {/* Table summary + export (Filtered / All only — no row selection) */}
+              <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
+                <div className="flex items-center justify-between w-full gap-3">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Showing {filteredProducts.length} of {products.length} records found
+                    {(filterStatus !== "All" ||
+                      filterProduct !== "All" ||
+                      filterProductCode !== "All" ||
+                      !!localSearchQuery.trim()) && (
+                      <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
+                    )}
+                  </span>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportDropdownOpen(!isExportDropdownOpen);
+                        setIsColumnDropdownOpen(false);
+                      }}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Export Records</span>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    {isExportDropdownOpen && (
+                      <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                        <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Select Export Scope
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsExportDropdownOpen(false);
+                            setExportScope("filtered");
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                        >
+                          Export Filtered Results ({filteredProducts.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsExportDropdownOpen(false);
+                            setExportScope("all");
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted"
+                        >
+                          Export All Records ({products.length})
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
@@ -923,6 +986,70 @@ export default function ProductsView({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {exportScope && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md bg-card rounded-md border border-border shadow-lg p-6 relative animate-zoom-in">
+            <button
+              type="button"
+              onClick={() => setExportScope(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-muted-foreground transition"
+            >
+              <X className="h-4.5 w-4.5" />
+            </button>
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+              Export Configuration
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Exporting products based on selected scope:{" "}
+              <span className="font-bold text-foreground uppercase bg-muted px-1.5 py-0.5 rounded">
+                {exportScope === "filtered" && "Filtered Results"}
+                {exportScope === "all" && "All Registry Data"}
+              </span>
+            </p>
+
+            <label className="block text-xs font-bold uppercase text-muted-foreground mb-2">
+              Select Output Format
+            </label>
+            <div className="grid grid-cols-3 gap-2.5 mb-6">
+              {(["CSV", "Excel", "PDF"] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  onClick={() => setExportFormat(fmt)}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2.5 rounded-md border-2 text-xs font-semibold cursor-pointer transition ${
+                    exportFormat === fmt
+                      ? "border-primary bg-info/10 text-info"
+                      : "border-border bg-card text-muted-foreground hover:border-border"
+                  }`}
+                >
+                  {fmt === "CSV" && <FileText className="h-5 w-5 text-muted-foreground" />}
+                  {fmt === "Excel" && <FileSpreadsheet className="h-5 w-5 text-success" />}
+                  {fmt === "PDF" && <FileCheck className="h-5 w-5 text-destructive" />}
+                  <span>{fmt}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setExportScope(null)}
+                className="px-4 py-2 rounded-md border border-border text-xs font-semibold text-muted-foreground hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExport(exportFormat, exportScope)}
+                className="px-4 py-2 rounded-md bg-primary text-xs font-semibold text-white hover:bg-primary/90 transition"
+              >
+                Generate & Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

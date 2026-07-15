@@ -10,6 +10,7 @@ import {
   Wrench,
   Plus,
   UserPlus,
+  Edit,
   Edit3,
   Lock,
   ShieldCheck,
@@ -41,6 +42,8 @@ import { readDocketLogo, hasDocketLogo } from "@/src/lib/docket-logo";
 import { buildDeliveryDocketHtml } from "@/src/lib/delivery-docket";
 import { getPreviewIframeHeight } from "@/src/lib/print-preview";
 import PageHeader, { PAGE_HEADER_ADD_BUTTON_CLASS } from "@/src/components/shared/PageHeader";
+import { TABLE_ACTION_ICON_BUTTON_CLASS } from "@/src/components/shared/table-action-styles";
+import { confirmDialog } from "@/src/components/shared/dialog-service";
 
 const DOCKET_PREVIEW_WIDTH_PX = 728;
 
@@ -60,6 +63,16 @@ const INITIAL_BACK_OFFICE_OPERATORS: BackOfficeOperator[] = [
   { id: "op-4", name: "Admin User", email: "admin.user@uniweigh.com", role: "Administrator", station: "HQ Corporate Services", active: "System config active" },
   { id: "op-5", name: "Dev User", email: "dev.user@uniweigh.com", role: "Developer", station: "HQ Corporate Services", active: "System config active" },
 ];
+
+const DUTY_STATUS_OPTIONS = [
+  "Idle",
+  "Scale-A1 active",
+  "Scale-A2 active",
+  "Scale-B1 active",
+  "Scale-C1 active",
+  "Scale-W1 active",
+  "System config active",
+] as const;
 
 interface AdminViewProps {
   adminUser: AdminUser;
@@ -127,10 +140,12 @@ export default function AdminView({
     return INITIAL_BACK_OFFICE_OPERATORS;
   });
   const [isAddingUser, setIsAddingUser] = useState(false);
+  const [editingOperatorId, setEditingOperatorId] = useState<string | null>(null);
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState("");
   const [newUserStation, setNewUserStation] = useState("");
+  const [newUserDutyStatus, setNewUserDutyStatus] = useState("");
 
   useEffect(() => {
     localStorage.setItem("uniweigh_back_office_users", JSON.stringify(operators));
@@ -141,6 +156,8 @@ export default function AdminView({
     setNewUserEmail("");
     setNewUserRole("");
     setNewUserStation("");
+    setNewUserDutyStatus("");
+    setEditingOperatorId(null);
   };
 
   const handleCloseAddUser = () => {
@@ -148,7 +165,32 @@ export default function AdminView({
     resetAddUserForm();
   };
 
-  const handleAddUser = (event: React.FormEvent) => {
+  const handleOpenAddUser = () => {
+    resetAddUserForm();
+    setIsAddingUser(true);
+  };
+
+  const handleOpenEditUser = (operator: BackOfficeOperator) => {
+    setNewUserName(operator.name);
+    setNewUserEmail(operator.email);
+    setNewUserRole(operator.role);
+    setNewUserStation(operator.station);
+    setNewUserDutyStatus(operator.active);
+    setEditingOperatorId(operator.id);
+    setIsAddingUser(true);
+  };
+
+  const handleDeleteUser = async (operator: BackOfficeOperator) => {
+    const confirmed = await confirmDialog(
+      `Delete operator "${operator.name}"? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setOperators((prev) => prev.filter((op) => op.id !== operator.id));
+    toast.success(`User "${operator.name}" deleted.`);
+  };
+
+  const handleSaveUser = (event: React.FormEvent) => {
     event.preventDefault();
 
     const name = newUserName.trim();
@@ -170,22 +212,51 @@ export default function AdminView({
       toast.info("Please select an operating station.");
       return;
     }
-    if (operators.some((operator) => operator.email.toLowerCase() === email)) {
+    if (!newUserDutyStatus) {
+      toast.info("Please select a duty status.");
+      return;
+    }
+    if (
+      operators.some(
+        (operator) =>
+          operator.email.toLowerCase() === email &&
+          operator.id !== editingOperatorId
+      )
+    ) {
       toast.error("A user with this email already exists.");
       return;
     }
 
-    const newOperator: BackOfficeOperator = {
-      id: `op-${Date.now().toString().slice(-6)}`,
-      name,
-      email,
-      role: newUserRole,
-      station: newUserStation,
-      active: newUserRole === "Administrator" || newUserRole === "Developer" ? "System config active" : "Idle",
-    };
+    if (editingOperatorId) {
+      setOperators((prev) =>
+        prev.map((operator) =>
+          operator.id === editingOperatorId
+            ? {
+                ...operator,
+                name,
+                email,
+                role: newUserRole,
+                station: newUserStation,
+                active: newUserDutyStatus,
+              }
+            : operator
+        )
+      );
+      toast.success(`User "${name}" updated successfully.`);
+    } else {
+      const newOperator: BackOfficeOperator = {
+        id: `op-${Date.now().toString().slice(-6)}`,
+        name,
+        email,
+        role: newUserRole,
+        station: newUserStation,
+        active: newUserDutyStatus,
+      };
 
-    setOperators((prev) => [...prev, newOperator]);
-    toast.success(`User "${name}" added successfully.`);
+      setOperators((prev) => [...prev, newOperator]);
+      toast.success(`User "${name}" added successfully.`);
+    }
+
     handleCloseAddUser();
   };
 
@@ -213,12 +284,17 @@ export default function AdminView({
     toast.success("Logo removed from docket configuration.");
   };
 
-  const mockBackOfficeUsers = operators;
   const isDeveloper = isDeveloperRole(adminUser.role);
   const visibleSitesForLimit = getVisibleSites(sites);
   const visibleRoles = isDeveloper
     ? MOCK_ROLES
     : MOCK_ROLES.filter((role) => role.name !== "Developer");
+  const mockBackOfficeUsers = useMemo(
+    () =>
+      operators.filter((operator) => isDeveloper || operator.role !== "Developer"),
+    [operators, isDeveloper]
+  );
+  const isEditingUser = editingOperatorId !== null;
 
   const adminPathLabel =
     activeTab === "roles"
@@ -261,7 +337,7 @@ export default function AdminView({
             ) : (
               <button
                 type="button"
-                onClick={() => setIsAddingUser(true)}
+                onClick={handleOpenAddUser}
                 className={PAGE_HEADER_ADD_BUTTON_CLASS}
               >
                 <UserPlus className="h-4 w-4" />
@@ -330,12 +406,13 @@ export default function AdminView({
                     <th className="px-4 py-2.5">System Role</th>
                     <th className="px-4 py-2.5">Operating Station</th>
                     <th className="px-4 py-2.5 text-center">Duty Status</th>
+                    <th className="px-4 py-2.5 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border text-sm text-foreground">
                   {mockBackOfficeUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-10 text-center text-xs font-medium text-muted-foreground">
+                      <td colSpan={6} className="px-4 py-10 text-center text-xs font-medium text-muted-foreground">
                         No operators registered yet. Use Add User to create the first account.
                       </td>
                     </tr>
@@ -355,6 +432,26 @@ export default function AdminView({
                           {u.active}
                         </span>
                       </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditUser(u)}
+                            className={TABLE_ACTION_ICON_BUTTON_CLASS}
+                            title="Edit operator"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(u)}
+                            className={`${TABLE_ACTION_ICON_BUTTON_CLASS} hover:text-destructive`}
+                            title="Delete operator"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                     ))
                   )}
@@ -364,16 +461,20 @@ export default function AdminView({
           </div>
         )}
 
-        {/* ADD USER FORM PAGE */}
+        {/* ADD / EDIT USER FORM PAGE */}
         {activeTab === "users" && isAddingUser && (
           <FormPage
-            icon={UserPlus}
-            title="Register New Operator"
-            subtitle="Create a new back-office operator account."
-            modeBadge="Draft Mode"
+            icon={isEditingUser ? Edit : UserPlus}
+            title={isEditingUser ? "Edit Operator" : "Register New Operator"}
+            subtitle={
+              isEditingUser
+                ? "Update this back-office operator account."
+                : "Create a new back-office operator account."
+            }
+            modeBadge={isEditingUser ? "Edit Mode" : "Draft Mode"}
             onCancel={handleCloseAddUser}
-            onSubmit={handleAddUser}
-            saveLabel="Add User"
+            onSubmit={handleSaveUser}
+            saveLabel={isEditingUser ? "Save Changes" : "Add User"}
           >
             <div className="p-6 space-y-4">
               <h4 className={FORM_PAGE_SECTION_CLASS}>
@@ -437,6 +538,22 @@ export default function AdminView({
                     <option value="HQ Corporate Services">HQ Corporate Services</option>
                     {visibleSitesForLimit.map((site) => (
                       <option key={site.id} value={site.name}>{site.name}</option>
+                    ))}
+                  </SelectBox>
+                </div>
+
+                <div>
+                  <label className={FORM_PAGE_LABEL_CLASS}>
+                    Duty Status <span className="text-destructive">*</span>
+                  </label>
+                  <SelectBox
+                    value={newUserDutyStatus}
+                    onChange={(e) => setNewUserDutyStatus(e.target.value)}
+                    className={`h-9 ${FORM_PAGE_SELECT_CLASS}`}
+                  >
+                    <option value="">Select duty status…</option>
+                    {DUTY_STATUS_OPTIONS.map((status) => (
+                      <option key={status} value={status}>{status}</option>
                     ))}
                   </SelectBox>
                 </div>

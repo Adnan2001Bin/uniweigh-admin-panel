@@ -13,6 +13,8 @@ import {
   Check,
   ChevronDown,
   FileText,
+  FileSpreadsheet,
+  FileCheck,
   Calendar,
   Tag,
   Info,
@@ -90,8 +92,10 @@ export default function ProductLotsView({
   // Selection states
   const [selectedLotIds, setSelectedLotIds] = useState<string[]>([]);
 
-  // Export dropdown state
+  // Export dropdown + format modal (matches Transactions / Destinations)
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<"all" | "filtered" | "selected" | null>(null);
+  const [exportFormat, setExportFormat] = useState<"CSV" | "Excel" | "PDF">("CSV");
 
   // Add/Edit Product Lot form state
   const [currentMode, setCurrentMode] = useState<"list" | "add" | "edit">("list");
@@ -323,6 +327,7 @@ export default function ProductLotsView({
   // Export formats (CSV, Excel, PDF)
   const handleExport = (format: "CSV" | "Excel" | "PDF", scope: "all" | "filtered" | "selected") => {
     setIsExportDropdownOpen(false);
+    setExportScope(null);
 
     let listToExport = computedLots;
     if (scope === "filtered") {
@@ -499,7 +504,7 @@ export default function ProductLotsView({
           >
             {/* PatternFly 6 Enterprise Toolbar */}
       <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Main Controls: Search, Filters toggle, Column Visibility, Refresh */}
           <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
             <div className="relative w-64">
@@ -590,86 +595,6 @@ export default function ProductLotsView({
               <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
             </button>
           </div>
-
-          {/* Action: Export Options dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setIsExportDropdownOpen(!isExportDropdownOpen);
-                setIsColumnDropdownOpen(false);
-              }}
-              className="rounded-md border border-border bg-card hover:bg-muted px-3.5 py-1.5 text-xs font-bold text-foreground transition flex items-center gap-1.5 select-none"
-            >
-              <Download className="h-3.5 w-3.5 text-muted-foreground" />
-              Export Lots
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
-
-            {isExportDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-56 bg-card border border-border rounded-md shadow-lg py-1.5 z-20 text-xs">
-                <div className="px-3 py-1 font-bold text-muted-foreground text-xs uppercase tracking-widest border-b border-border mb-1">
-                  Export Selected Formats
-                </div>
-                {/* CSV Exports */}
-                <div className="px-3 py-1 font-bold text-muted-foreground text-xs bg-muted">CSV Formats</div>
-                <button
-                  onClick={() => handleExport("CSV", "all")}
-                  className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                >
-                  <FileText className="h-3 w-3 text-success" />
-                  All Product Lots (CSV)
-                </button>
-                <button
-                  onClick={() => handleExport("CSV", "filtered")}
-                  className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                >
-                  <FileText className="h-3 w-3 text-success" />
-                  Filtered Product Lots (CSV)
-                </button>
-                <button
-                  onClick={() => handleExport("CSV", "selected")}
-                  className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                >
-                  <FileText className="h-3 w-3 text-success" />
-                  Selected Lots (${selectedLotIds.length}) (CSV)
-                </button>
-
-                {/* Excel Exports */}
-                <div className="px-3 py-1 font-bold text-muted-foreground text-xs bg-muted border-t border-border">Excel Formats</div>
-                <button
-                  onClick={() => handleExport("Excel", "all")}
-                  className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                >
-                  <FileText className="h-3 w-3 text-info" />
-                  All Product Lots (Excel)
-                </button>
-                <button
-                  onClick={() => handleExport("Excel", "selected")}
-                  className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                >
-                  <FileText className="h-3 w-3 text-info" />
-                  Selected Lots (${selectedLotIds.length}) (Excel)
-                </button>
-
-                {/* PDF Report Prints */}
-                <div className="px-3 py-1 font-bold text-muted-foreground text-xs bg-muted border-t border-border">PDF Print Reports</div>
-                <button
-                  onClick={() => handleExport("PDF", "all")}
-                  className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                >
-                  <FileText className="h-3 w-3 text-destructive" />
-                  Print All Product Lots
-                </button>
-                <button
-                  onClick={() => handleExport("PDF", "filtered")}
-                  className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                >
-                  <FileText className="h-3 w-3 text-destructive" />
-                  Print Filtered Product Lots
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Filters Panel Drawer */}
@@ -749,6 +674,155 @@ export default function ProductLotsView({
 
       {/* Main Enterprise Listing Table */}
       <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden">
+        {/* Table summary / selection bar — matches Transactions & Destinations */}
+        <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
+          {selectedLotIds.length > 0 ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2.5 animate-fade-in">
+              <div className="flex items-center gap-2">
+                <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs">
+                  {selectedLotIds.length}
+                </span>
+                <span className="text-xs font-bold text-foreground">
+                  Product lot(s) selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsExportDropdownOpen(!isExportDropdownOpen);
+                      setIsColumnDropdownOpen(false);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-foreground bg-card border border-border hover:bg-muted cursor-pointer shadow-xs transition"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Export
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  {isExportDropdownOpen && (
+                    <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                      <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Select Export Scope
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportScope("selected");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                      >
+                        Export Selected ({selectedLotIds.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportScope("filtered");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                      >
+                        Export Filtered Results ({filteredLots.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(false);
+                          setExportScope("all");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                      >
+                        Export All Records ({productLots.length})
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLotIds([])}
+                  className="text-xs font-bold text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-md hover:bg-card cursor-pointer transition"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between w-full gap-3">
+              <span className="text-xs font-semibold text-muted-foreground">
+                Showing {filteredLots.length} of {productLots.length} records found
+                {(filterProduct !== "All" ||
+                  filterStatus !== "All" ||
+                  filterRemainingQty !== "All" ||
+                  !!filterCreatedDate ||
+                  !!localSearchQuery.trim()) && (
+                  <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
+                )}
+              </span>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsExportDropdownOpen(!isExportDropdownOpen);
+                    setIsColumnDropdownOpen(false);
+                  }}
+                  className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Export Records</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+                {isExportDropdownOpen && (
+                  <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                    <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Select Export Scope
+                    </div>
+                    <button
+                      type="button"
+                      disabled={selectedLotIds.length === 0}
+                      onClick={() => {
+                        if (selectedLotIds.length === 0) return;
+                        setIsExportDropdownOpen(false);
+                        setExportScope("selected");
+                      }}
+                      className={`w-full text-left px-3 py-2 hover:bg-muted ${
+                        selectedLotIds.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
+                      }`}
+                    >
+                      Export Selected ({selectedLotIds.length})
+                      {selectedLotIds.length === 0 && (
+                        <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                          Check rows in the table first
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportDropdownOpen(false);
+                        setExportScope("filtered");
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-muted"
+                    >
+                      Export Filtered Results ({filteredLots.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportDropdownOpen(false);
+                        setExportScope("all");
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-muted"
+                    >
+                      Export All Records ({productLots.length})
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
@@ -885,11 +959,6 @@ export default function ProductLotsView({
           <span className="text-xs font-semibold text-muted-foreground">
             Showing <strong className="text-foreground">{filteredLots.length}</strong> of{" "}
             <strong className="text-foreground">{productLots.length}</strong> product lot definitions
-            {selectedLotIds.length > 0 && (
-              <span className="ml-2 bg-info/10 text-info rounded px-1.5 py-0.5 font-bold font-mono">
-                {selectedLotIds.length} Selected
-              </span>
-            )}
           </span>
           <div className="flex gap-1">
             <button className="rounded border border-border bg-card p-1 px-2 hover:bg-muted font-bold">◀</button>
@@ -1108,6 +1177,71 @@ export default function ProductLotsView({
           </React.Fragment>
         )}
       </AnimatePresence>
+
+      {exportScope && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md bg-card rounded-md border border-border shadow-lg p-6 relative animate-zoom-in">
+            <button
+              type="button"
+              onClick={() => setExportScope(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-muted-foreground transition"
+            >
+              <X className="h-4.5 w-4.5" />
+            </button>
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+              Export Configuration
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Exporting product lots based on selected scope:{" "}
+              <span className="font-bold text-foreground uppercase bg-muted px-1.5 py-0.5 rounded">
+                {exportScope === "selected" && "Manually Checked Rows"}
+                {exportScope === "filtered" && "Filtered Results"}
+                {exportScope === "all" && "All Registry Data"}
+              </span>
+            </p>
+
+            <label className="block text-xs font-bold uppercase text-muted-foreground mb-2">
+              Select Output Format
+            </label>
+            <div className="grid grid-cols-3 gap-2.5 mb-6">
+              {(["CSV", "Excel", "PDF"] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  onClick={() => setExportFormat(fmt)}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2.5 rounded-md border-2 text-xs font-semibold cursor-pointer transition ${
+                    exportFormat === fmt
+                      ? "border-primary bg-info/10 text-info"
+                      : "border-border bg-card text-muted-foreground hover:border-border"
+                  }`}
+                >
+                  {fmt === "CSV" && <FileText className="h-5 w-5 text-muted-foreground" />}
+                  {fmt === "Excel" && <FileSpreadsheet className="h-5 w-5 text-success" />}
+                  {fmt === "PDF" && <FileCheck className="h-5 w-5 text-destructive" />}
+                  <span>{fmt}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setExportScope(null)}
+                className="px-4 py-2 rounded-md border border-border text-xs font-semibold text-muted-foreground hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExport(exportFormat, exportScope)}
+                className="px-4 py-2 rounded-md bg-primary text-xs font-semibold text-white hover:bg-primary/90 transition"
+              >
+                Generate & Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

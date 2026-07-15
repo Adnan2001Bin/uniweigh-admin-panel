@@ -2,16 +2,17 @@ import React, { useState, useMemo } from "react";
 import {
   User,
   Plus,
-  Search,
+  Filter,
   Download,
   RefreshCw,
-  SlidersHorizontal,
+  Sliders,
   ChevronDown,
-  Check,
   Edit,
   Eye,
   ArrowLeft,
   FileText,
+  FileSpreadsheet,
+  FileCheck,
   Info,
   X
 } from "lucide-react";
@@ -57,7 +58,9 @@ export default function DriversView({
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshNotification, setRefreshNotification] = useState("");
-  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<"all" | "filtered" | "selected" | null>(null);
+  const [exportFormat, setExportFormat] = useState<"CSV" | "Excel" | "PDF">("CSV");
 
   // Filter fields
   const [filterCarter, setFilterCarter] = useState("All");
@@ -106,10 +109,9 @@ export default function DriversView({
     return (
       filterCarter !== "All" ||
       filterStatus !== "All" ||
-      filterLicence !== "" ||
-      localSearch !== ""
+      filterLicence !== ""
     );
-  }, [filterCarter, filterStatus, filterLicence, localSearch]);
+  }, [filterCarter, filterStatus, filterLicence]);
 
   const carterNames = useMemo(() => {
     return Array.from(new Set(carriers.map((c) => c.name)));
@@ -261,21 +263,28 @@ export default function DriversView({
   };
 
   // Export handlers
-  const handleExport = (source: "all" | "selected" | "filtered", format: "CSV" | "Excel" | "PDF") => {
-    setExportDropdownOpen(false);
+  const handleExport = (format: "CSV" | "Excel" | "PDF", scope: "all" | "selected" | "filtered") => {
+    setIsExportDropdownOpen(false);
+    setExportScope(null);
+
     let listToExport = drivers;
     let fileNameSuffix = "All_Drivers";
 
-    if (source === "selected") {
+    if (scope === "selected") {
       listToExport = drivers.filter((d) => selectedDriverIds.includes(d.id));
       fileNameSuffix = "Selected_Drivers";
       if (listToExport.length === 0) {
         toast.info("Please select at least one Driver in the table first.");
         return;
       }
-    } else if (source === "filtered") {
+    } else if (scope === "filtered") {
       listToExport = filteredDrivers;
       fileNameSuffix = "Filtered_Drivers";
+    }
+
+    if (listToExport.length === 0) {
+      toast.info("No data available to export.");
+      return;
     }
 
     const headers = [
@@ -420,181 +429,101 @@ export default function DriversView({
               </div>
             )}
 
-            {/* Toolbar Block */}
-            <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3.5">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
-                {/* Search box and filter toggler */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            {/* Toolbar — Products pattern */}
+            <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+                  <div className="relative w-64">
                     <input
                       type="text"
-                      placeholder="Search drivers by name, licence, phone..."
+                      placeholder="Search drivers..."
                       value={localSearch}
                       onChange={(e) => setLocalSearch(e.target.value)}
-                      className="w-full bg-muted border border-border rounded-md pl-9 pr-4 py-2 text-xs font-semibold placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:bg-card transition"
+                      className="w-full bg-muted border border-border hover:border-input focus:bg-card rounded-md pl-3 pr-8 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                     {localSearch && (
                       <button
+                        type="button"
                         onClick={() => setLocalSearch("")}
-                        className="absolute right-3 top-2.5 hover:text-destructive text-muted-foreground"
+                        className="absolute right-2.5 top-2 text-muted-foreground hover:text-muted-foreground"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     )}
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => setShowFilters(!showFilters)}
-                    className={`rounded-md border px-3 py-2 text-xs font-bold transition flex items-center gap-1.5 select-none ${
+                    className={`rounded-md border px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 select-none ${
                       showFilters || isFiltersActive
-                        ? "bg-info/10 border-info/25 text-info"
+                        ? "bg-info/10 border-info/25 text-info hover:bg-info/10"
                         : "bg-card border-border text-foreground hover:bg-muted"
                     }`}
                   >
-                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    <Filter className="h-3.5 w-3.5" />
                     Filters
                     {isFiltersActive && (
-                      <span className="bg-primary text-white rounded-full h-4 min-w-4 px-1 text-xs font-bold flex items-center justify-center">
-                        !
+                      <span className="bg-primary text-white font-mono text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                        {[filterCarter !== "All", filterStatus !== "All", filterLicence !== ""].filter(Boolean).length}
                       </span>
                     )}
                   </button>
-                </div>
 
-                {/* Right actions */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Column Visibility */}
                   <div className="relative">
                     <button
+                      type="button"
                       onClick={() => setShowColumnsMenu(!showColumnsMenu)}
-                      className="rounded-md border border-border bg-card hover:bg-muted px-3 py-2 text-xs font-bold text-foreground transition flex items-center gap-1.5 select-none"
+                      className="rounded-md border border-border bg-card hover:bg-muted px-3 py-1.5 text-xs font-bold text-foreground transition flex items-center gap-1.5 select-none"
                     >
-                      Column Visibility
+                      <Sliders className="h-3.5 w-3.5 text-muted-foreground" />
+                      Columns
                       <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>
 
                     {showColumnsMenu && (
-                      <div className="absolute right-0 mt-1.5 w-48 bg-card border border-border rounded-md shadow-lg py-2 z-20 text-xs">
-                        <div className="px-3.5 py-1 text-muted-foreground font-bold text-xs uppercase tracking-widest border-b border-border mb-1.5">
+                      <div className="absolute left-0 mt-1.5 w-48 bg-card border border-border rounded-md shadow-lg py-1.5 z-25 text-xs">
+                        <div className="px-3 py-1 font-bold text-muted-foreground text-xs uppercase tracking-widest border-b border-border mb-1">
                           Toggle Columns
                         </div>
                         {Object.keys(visibleColumns).map((col) => (
-                          <button
+                          <label
                             key={col}
-                            onClick={() => toggleColumn(col)}
-                            className="w-full text-left px-3.5 py-1.5 hover:bg-muted font-bold text-foreground flex items-center justify-between"
+                            className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-muted cursor-pointer font-bold text-foreground"
                           >
-                            <span className="capitalize">
-                              {col === "licence" ? "Licence Number" : col === "phone" ? "Phone Number" : col}
-                            </span>
-                            {visibleColumns[col] && <Check className="h-3.5 w-3.5 text-info shrink-0" />}
-                          </button>
+                            <Checkbox
+                              checked={visibleColumns[col]}
+                              onCheckedChange={() => toggleColumn(col)}
+                              className="rounded text-info focus:ring-ring"
+                            />
+                            {col === "licence" ? "Licence Number" : col === "phone" ? "Phone Number" : col.charAt(0).toUpperCase() + col.slice(1)}
+                          </label>
                         ))}
                       </div>
                     )}
                   </div>
 
-                  {/* Export options */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
-                      className="rounded-md border border-border bg-card hover:bg-muted px-3 py-2 text-xs font-bold text-foreground transition flex items-center gap-1.5 select-none"
-                    >
-                      <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                      Export Data
-                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                    </button>
-
-                    {exportDropdownOpen && (
-                      <div className="absolute right-0 mt-1.5 w-60 bg-card border border-border rounded-md shadow-lg py-2 z-20 text-xs">
-                        <div className="px-3 py-1 font-bold text-muted-foreground text-xs uppercase tracking-widest border-b border-border mb-1">
-                          Export Full Driver List
-                        </div>
-                        <button
-                          onClick={() => handleExport("all", "CSV")}
-                          className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                        >
-                          <FileText className="h-3 w-3 text-success" />
-                          Export Full List (CSV)
-                        </button>
-                        <button
-                          onClick={() => handleExport("all", "Excel")}
-                          className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                        >
-                          <FileText className="h-3 w-3 text-info" />
-                          Export Full List (Excel)
-                        </button>
-                        <button
-                          onClick={() => handleExport("all", "PDF")}
-                          className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                        >
-                          <FileText className="h-3 w-3 text-destructive" />
-                          Print Full List (PDF)
-                        </button>
-
-                        <div className="px-3 py-1 font-bold text-muted-foreground text-xs uppercase tracking-widest border-b border-t border-border my-1">
-                          Export Selected Rows ({selectedDriverIds.length})
-                        </div>
-                        <button
-                          onClick={() => handleExport("selected", "CSV")}
-                          className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs disabled:opacity-50"
-                          disabled={selectedDriverIds.length === 0}
-                        >
-                          <FileText className="h-3 w-3 text-success" />
-                          Export Selected (CSV)
-                        </button>
-                        <button
-                          onClick={() => handleExport("selected", "PDF")}
-                          className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs disabled:opacity-50"
-                          disabled={selectedDriverIds.length === 0}
-                        >
-                          <FileText className="h-3 w-3 text-destructive" />
-                          Print Selected PDF (PDF)
-                        </button>
-
-                        <div className="px-3 py-1 font-bold text-muted-foreground text-xs uppercase tracking-widest border-b border-t border-border my-1">
-                          Export Filtered Results ({filteredDrivers.length})
-                        </div>
-                        <button
-                          onClick={() => handleExport("filtered", "CSV")}
-                          className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                        >
-                          <FileText className="h-3 w-3 text-success" />
-                          Export Filtered (CSV)
-                        </button>
-                        <button
-                          onClick={() => handleExport("filtered", "PDF")}
-                          className="w-full text-left px-3 py-1.5 hover:bg-muted font-semibold text-foreground flex items-center gap-2 text-xs"
-                        >
-                          <FileText className="h-3 w-3 text-destructive" />
-                          Print Filtered PDF (PDF)
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Refresh */}
                   <button
+                    type="button"
                     onClick={handleRefresh}
-                    className="rounded-md border border-border bg-card hover:bg-muted p-2 text-xs font-bold text-foreground transition flex items-center justify-center select-none cursor-pointer"
+                    className="rounded-md border border-border bg-card hover:bg-muted p-1.5 text-xs font-bold text-foreground transition flex items-center justify-center select-none cursor-pointer"
                     title="Refresh drivers database"
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
+                    <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
                   </button>
                 </div>
               </div>
 
-              {/* Filters Panel */}
-              {showFilters && (
-                <div className="bg-muted border border-border rounded-md p-4 animate-fade-in grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                  {/* Filter 1: Carter */}
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-muted-foreground block">Carter Transport Provider</label>
+              {(showFilters || isFiltersActive) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-muted border border-border p-3.5 rounded-md text-xs">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                      Carter Transport Provider
+                    </label>
                     <SelectBox
                       value={filterCarter}
                       onChange={(e) => setFilterCarter(e.target.value)}
-                      className="w-full bg-card border border-border rounded-md p-1.5 font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
                     >
                       <option value="All">All Carters</option>
                       {carterNames.map((name) => (
@@ -605,39 +534,41 @@ export default function DriversView({
                     </SelectBox>
                   </div>
 
-                  {/* Filter 2: Licence Search */}
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-muted-foreground block">Licence Search</label>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                      Licence Search
+                    </label>
                     <input
                       type="text"
                       placeholder="E.g., VIC-88..."
                       value={filterLicence}
                       onChange={(e) => setFilterLicence(e.target.value)}
-                      className="w-full bg-card border border-border rounded-md p-1.5 font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                      className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring font-mono"
                     />
                   </div>
 
-                  {/* Filter 3: Status */}
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-muted-foreground block">Status</label>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                      Status
+                    </label>
                     <SelectBox
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
-                      className="w-full bg-card border border-border rounded-md p-1.5 font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
                     >
                       <option value="All">All Statuses</option>
-                      <option value="Active">Active Only</option>
-                      <option value="Inactive">Inactive Only</option>
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
                     </SelectBox>
                   </div>
 
-                  {/* Filter 4: Reset Button */}
-                  <div className="space-y-1.5 flex items-end">
+                  <div className="sm:col-span-2 md:col-span-4 flex justify-end gap-1.5 pt-2 border-t border-border">
                     <button
+                      type="button"
                       onClick={handleResetFilters}
-                      className="w-full bg-secondary hover:bg-input text-foreground font-bold py-2 rounded-md transition select-none text-xs"
+                      className="text-muted-foreground hover:text-foreground font-bold px-2 py-1 text-xs"
                     >
-                      Reset Filters
+                      Reset All Filters
                     </button>
                   </div>
                 </div>
@@ -646,6 +577,151 @@ export default function DriversView({
 
             {/* Listing Grid */}
             <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden">
+              {/* Table summary / selection bar — matches Product Lots & Destinations */}
+              <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
+                {selectedDriverIds.length > 0 ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2.5 animate-fade-in">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs">
+                        {selectedDriverIds.length}
+                      </span>
+                      <span className="text-xs font-bold text-foreground">
+                        Driver(s) selected
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsExportDropdownOpen(!isExportDropdownOpen);
+                            setShowColumnsMenu(false);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-foreground bg-card border border-border hover:bg-muted cursor-pointer shadow-xs transition"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Export
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                        {isExportDropdownOpen && (
+                          <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                            <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Select Export Scope
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsExportDropdownOpen(false);
+                                setExportScope("selected");
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                            >
+                              Export Selected ({selectedDriverIds.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsExportDropdownOpen(false);
+                                setExportScope("filtered");
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-muted"
+                            >
+                              Export Filtered Results ({filteredDrivers.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsExportDropdownOpen(false);
+                                setExportScope("all");
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-muted"
+                            >
+                              Export All Records ({drivers.length})
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDriverIds([])}
+                        className="text-xs font-bold text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-md hover:bg-card cursor-pointer transition"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between w-full gap-3">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      Showing {filteredDrivers.length} of {drivers.length} records found
+                      {(isFiltersActive || !!localSearch.trim() || !!topSearchQuery.trim()) && (
+                        <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
+                      )}
+                    </span>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExportDropdownOpen(!isExportDropdownOpen);
+                          setShowColumnsMenu(false);
+                        }}
+                        className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Export Records</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                      {isExportDropdownOpen && (
+                        <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                          <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            Select Export Scope
+                          </div>
+                          <button
+                            type="button"
+                            disabled={selectedDriverIds.length === 0}
+                            onClick={() => {
+                              if (selectedDriverIds.length === 0) return;
+                              setIsExportDropdownOpen(false);
+                              setExportScope("selected");
+                            }}
+                            className={`w-full text-left px-3 py-2 hover:bg-muted ${
+                              selectedDriverIds.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
+                            }`}
+                          >
+                            Export Selected ({selectedDriverIds.length})
+                            {selectedDriverIds.length === 0 && (
+                              <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                                Check rows in the table first
+                              </span>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsExportDropdownOpen(false);
+                              setExportScope("filtered");
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-muted"
+                          >
+                            Export Filtered Results ({filteredDrivers.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsExportDropdownOpen(false);
+                              setExportScope("all");
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-muted"
+                          >
+                            Export All Records ({drivers.length})
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
@@ -855,6 +931,71 @@ export default function DriversView({
           </React.Fragment>
         )}
       </AnimatePresence>
+
+      {exportScope && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md bg-card rounded-md border border-border shadow-lg p-6 relative animate-zoom-in">
+            <button
+              type="button"
+              onClick={() => setExportScope(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-muted-foreground transition"
+            >
+              <X className="h-4.5 w-4.5" />
+            </button>
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+              Export Configuration
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Exporting drivers based on selected scope:{" "}
+              <span className="font-bold text-foreground uppercase bg-muted px-1.5 py-0.5 rounded">
+                {exportScope === "selected" && "Manually Checked Rows"}
+                {exportScope === "filtered" && "Filtered Results"}
+                {exportScope === "all" && "All Registry Data"}
+              </span>
+            </p>
+
+            <label className="block text-xs font-bold uppercase text-muted-foreground mb-2">
+              Select Output Format
+            </label>
+            <div className="grid grid-cols-3 gap-2.5 mb-6">
+              {(["CSV", "Excel", "PDF"] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  onClick={() => setExportFormat(fmt)}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2.5 rounded-md border-2 text-xs font-semibold cursor-pointer transition ${
+                    exportFormat === fmt
+                      ? "border-primary bg-info/10 text-info"
+                      : "border-border bg-card text-muted-foreground hover:border-border"
+                  }`}
+                >
+                  {fmt === "CSV" && <FileText className="h-5 w-5 text-muted-foreground" />}
+                  {fmt === "Excel" && <FileSpreadsheet className="h-5 w-5 text-success" />}
+                  {fmt === "PDF" && <FileCheck className="h-5 w-5 text-destructive" />}
+                  <span>{fmt}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setExportScope(null)}
+                className="px-4 py-2 rounded-md border border-border text-xs font-semibold text-muted-foreground hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExport(exportFormat, exportScope)}
+                className="px-4 py-2 rounded-md bg-primary text-xs font-semibold text-white hover:bg-primary/90 transition"
+              >
+                Generate & Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

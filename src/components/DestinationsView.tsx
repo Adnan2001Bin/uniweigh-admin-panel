@@ -15,7 +15,9 @@ import {
   Building,
   Phone,
   FileSpreadsheet,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  RefreshCw
 } from "lucide-react";
 import { Destination, Customer, Job, Transaction, TransactionStatus } from "../types";
 import { INITIAL_DESTINATIONS } from "../data_destinations";
@@ -73,6 +75,8 @@ export default function DestinationsView({
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [customerFilter, setCustomerFilter] = useState<string>("All");
   const [localSearchQuery, setLocalSearchQuery] = useState<string>("");
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -85,6 +89,7 @@ export default function DestinationsView({
 
   // Export Modal state
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
+  const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
   const [exportScope, setExportScope] = useState<"current" | "selected" | "filtered" | "individual-summary" | "destination-transactions">("current");
   const [exportFormat, setExportFormat] = useState<"CSV" | "Excel" | "PDF">("CSV");
 
@@ -141,6 +146,19 @@ export default function DestinationsView({
       return matchesSearch && matchesStatus && matchesCustomer;
     });
   }, [destinations, activeSearchQuery, statusFilter, customerFilter]);
+
+  const hasDestFilters = statusFilter !== "All" || customerFilter !== "All";
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
+
+  const resetDestFilters = () => {
+    setStatusFilter("All");
+    setCustomerFilter("All");
+    setLocalSearchQuery("");
+  };
 
   // Currently Selected/Active Destination Object
   const activeDestination = useMemo(() => {
@@ -547,92 +565,253 @@ Notes:     ${d.notes || "None registered"}
             transition={{ duration: 0.2 }}
             className="space-y-4"
           >
-            {/* SEARCH AND FILTERS TOOLBAR */}
-            <div className="bg-card border border-border rounded-md p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-3xl">
-                {/* Search field local */}
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search destinations, customer, PO reference, suburb..."
-                    value={localSearchQuery}
-                    onChange={(e) => setLocalSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-muted hover:bg-muted focus:bg-card border border-border focus:border-ring rounded-md text-xs font-medium text-foreground transition"
-                  />
-                </div>
+            {/* SEARCH AND FILTERS TOOLBAR — Products pattern */}
+            <div className="bg-card border border-border rounded-md p-4 shadow-xs space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+                  <div className="relative w-64">
+                    <input
+                      type="text"
+                      placeholder="Search destinations..."
+                      value={localSearchQuery}
+                      onChange={(e) => setLocalSearchQuery(e.target.value)}
+                      className="w-full bg-muted border border-border hover:border-input focus:bg-card rounded-md pl-3 pr-8 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    {localSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setLocalSearchQuery("")}
+                        className="absolute right-2.5 top-2 text-muted-foreground hover:text-muted-foreground"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
 
-                {/* Status Filter */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Status:</span>
-                  <SelectBox
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="bg-muted border border-border text-foreground rounded-md px-2.5 py-1.2 text-xs font-medium focus:ring-1 focus:ring-ring cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                    className={`rounded-md border px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 select-none ${
+                      isFilterExpanded || hasDestFilters
+                        ? "bg-info/10 border-info/25 text-info hover:bg-info/10"
+                        : "bg-card border-border text-foreground hover:bg-muted"
+                    }`}
                   >
-                    <option value="All">All Statuses</option>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </SelectBox>
-                </div>
+                    <Filter className="h-3.5 w-3.5" />
+                    Filters
+                    {hasDestFilters && (
+                      <span className="bg-primary text-white font-mono text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                        {[statusFilter !== "All", customerFilter !== "All"].filter(Boolean).length}
+                      </span>
+                    )}
+                  </button>
 
-                {/* Customer Filter */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Customer:</span>
-                  <SelectBox
-                    value={customerFilter}
-                    onChange={(e) => setCustomerFilter(e.target.value)}
-                    className="bg-muted border border-border text-foreground rounded-md px-2.5 py-1.2 text-xs font-medium focus:ring-1 focus:ring-ring max-w-[180px] cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={handleRefresh}
+                    className="rounded-md border border-border bg-card hover:bg-muted p-1.5 text-xs font-bold text-foreground transition flex items-center justify-center select-none"
+                    title="Refresh dataset"
                   >
-                    <option value="All">All Customers</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </SelectBox>
+                    <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? "animate-spin text-info" : ""}`} />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setExportScope("current");
-                    setShowExportModal(true);
-                  }}
-                  className="px-5 py-2.5 bg-card border border-border hover:bg-muted text-foreground rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                  title="Export destinations list"
-                  id="btn-export-destinations"
-                >
-                  <Download className="h-4 w-4 text-muted-foreground" />
-                  <span>Export</span>
-                </button>
+              {(isFilterExpanded || hasDestFilters) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-muted border border-border p-3.5 rounded-md text-xs">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                      Status
+                    </label>
+                    <SelectBox
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </SelectBox>
+                  </div>
 
-                {/* Selection Summary Actions */}
-                {checkedDestIds.length > 0 && (
-                  <div className="flex items-center gap-2 animate-fadeIn bg-info/10 border border-info/25 rounded-md px-3 py-1 text-xs">
-                  <span className="font-semibold text-info font-mono">{checkedDestIds.length} Selected</span>
-                  <button
-                    onClick={() => {
-                      setExportScope("selected");
-                      setShowExportModal(true);
-                    }}
-                    className="text-xs font-bold uppercase text-info hover:text-info ml-2 border-l border-info/25 pl-2 cursor-pointer"
-                  >
-                    Export Selected
-                  </button>
-                  <button
-                    onClick={() => setCheckedDestIds([])}
-                    className="text-muted-foreground hover:text-muted-foreground ml-1.5 cursor-pointer"
-                    title="Clear checks"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                      Customer
+                    </label>
+                    <SelectBox
+                      value={customerFilter}
+                      onChange={(e) => setCustomerFilter(e.target.value)}
+                      className="w-full rounded-md border border-border bg-card p-1.5 text-xs font-semibold focus:outline-none"
+                    >
+                      <option value="All">All Customers</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </SelectBox>
+                  </div>
+
+                  <div className="sm:col-span-2 md:col-span-4 flex justify-end gap-1.5 pt-2 border-t border-border">
+                    <button
+                      type="button"
+                      onClick={resetDestFilters}
+                      className="text-muted-foreground hover:text-foreground font-bold px-2 py-1 text-xs"
+                    >
+                      Reset All Filters
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
 
             {/* DESTINATIONS TABLE LEDGER */}
             <div className="bg-card border border-border rounded-md shadow-xs overflow-hidden">
+              {/* Table summary / selection bar — matches Transactions */}
+              <div className="border-b border-border px-5 py-3 flex items-center justify-between bg-muted min-h-[56px]">
+                {checkedDestIds.length > 0 ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2.5 animate-fade-in">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs">
+                        {checkedDestIds.length}
+                      </span>
+                      <span className="text-xs font-bold text-foreground">
+                        Destination(s) selected
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowExportMenu(!showExportMenu)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-foreground bg-card border border-border hover:bg-muted cursor-pointer shadow-xs transition"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Export
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                        {showExportMenu && (
+                          <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                            <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Select Export Scope
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowExportMenu(false);
+                                setExportScope("selected");
+                                setShowExportModal(true);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-muted font-semibold"
+                            >
+                              Export Selected ({checkedDestIds.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowExportMenu(false);
+                                setExportScope("filtered");
+                                setShowExportModal(true);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-muted"
+                            >
+                              Export Filtered Results ({filteredDestinations.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowExportMenu(false);
+                                setExportScope("current");
+                                setShowExportModal(true);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-muted"
+                            >
+                              Export All Records ({destinations.length})
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCheckedDestIds([])}
+                        className="text-xs font-bold text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-md hover:bg-card cursor-pointer transition"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between w-full gap-3">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      Showing {filteredDestinations.length} of {destinations.length} records found
+                      {(hasDestFilters || !!localSearchQuery.trim()) && (
+                        <span className="ml-1.5 text-foreground font-bold">· Filtered view</span>
+                      )}
+                    </span>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowExportMenu(!showExportMenu)}
+                        className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Export Records</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                      {showExportMenu && (
+                        <div className="absolute right-0 mt-1.5 w-64 z-50 rounded-md border border-border bg-card py-2 shadow-lg animate-fade-in text-xs text-foreground">
+                          <div className="px-3 py-1.5 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            Select Export Scope
+                          </div>
+                          <button
+                            type="button"
+                            disabled={checkedDestIds.length === 0}
+                            onClick={() => {
+                              if (checkedDestIds.length === 0) return;
+                              setShowExportMenu(false);
+                              setExportScope("selected");
+                              setShowExportModal(true);
+                            }}
+                            className={`w-full text-left px-3 py-2 hover:bg-muted ${
+                              checkedDestIds.length === 0 ? "opacity-40 cursor-not-allowed" : "font-semibold"
+                            }`}
+                          >
+                            Export Selected ({checkedDestIds.length})
+                            {checkedDestIds.length === 0 && (
+                              <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                                Check rows in the table first
+                              </span>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowExportMenu(false);
+                              setExportScope("filtered");
+                              setShowExportModal(true);
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-muted"
+                          >
+                            Export Filtered Results ({filteredDestinations.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowExportMenu(false);
+                              setExportScope("current");
+                              setShowExportModal(true);
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-muted"
+                          >
+                            Export All Records ({destinations.length})
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse" id="destinations-table">
                   <thead>
@@ -755,22 +934,9 @@ Notes:     ${d.notes || "None registered"}
               </div>
 
               {/* Table Footer */}
-              <div className="bg-muted border-t border-border px-4 py-3 flex items-center justify-between text-xs text-muted-foreground font-medium">
-                <div>
-                  Showing <span className="font-bold text-foreground">{filteredDestinations.length}</span> of <span className="font-bold text-foreground">{destinations.length}</span> logistics destinations.
-                </div>
-                {filteredDestinations.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setExportScope("filtered");
-                      setShowExportModal(true);
-                    }}
-                    className="text-info hover:text-info font-bold transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>Export Filtered ({filteredDestinations.length})</span>
-                  </button>
-                )}
+              <div className="bg-muted border-t border-border px-4 py-3 text-xs text-muted-foreground font-medium">
+                Showing <span className="font-bold text-foreground">{filteredDestinations.length}</span> of{" "}
+                <span className="font-bold text-foreground">{destinations.length}</span> logistics destinations.
               </div>
             </div>
           </motion.div>
@@ -1481,8 +1647,8 @@ Notes:     ${d.notes || "None registered"}
                     <label className="flex items-center gap-2.5 p-2 bg-muted hover:bg-muted border border-border rounded-md text-xs font-semibold text-foreground cursor-pointer">
                       <RadioBox checked={exportScope === "current"} onChange={() => setExportScope("current")} />
                       <div>
-                        <span>Current Destinations Ledger</span>
-                        <span className="block text-xs font-medium text-muted-foreground">Export complete registered destinations directory ({destinations.length} records)</span>
+                        <span>All Destinations ({destinations.length})</span>
+                        <span className="block text-xs font-medium text-muted-foreground">Export complete registered destinations directory</span>
                       </div>
                     </label>
 
@@ -1499,7 +1665,7 @@ Notes:     ${d.notes || "None registered"}
                     <label className="flex items-center gap-2.5 p-2 bg-muted hover:bg-muted border border-border rounded-md text-xs font-semibold text-foreground cursor-pointer">
                       <RadioBox checked={exportScope === "filtered"} onChange={() => setExportScope("filtered")} />
                       <div>
-                        <span>Filtered Destinations ledger ({filteredDestinations.length})</span>
+                        <span>Filtered Destinations ({filteredDestinations.length})</span>
                         <span className="block text-xs font-medium text-muted-foreground">Export based on active search parameters & status/customer filters</span>
                       </div>
                     </label>
@@ -1566,17 +1732,17 @@ Notes:     ${d.notes || "None registered"}
                 <button
                   type="button"
                   onClick={() => setShowExportModal(false)}
-                  className="px-5 py-2.5 bg-card border border-border hover:bg-muted text-foreground rounded-md text-xs font-bold shadow-sm transition cursor-pointer flex items-center"
+                  className={`${DESTINATION_FORM_ACTION_CLASS} gap-1.5 border border-border bg-card px-4 text-foreground shadow-xs hover:bg-muted`}
                 >
-                  Close
+                  Cancel
                 </button>
                 <button
                   type="button"
                   onClick={triggerExport}
-                  className="px-5 py-2.5 bg-primary hover:bg-info text-white rounded-md text-xs font-bold shadow-sm transition cursor-pointer flex items-center gap-1.5"
+                  className={`${DESTINATION_FORM_ACTION_CLASS} gap-1.5 border border-primary bg-primary px-4 text-primary-foreground shadow-xs hover:bg-primary/90`}
                 >
-                  <Download className="h-4 w-4" />
-                  <span>Execute Download</span>
+                  <Download className="h-4 w-4 shrink-0" />
+                  <span>Generate Report</span>
                 </button>
               </div>
             </motion.div>
