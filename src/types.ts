@@ -46,6 +46,10 @@ export interface Transaction {
   lotNo: string;
   transactionCode: string;
   accountBalance: number;
+  /** Account billing docket fields */
+  destinationName?: string;
+  purchaseOrder?: string;
+  siteContactName?: string;
 }
 
 export interface Product {

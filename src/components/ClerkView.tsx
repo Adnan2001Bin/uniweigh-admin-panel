@@ -500,6 +500,8 @@ export default function ClerkView({
     const productObj = products.find(p => p.id === productId);
     const carterObj = carriers.find(c => c.id === carterId);
     const driverObj = drivers.find(d => d.id === driverId);
+    const destinationObj = localDestinations.find(d => d.id === destinationId);
+    const contactObj = localContacts.find(c => c.id === contactId);
 
     const ticketNumber = `WB-${Math.floor(100000 + Math.random() * 900000)}`;
     const txId = `TX-${Math.floor(40000 + Math.random() * 59999)}`;
@@ -537,9 +539,12 @@ export default function ClerkView({
       ],
       type: selectedTxType,
       jobOrder: jobId,
-      lotNo: lotId,
+      lotNo: selectedLotObj?.name || lotId,
       transactionCode: `C-${Math.floor(2000 + Math.random() * 7999)}`,
-      accountBalance: customerObj?.accountBalance || 0
+      accountBalance: customerObj?.accountBalance || 0,
+      destinationName: destinationObj?.name || "",
+      purchaseOrder: selectedJobObj?.customerOrderRef || "",
+      siteContactName: contactObj?.name || "",
     };
 
     // If completed/approved, we update the deliveredQty of the Job!

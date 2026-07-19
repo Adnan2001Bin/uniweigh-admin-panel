@@ -348,7 +348,7 @@ export default function App() {
     const saved = localStorage.getItem("uniweigh_docket_config");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        return { ...DEFAULT_DOCKET_CONFIG, ...JSON.parse(saved) };
       } catch (e) {
         console.error("Error parsing docket config", e);
       }

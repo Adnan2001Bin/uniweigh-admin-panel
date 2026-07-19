@@ -1,12 +1,18 @@
 import { DocketConfig, Transaction } from "../types";
 import { DEFAULT_DOCKET_CONFIG } from "../data";
 import { MODAL_PREVIEW_CSS, previewBodyClass } from "./print-preview";
-import { hasDocketLogo } from "./docket-logo";
 
 export { DEFAULT_DOCKET_CONFIG };
 
+const DEFAULT_DOCKET_LOGO_SRC = "/pdf-icon.png";
+
 export function resolveDocketConfig(config?: DocketConfig): DocketConfig {
-  return config ?? DEFAULT_DOCKET_CONFIG;
+  const base = config ?? DEFAULT_DOCKET_CONFIG;
+  return {
+    ...DEFAULT_DOCKET_CONFIG,
+    ...base,
+    logoUrl: base.logoUrl?.trim() || DEFAULT_DOCKET_CONFIG.logoUrl || DEFAULT_DOCKET_LOGO_SRC,
+  };
 }
 
 export interface DeliveryDocketPrintOptions {
@@ -14,453 +20,1040 @@ export interface DeliveryDocketPrintOptions {
   autoPrint?: boolean;
 }
 
-export function buildDeliveryDocketHtml(
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatDocketDateTime(raw: string): { date: string; time: string } {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return { date: "—", time: "—" };
+
+  const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+  const parsed = new Date(normalized);
+  if (!Number.isNaN(parsed.getTime())) {
+    const yyyy = parsed.getFullYear();
+    const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+    const dd = String(parsed.getDate()).padStart(2, "0");
+    let hours = parsed.getHours();
+    const minutes = String(parsed.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "pm" : "am";
+    hours = hours % 12 || 12;
+    return {
+      date: `${yyyy}-${mm}-${dd}`,
+      time: `${hours} : ${minutes} ${ampm}`,
+    };
+  }
+
+  const [datePart, timePart = ""] = trimmed.split(/\s+/);
+  return { date: datePart || trimmed, time: timePart || "—" };
+}
+
+/** Resolve logo paths so print windows (about:blank) can still load them. */
+function resolveLogoSrc(logoUrl?: string): string {
+  const url = (logoUrl || DEFAULT_DOCKET_LOGO_SRC).trim();
+  if (!url) return DEFAULT_DOCKET_LOGO_SRC;
+  if (
+    url.startsWith("data:") ||
+    url.startsWith("blob:") ||
+    /^https?:\/\//i.test(url)
+  ) {
+    return url;
+  }
+  if (typeof window !== "undefined") {
+    try {
+      return new URL(url, window.location.origin).href;
+    } catch {
+      return url;
+    }
+  }
+  return url;
+}
+
+/** True when the logo asset already includes the brand wordmark. */
+function logoIncludesBrandName(logoUrl?: string): boolean {
+  const url = (logoUrl || "").trim();
+  return !url || /pdf-icon/i.test(url);
+}
+
+function buildLogoMarkup(config: DocketConfig): string {
+  if (!config.showLogo) return "";
+  const src = resolveLogoSrc(config.logoUrl);
+  return `<img src="${src}" alt="Logo" class="logo-img" />`;
+}
+
+function metaField(label: string, value: string): string {
+  return `<tr>
+    <td class="meta-label">${escapeHtml(label)}</td>
+    <td class="meta-colon">:</td>
+    <td class="meta-value">${escapeHtml(value)}</td>
+  </tr>`;
+}
+
+/** Classic account-billing docket matching ADMIN | Print | BQA23648 layout. */
+function buildAccountBillingDocketHtml(
   transaction: Transaction,
   config: DocketConfig,
-  options: DeliveryDocketPrintOptions = {}
+  options: DeliveryDocketPrintOptions
 ): string {
   const { reprintCopy = false, autoPrint = true } = options;
-  const driverComments =
-    transaction.comments?.trim() ||
-    `Own Driver. Wear appropriate high-vis PPE, safety glasses, and steel caps at all times. Follow strict 20 km/h quarry limits. Weighbridge certified under scale ID ${transaction.scaleIdInbound}.`;
   const weighbridgeSite = config.weighbridgeLocation || transaction.siteName;
-  const accentColor = config.logoColor || "#2563eb";
-  const logoMarkup = config.showLogo
-    ? hasDocketLogo(config.logoUrl)
-      ? `<img src="${config.logoUrl}" alt="Logo" style="max-height: 50px; max-width: 80px; object-fit: contain;" />`
-      : `<svg width="50" height="50" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M50 5L90 35L75 90L25 90L10 35L50 5Z" fill="${accentColor}" opacity="0.15" />
-                    <path d="M50 15L80 40H20L50 15Z" fill="${accentColor}" />
-                    <path d="M45 40H55V85H45V40Z" fill="${accentColor}" />
-                    <path d="M30 55L50 45L70 55L50 65L30 55Z" fill="#fff" opacity="0.9" />
-                    <path d="M50 5L95 38L78 92H22L5 38L50 5ZM50 10L10 40L25 87H75L90 40L50 10Z" fill="${accentColor}" />
-                  </svg>`
-    : "";
+  const { date, time } = formatDocketDateTime(
+    transaction.secondWeighTime || transaction.firstWeighTime
+  );
+  const purchaseOrder =
+    transaction.purchaseOrder?.trim() || transaction.jobOrder || "N/A";
+  const destination =
+    transaction.destinationName?.trim() || transaction.siteName || "N/A";
+  const contactLabel =
+    transaction.siteContactName?.trim() || transaction.carrierName || "—";
+  const driverLabel = transaction.driverName?.trim() || "Own Driver";
+  const logoMarkup = buildLogoMarkup(config);
+  const brandName = escapeHtml(config.eftAccountName);
+  const showBrandName =
+    !config.showLogo || !logoIncludesBrandName(config.logoUrl);
+  const gross = transaction.grossWeight.toFixed(2);
+  const tare = transaction.tareWeight.toFixed(2);
+  const nett = transaction.netWeight.toFixed(2);
 
   return `
     <html>
       <head>
-        <title>Weighbridge Ticket - ${transaction.ticketNo}</title>
+        <title></title>
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;700;900&display=swap');
           ${autoPrint ? "" : MODAL_PREVIEW_CSS}
           @page {
             size: A4;
+            /* Zero page margin hides Chrome date/title/URL/page headers */
             margin: 0;
           }
+          * { box-sizing: border-box; }
           body {
-            font-family: 'Inter', sans-serif;
-            color: #1e293b;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #222;
             background: #fff;
             margin: 0;
             padding: 0;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            font-size: 9.5pt;
+            font-weight: 400;
+            line-height: 1.3;
           }
           .page {
             width: 21cm;
             min-height: 29.7cm;
-            padding: 1.5cm;
+            /* Match ADMIN | Print | BQA23648 page margins (as padding) */
+            padding: 21mm 26mm 20mm 19mm;
             margin: 0 auto;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
             background: #fff;
+            box-sizing: border-box;
           }
-          .header-table {
+          table { border-collapse: collapse; }
+          .header {
+            display: flex;
+            align-items: stretch;
+            justify-content: space-between;
+            gap: 16px;
             width: 100%;
-            border-collapse: collapse;
-            border-bottom: 2px solid #e2e8f0;
-            margin-bottom: 15px;
-          }
-          .logo-cell {
-            width: 65px;
-            vertical-align: top;
-            padding-bottom: 15px;
+            margin-bottom: 4px;
           }
           .brand-cell {
-            vertical-align: top;
-            padding-left: 15px;
-            padding-bottom: 15px;
+            display: flex;
+            align-items: stretch;
+            flex: 0 0 auto;
+            max-width: 42%;
+          }
+          .logo-img {
+            /* Height is set to match .contact-inner via script / CSS fallback */
+            height: calc(6 * 8pt * 1.35);
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
+            object-position: left top;
+            display: block;
           }
           .brand-name {
-            font-size: 15px;
-            font-weight: 900;
-            color: #0f172a;
-            text-transform: uppercase;
-            letter-spacing: -0.5px;
-            margin: 0;
-          }
-          .brand-subtitle {
-            font-size: 8px;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11pt;
             font-weight: 700;
-            color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 2px;
+            margin: 0;
+            padding-left: 6px;
+            line-height: 1.15;
+            align-self: center;
           }
           .contact-cell {
-            text-align: right;
-            vertical-align: top;
-            font-size: 9px;
-            color: #475569;
-            line-height: 1.4;
-            padding-bottom: 15px;
+            flex: 1 1 auto;
+            display: flex;
+            justify-content: flex-end;
+            font-size: 8pt;
+            line-height: 1.35;
+            font-weight: 400;
+            color: #333;
           }
-          .contact-name {
-            font-weight: 800;
-            color: #0f172a;
-            font-size: 10px;
+          .contact-inner {
+            text-align: left;
           }
-          .docket-title-container {
-            text-align: center;
-            margin: 15px 0;
-            border-top: 2px solid #0f172a;
-            border-bottom: 2px solid #0f172a;
-            padding: 6px 0;
-            position: relative;
+          .contact-inner .biz-name {
+            font-weight: 700;
+            color: #111;
           }
           .docket-title {
-            font-size: 14px;
-            font-weight: 900;
-            letter-spacing: 2px;
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10pt;
+            font-weight: 700;
+            color: #111;
+            letter-spacing: 0.8px;
+            margin: 12px 0 12px;
             text-transform: uppercase;
-            color: #0f172a;
-            margin: 0;
           }
           .reprint-badge {
-            display: inline-block;
-            background: #0f172a;
-            color: #fff;
-            font-size: 8px;
-            font-weight: 900;
-            padding: 2px 10px;
-            border-radius: 4px;
+            text-align: center;
+            font-size: 8pt;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin: -6px 0 10px;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 4px;
           }
-          .details-table {
+          .meta-outer {
             width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
           }
-          .details-table td {
-            padding: 6px 8px;
-            font-size: 11px;
-            border-bottom: 1px solid #f1f5f9;
+          .meta-outer > tbody > tr > td {
             vertical-align: top;
           }
-          .label-col {
+          .meta-outer .meta-left {
+            width: 58%;
+            padding-right: 18px;
+          }
+          .meta-outer .meta-right {
+            width: 42%;
+            padding-left: 0;
+          }
+          .meta-fields {
+            width: auto;
+          }
+          .meta-fields td {
+            padding: 1px 0;
+            vertical-align: top;
+            font-size: 9.5pt;
+            line-height: 1.35;
+            color: #222;
+          }
+          .meta-label {
             font-weight: 700;
-            color: #64748b;
+            color: #111;
             text-transform: uppercase;
-            font-size: 9px;
-            width: 25%;
+            white-space: nowrap;
+            padding-right: 2px !important;
+            width: 1%;
           }
-          .val-col {
-            font-weight: 800;
-            color: #0f172a;
-            width: 25%;
+          .meta-colon {
+            font-weight: 700;
+            color: #111;
+            padding: 1px 5px 1px 0 !important;
+            width: 1%;
+            white-space: nowrap;
           }
-          .weights-box {
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            background-color: #f8fafc;
-            padding: 12px;
-            margin: 15px 0;
+          .meta-value {
+            width: auto;
+            padding-right: 6px !important;
+            font-weight: 400;
+            color: #222;
           }
-          .weights-table {
+          .load-table {
+            display: flex;
+            align-items: stretch;
             width: 100%;
+            margin: 2px 0 12px;
+          }
+          .load-contact {
+            width: 22%;
+            flex: 0 0 22%;
+            display: flex;
+            align-items: center; /* vertically center carrier / site contact */
+            font-weight: 700;
+            font-size: 9.5pt;
+            color: #222;
+            padding: 4px 10px 4px 0;
+            border-right: 1px solid #b0b0b0;
+            box-sizing: border-box;
+          }
+          .load-product {
+            width: 46%;
+            flex: 0 0 46%;
+            padding: 4px 10px;
+            border-right: 1px solid #b0b0b0;
+            box-sizing: border-box;
+          }
+          .load-weights {
+            width: 32%;
+            flex: 0 0 32%;
+            padding: 4px 0 4px 10px;
+            box-sizing: border-box;
+          }
+          .load-line {
+            margin: 0 0 2px;
+            font-size: 9.5pt;
+            font-weight: 400;
+            color: #222;
+            line-height: 1.35;
+          }
+          .load-line:last-child { margin-bottom: 0; }
+          .load-k {
+            font-weight: 700;
+            color: #111;
+            text-transform: uppercase;
+          }
+          .section-heading {
+            font-weight: 700;
+            color: #111;
+            text-transform: uppercase;
+            margin: 0 0 1mm;
+            font-size: 9.5pt;
+          }
+          .totals-wrap {
+            width: 100%;
+            margin-bottom: 1.5mm;
+          }
+          .totals-table {
+            width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
           }
-          .weights-table th {
-            text-align: center;
-            font-size: 9px;
-            font-weight: 800;
-            color: #475569;
+          .totals-table .totals-head td {
+            font-weight: 700;
+            font-size: 8.8pt;
+            color: #111;
+            padding: 0 6px 3px 6px;
+            text-align: left;
+            border: none;
+            width: 33.333%;
+          }
+          .totals-table .totals-body td {
+            border: 1px solid #b0b0b0;
+            padding: 4px 6px;
+            font-size: 8.8pt;
+            font-weight: 400;
+            color: #222;
+            text-align: left;
+            width: 33.333%;
+          }
+          /* Reference: DRIVER label above empty notes box */
+          .driver-line {
+            font-weight: 700;
+            color: #111;
+            margin: 0 0 1mm;
             text-transform: uppercase;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #cbd5e1;
+            font-size: 8.8pt;
+            line-height: 1.25;
           }
-          .weights-table td {
-            text-align: center;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            font-weight: 800;
-            color: #0f172a;
-            padding-top: 8px;
+          .notes-box {
+            border: 1px solid #b0b0b0;
+            height: 15.3mm;
+            margin-bottom: 8mm;
+            box-sizing: border-box;
           }
-          .comments-box {
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 9px;
-            color: #475569;
-            margin-bottom: 15px;
-          }
-          .comments-title {
-            font-weight: 800;
-            color: #0f172a;
-            text-transform: uppercase;
-            margin-bottom: 3px;
-          }
-          .pricing-section {
-            border-top: 1.5px dashed #cbd5e1;
-            padding-top: 12px;
-            margin-top: 12px;
-          }
-          .pricing-table {
+          .eft-table {
             width: 100%;
-            border-collapse: collapse;
+            border: 1px solid #cccccc;
+            margin-bottom: 15mm;
           }
-          .pricing-table td {
-            font-size: 11px;
-            padding: 5px 0;
+          .eft-table td {
+            vertical-align: middle;
           }
-          .pricing-total {
-            font-size: 13px;
-            font-weight: 900;
-            color: #0f172a;
-            border-top: 2px solid #0f172a;
-            padding-top: 6px;
+          .eft-label {
+            width: 72px;
+            border-right: 1px solid #cccccc;
+            font-weight: 700;
+            color: #111;
+            text-align: left;
+            vertical-align: middle;
+            padding: 6px 8px;
+            font-size: 9.5pt;
+            line-height: 1.2;
           }
-          .eft-box {
-            border: 1px solid #cbd5e1;
-            background-color: #f8fafc;
-            border-radius: 6px;
-            padding: 10px;
-            font-size: 9px;
-            color: #475569;
-            margin-bottom: 15px;
+          .eft-details {
+            padding: 6px 10px;
+            line-height: 1.35;
+            font-size: 9.5pt;
+            font-weight: 400;
+            color: #222;
           }
-          .eft-title {
-            font-weight: 800;
-            color: #0f172a;
-            text-transform: uppercase;
-            font-size: 8px;
-            margin-bottom: 3px;
-            letter-spacing: 0.5px;
+          .eft-details .eft-k {
+            font-weight: 700;
+            color: #111;
           }
-          .barcode-box {
-            text-align: center;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 5px;
-            color: #94a3b8;
-            margin: 15px 0;
+          .customer-copy {
+            font-weight: 700;
+            color: #111;
+            margin: 0 0 2.5mm;
+            font-size: 9.5pt;
           }
-          .footer-section {
-            font-size: 9px;
-            color: #64748b;
-            text-align: center;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 12px;
+          .signature-box {
+            border: 1px solid #cccccc;
+            height: 15mm;
+            padding: 2.5mm 3mm;
+            box-sizing: border-box;
           }
-          .signatures-table {
-            width: 100%;
-            margin-top: 35px;
-            margin-bottom: 15px;
+          .signature-label {
+            font-weight: 700;
+            font-size: 9.5pt;
+            color: #111;
+            line-height: 1.25;
           }
-          .signatures-table td {
-            width: 50%;
-            vertical-align: bottom;
-            font-size: 9px;
-            color: #475569;
-            text-align: center;
-          }
-          .signature-line {
-            width: 75%;
-            margin: 0 auto 4px auto;
-            border-top: 1px solid #475569;
+          .signature-sub {
+            margin-top: 1px;
+            font-size: 9.5pt;
+            font-weight: 700;
+            font-style: italic;
+            color: #111;
+            line-height: 1.25;
           }
           @media print {
-            body {
-              background: none;
-            }
+            body { background: none; }
             .page {
-                width: 21cm;
-                height: 29.7cm;
-                padding: 1.5cm;
-                margin: 0;
-                box-shadow: none;
-                page-break-after: always;
-                transform: none !important;
-              }
+              width: auto;
+              min-height: auto;
+              /* Keep padding — @page margin is 0 to suppress browser chrome */
+              padding: 21mm 26mm 20mm 19mm;
+              margin: 0;
+            }
           }
         </style>
       </head>
       <body class="${previewBodyClass(autoPrint)}">
         <div class="page">
-          <div>
-            <table class="header-table">
-              <tr>
-                ${config.showLogo ? `
-                <td class="logo-cell">
-                  ${logoMarkup}
-                </td>
-                ` : ""}
-                <td class="brand-cell">
-                  <h1 class="brand-name">${config.eftAccountName}</h1>
-                  <div class="brand-subtitle">Certified Weighbridge Material Record</div>
-                </td>
-                <td class="contact-cell">
-                  <div class="contact-name">${config.businessName}</div>
-                  <div>${config.poBox}</div>
-                  <div>CONTACT: ${config.contact}</div>
-                  <div>FAX: ${config.fax}</div>
-                  <div>EMAIL: ${config.email}</div>
-                  <div style="font-weight: 700; color: #0f172a; margin-top: 2px;">ABN: ${config.abn}</div>
-                </td>
-              </tr>
-            </table>
-
-            <div class="docket-title-container">
-              <h2 class="docket-title">DELIVERY DOCKET</h2>
-              ${reprintCopy ? '<div class="reprint-badge">REPRINT / DUPLICATE COPY</div>' : ""}
+          <div class="header">
+            <div class="brand-cell">
+              ${config.showLogo ? logoMarkup : ""}
+              ${showBrandName ? `<h1 class="brand-name">${brandName}</h1>` : ""}
             </div>
-
-            <table class="details-table">
-              <tr>
-                <td class="label-col">DATE & TIME IN:</td>
-                <td class="val-col">${transaction.firstWeighTime}</td>
-                <td class="label-col">DATE & TIME OUT:</td>
-                <td class="val-col">${transaction.secondWeighTime || "PENDING OUTBOUND"}</td>
-              </tr>
-              <tr>
-                <td class="label-col">CUSTOMER / DEBTOR:</td>
-                <td class="val-col" style="font-size: 11px; font-weight: 900;">${transaction.customerName}</td>
-                <td class="label-col">JOB / REFERENCE:</td>
-                <td class="val-col">${transaction.jobOrder || "N/A"}</td>
-              </tr>
-              <tr>
-                <td class="label-col">CARRIER / TRANSPORT:</td>
-                <td class="val-col">${transaction.carrierName}</td>
-                <td class="label-col">VEHICLE REG NO:</td>
-                <td class="val-col" style="font-family: 'JetBrains Mono', monospace; font-weight: 900;">${transaction.vehicleReg}</td>
-              </tr>
-              <tr>
-                <td class="label-col">DRIVER NAME:</td>
-                <td class="val-col">${transaction.driverName}</td>
-                <td class="label-col">DOCKET NUMBER:</td>
-                <td class="val-col" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 900; color: #1e293b;">${transaction.ticketNo}</td>
-              </tr>
-              <tr>
-                <td class="label-col">MATERIAL PRODUCT:</td>
-                <td class="val-col" style="font-weight: 900; color: #1e293b;">${transaction.productName}</td>
-                <td class="label-col">LOT NUMBER:</td>
-                <td class="val-col" style="font-family: 'JetBrains Mono', monospace; font-weight: 700;">${transaction.lotNo || "N/A"}</td>
-              </tr>
-              <tr>
-                <td class="label-col">INBOUND SCALE:</td>
-                <td class="val-col" style="font-family: 'JetBrains Mono', monospace;">${transaction.scaleIdInbound}</td>
-                <td class="label-col">WEIGHBRIDGE SITE:</td>
-                <td class="val-col">${weighbridgeSite}</td>
-              </tr>
-            </table>
-
-            <div class="weights-box">
-              <table class="weights-table">
-                <thead>
-                  <tr>
-                    <th>Gross Weight (t)</th>
-                    <th>Tare Weight (t)</th>
-                    <th>Net Product Weight (t)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>${transaction.grossWeight.toFixed(2)}</td>
-                    <td>${transaction.tareWeight.toFixed(2)}</td>
-                    <td style="font-size: 16px; font-weight: 900; color: #1e293b;">${transaction.netWeight.toFixed(2)}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="contact-cell">
+              <div class="contact-inner">
+                <div class="biz-name">${escapeHtml(config.businessName)}</div>
+                <div>${escapeHtml(config.poBox)}</div>
+                <div>CONTACT: ${escapeHtml(config.contact)}</div>
+                <div>FAX: ${escapeHtml(config.fax)}</div>
+                <div>EMAIL: ${escapeHtml(config.email)}</div>
+                <div>ABN: ${escapeHtml(config.abn)}</div>
+              </div>
             </div>
-
-            <div class="comments-box">
-              <div class="comments-title">Driver Comments & Special Site Instructions</div>
-              <p style="margin: 0;">${driverComments}</p>
-            </div>
-
-            ${transaction.type !== "Account" ? `
-            <div class="pricing-section">
-              <table class="pricing-table">
-                <tr>
-                  <td style="font-weight: 700; color: #475569;">BILLING CLASS / PAYMENT TYPE:</td>
-                  <td style="text-align: right; font-weight: 800; color: #0f172a;">${transaction.type} sale</td>
-                </tr>
-                <tr>
-                  <td style="color: #475569;">Material Unit Base Rate:</td>
-                  <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">$${transaction.basePrice.toFixed(2)} / t</td>
-                </tr>
-                <tr>
-                  <td style="color: #475569;">Gross Billable Value (Ex. GST):</td>
-                  <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">$${transaction.totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                </tr>
-                <tr class="pricing-total">
-                  <td style="font-weight: 900;">TOTAL DUE (EX. GST):</td>
-                  <td style="text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 900; color: ${accentColor};">$${transaction.totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                </tr>
-              </table>
-            </div>
-            ` : `
-            <div class="pricing-section" style="text-align: center; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 6px; background-color: #f8fafc;">
-              <span style="font-size: 10px; font-weight: 900; color: #64748b; letter-spacing: 1px; text-transform: uppercase;">
-                ACCOUNT CLIENT TRANSACTION - PRICING EXCLUDED FROM DOCKET
-              </span>
-              <p style="font-size: 8px; color: #94a3b8; margin: 3px 0 0 0;">Pricing information is suppressed. Total value is compiled and raised directly in the commercial accounting system as a monthly tax invoice.</p>
-            </div>
-            `}
           </div>
 
-          <div>
-            <div class="eft-box">
-              <div class="eft-title">EFT PAYMENTS BANK DIRECT DEPOSIT</div>
-              <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="font-weight: 700; width: 33%;">Account Name: <span style="font-weight: 500;">${config.eftAccountName}</span></td>
-                  <td style="font-weight: 700; width: 33%;">BSB: <span style="font-weight: 500; font-family: 'JetBrains Mono', monospace;">${config.eftBsb}</span></td>
-                  <td style="font-weight: 700; width: 33%;">Account No: <span style="font-weight: 500; font-family: 'JetBrains Mono', monospace;">${config.eftAccountNo}</span></td>
-                </tr>
-              </table>
-            </div>
+          <div class="docket-title">DELIVERY DOCKET</div>
+          ${reprintCopy ? '<div class="reprint-badge">REPRINT / DUPLICATE COPY</div>' : ""}
 
-            <div class="barcode-box">
-              ||||| | ||||| | || | ||| |||| | ||||| | |||
-              <div style="font-size: 7px; color: #94a3b8; margin-top: 2px;">TXN AUTH CODE: ${transaction.transactionCode || transaction.id}</div>
-            </div>
+          <table class="meta-outer">
+            <tr>
+              <td class="meta-left">
+                <table class="meta-fields">
+                  ${metaField("TO", transaction.customerName)}
+                  ${metaField("JOB NUMBER", transaction.jobOrder || "N/A")}
+                  ${metaField("PURCHASE ORDER", purchaseOrder)}
+                  ${metaField("TRANSPORT COMPANY", transaction.carrierName)}
+                  ${metaField("WEIGHBRIDGE LOCATION", weighbridgeSite)}
+                </table>
+              </td>
+              <td class="meta-right">
+                <table class="meta-fields">
+                  ${metaField("DATE", date)}
+                  ${metaField("TIME", time)}
+                  ${metaField("DOCKET NUMBER", transaction.ticketNo)}
+                  ${metaField("DESTINATION", destination)}
+                </table>
+              </td>
+            </tr>
+          </table>
 
-            <table class="signatures-table">
-              <tr>
-                <td>
-                  <div class="signature-line"></div>
-                  <div>Operator Authorized Signature (ID: ${transaction.operatorId})</div>
-                </td>
-                <td>
-                  <div class="signature-line"></div>
-                  <div>Driver Authorized Receipt Signature</div>
-                </td>
+          <div class="load-table">
+            <div class="load-contact">${escapeHtml(contactLabel)}</div>
+            <div class="load-product">
+              <div class="load-line"><span class="load-k">REG NO. :</span> ${escapeHtml(transaction.vehicleReg)}</div>
+              <div class="load-line"><span class="load-k">PRODUCT:</span> ${escapeHtml(transaction.productName)}</div>
+              <div class="load-line"><span class="load-k">LOT:</span> ${escapeHtml(transaction.lotNo || "N/A")}</div>
+            </div>
+            <div class="load-weights">
+              <div class="load-line"><span class="load-k">GROSS :</span> ${gross}</div>
+              <div class="load-line"><span class="load-k">STORED TARE :</span> ${tare}</div>
+              <div class="load-line"><span class="load-k">NETT :</span> ${nett}</div>
+            </div>
+          </div>
+
+          <div class="section-heading">TOTAL ORDER WEIGHT :</div>
+          <div class="totals-wrap">
+            <table class="totals-table">
+              <tr class="totals-head">
+                <td>Gross</td>
+                <td>Tare</td>
+                <td>Net</td>
+              </tr>
+              <tr class="totals-body">
+                <td>${gross}</td>
+                <td>${tare}</td>
+                <td>${nett}</td>
               </tr>
             </table>
+          </div>
 
-            <div class="footer-section">
-              Thank you for your business. Certified Weighbridge Load Record under National Measurement Guidelines.<br/>
-              Please ensure your load is properly secured and correct before exiting the depot gates.
-            </div>
+          <div class="driver-line">DRIVER: ${escapeHtml(driverLabel)}</div>
+          <div class="notes-box"></div>
+
+          <table class="eft-table">
+            <tr>
+              <td class="eft-label">EFT<br/>Payments</td>
+              <td class="eft-details">
+                <div><span class="eft-k">Account Name:</span> ${escapeHtml(config.eftAccountName)}</div>
+                <div><span class="eft-k">BSB:</span> ${escapeHtml(config.eftBsb)}</div>
+                <div><span class="eft-k">Account No.:</span> ${escapeHtml(config.eftAccountNo)}</div>
+              </td>
+            </tr>
+          </table>
+
+          <div class="customer-copy">Customer Copy:</div>
+          <div class="signature-box">
+            <div class="signature-label">Signature:</div>
+            <div class="signature-sub">(For ${escapeHtml(config.eftAccountName)})</div>
           </div>
         </div>
-        ${autoPrint ? `
         <script>
-          window.onload = function() {
-            window.print();
+          function sizeDocketLogo() {
+            var contact = document.querySelector('.contact-inner');
+            var logo = document.querySelector('.logo-img');
+            if (!contact || !logo) return;
+            var h = contact.offsetHeight;
+            if (h > 0) {
+              logo.style.height = h + 'px';
+              logo.style.width = 'auto';
+            }
           }
-        </script>` : ""}
+          var didPrint = false;
+          function readyPrint() {
+            sizeDocketLogo();
+            ${autoPrint ? `
+            if (!didPrint) {
+              didPrint = true;
+              window.print();
+            }` : ""}
+          }
+          window.addEventListener('load', function() {
+            var logo = document.querySelector('.logo-img');
+            if (logo && !logo.complete) {
+              logo.addEventListener('load', readyPrint, { once: true });
+              setTimeout(readyPrint, 500);
+            } else {
+              readyPrint();
+            }
+          });
+        </script>
       </body>
     </html>
   `;
+}
+
+function buildCashDeliveryDocketHtml(
+  transaction: Transaction,
+  config: DocketConfig,
+  options: DeliveryDocketPrintOptions
+): string {
+  const { reprintCopy = false, autoPrint = true } = options;
+  const weighbridgeSite = config.weighbridgeLocation || transaction.siteName;
+  const { date, time } = formatDocketDateTime(
+    transaction.secondWeighTime || transaction.firstWeighTime
+  );
+  const purchaseOrder =
+    transaction.purchaseOrder?.trim() || transaction.jobOrder || "N/A";
+  const destination =
+    transaction.destinationName?.trim() || transaction.siteName || "N/A";
+  const tipperLabel =
+    transaction.carrierName?.trim() ||
+    `${config.eftAccountName} Tipper`;
+  const driverLabel = transaction.driverName?.trim() || "Own Driver";
+  const logoMarkup = buildLogoMarkup(config);
+  const brandName = escapeHtml(config.eftAccountName);
+  const showBrandName =
+    !config.showLogo || !logoIncludesBrandName(config.logoUrl);
+  const gross = transaction.grossWeight.toFixed(2);
+  const tare = transaction.tareWeight.toFixed(2);
+  const nett = transaction.netWeight.toFixed(2);
+  const amountExGst = transaction.totalValue;
+  const gst = amountExGst * 0.1;
+  const totalInclGst = amountExGst + gst;
+  const cartageIncluded = "YES";
+  const cartagePrice = "0";
+  const paymentTypeLabel = "EFT";
+
+  return `
+    <html>
+      <head>
+        <title></title>
+        <style>
+          ${autoPrint ? "" : MODAL_PREVIEW_CSS}
+          @page {
+            size: A4;
+            margin: 0;
+          }
+          * { box-sizing: border-box; }
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #222;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            font-size: 9.5pt;
+            font-weight: 400;
+            line-height: 1.3;
+          }
+          .page {
+            width: 21cm;
+            min-height: 29.7cm;
+            padding: 21mm 26mm 20mm 19mm;
+            margin: 0 auto;
+            background: #fff;
+            box-sizing: border-box;
+          }
+          table { border-collapse: collapse; }
+          .header {
+            display: flex;
+            align-items: stretch;
+            justify-content: space-between;
+            gap: 16px;
+            width: 100%;
+            margin-bottom: 4px;
+          }
+          .brand-cell {
+            display: flex;
+            align-items: stretch;
+            flex: 0 0 auto;
+            max-width: 42%;
+          }
+          .logo-img {
+            height: calc(6 * 8pt * 1.35);
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
+            object-position: left top;
+            display: block;
+          }
+          .brand-name {
+            font-size: 11pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin: 0;
+            padding-left: 6px;
+            line-height: 1.15;
+            align-self: center;
+            color: #111;
+          }
+          .contact-cell {
+            flex: 1 1 auto;
+            display: flex;
+            justify-content: flex-end;
+            font-size: 8pt;
+            line-height: 1.35;
+            color: #333;
+          }
+          .contact-inner { text-align: left; }
+          .contact-inner .biz-name {
+            font-weight: 700;
+            color: #111;
+          }
+          .docket-title {
+            text-align: center;
+            font-size: 10pt;
+            font-weight: 700;
+            color: #111;
+            letter-spacing: 0.8px;
+            margin: 12px 0 12px;
+            text-transform: uppercase;
+          }
+          .reprint-badge {
+            text-align: center;
+            font-size: 8pt;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin: -6px 0 10px;
+            text-transform: uppercase;
+          }
+          .meta-outer {
+            width: 100%;
+            margin-bottom: 12px;
+          }
+          .meta-outer > tbody > tr > td { vertical-align: top; }
+          .meta-outer .meta-left {
+            width: 58%;
+            padding-right: 18px;
+          }
+          .meta-outer .meta-right { width: 42%; }
+          .meta-fields { width: auto; }
+          .meta-fields td {
+            padding: 1px 0;
+            vertical-align: top;
+            font-size: 9.5pt;
+            line-height: 1.35;
+            color: #222;
+          }
+          .meta-label {
+            font-weight: 700;
+            color: #111;
+            text-transform: uppercase;
+            white-space: nowrap;
+            padding-right: 2px !important;
+            width: 1%;
+          }
+          .meta-colon {
+            font-weight: 700;
+            color: #111;
+            padding: 1px 5px 1px 0 !important;
+            width: 1%;
+            white-space: nowrap;
+          }
+          .meta-value {
+            width: auto;
+            padding-right: 6px !important;
+            font-weight: 400;
+            color: #222;
+          }
+          .load-table {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+            margin: 2px 0 12px;
+          }
+          .load-contact {
+            width: 22%;
+            flex: 0 0 22%;
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            font-size: 9.5pt;
+            color: #222;
+            padding: 4px 10px 4px 0;
+            border-right: 1px solid #b0b0b0;
+            box-sizing: border-box;
+          }
+          .load-product {
+            width: 46%;
+            flex: 0 0 46%;
+            padding: 4px 10px;
+            border-right: 1px solid #b0b0b0;
+            box-sizing: border-box;
+          }
+          .load-weights {
+            width: 32%;
+            flex: 0 0 32%;
+            padding: 4px 0 4px 10px;
+            box-sizing: border-box;
+          }
+          .load-line {
+            margin: 0 0 2px;
+            font-size: 9.5pt;
+            color: #222;
+            line-height: 1.35;
+          }
+          .load-line:last-child { margin-bottom: 0; }
+          .load-k {
+            font-weight: 700;
+            color: #111;
+            text-transform: uppercase;
+          }
+          .section-heading {
+            font-weight: 700;
+            color: #111;
+            text-transform: uppercase;
+            margin: 0 0 1mm;
+            font-size: 9.5pt;
+          }
+          .totals-wrap {
+            width: 100%;
+            margin-bottom: 3mm;
+          }
+          .totals-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+          }
+          .totals-table .totals-head td {
+            font-weight: 700;
+            font-size: 8.8pt;
+            color: #111;
+            padding: 0 6px 3px 6px;
+            text-align: left;
+            border: none;
+            width: 33.333%;
+          }
+          .totals-table .totals-body td {
+            border: 1px solid #b0b0b0;
+            padding: 4px 6px;
+            font-size: 8.8pt;
+            color: #222;
+            text-align: left;
+            width: 33.333%;
+          }
+          .cartage-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            font-size: 9.5pt;
+            font-weight: 700;
+            color: #111;
+            text-transform: uppercase;
+            margin: 0 0 4mm;
+          }
+          .cartage-line span { font-weight: 400; color: #222; text-transform: none; }
+          .payment-heading {
+            font-weight: 700;
+            color: #111;
+            text-transform: uppercase;
+            margin: 0 0 1mm;
+            font-size: 9.5pt;
+          }
+          .payment-type {
+            font-weight: 700;
+            color: #111;
+            text-transform: uppercase;
+            font-size: 9.5pt;
+            margin: 2mm 0 4mm;
+          }
+          .payment-type span { font-weight: 400; color: #222; text-transform: none; }
+          .notes-box {
+            border: 1px solid #b0b0b0;
+            height: 18mm;
+            margin-bottom: 8mm;
+            box-sizing: border-box;
+          }
+          .eft-table {
+            width: 100%;
+            border: 1px solid #cccccc;
+            margin-bottom: 15mm;
+          }
+          .eft-table td { vertical-align: middle; }
+          .eft-label {
+            width: 72px;
+            border-right: 1px solid #cccccc;
+            font-weight: 700;
+            color: #111;
+            text-align: left;
+            vertical-align: middle;
+            padding: 6px 8px;
+            font-size: 9.5pt;
+            line-height: 1.2;
+          }
+          .eft-details {
+            padding: 6px 10px;
+            line-height: 1.35;
+            font-size: 9.5pt;
+            color: #222;
+          }
+          .eft-details .eft-k {
+            font-weight: 700;
+            color: #111;
+          }
+          .customer-copy {
+            font-weight: 700;
+            color: #111;
+            margin: 0 0 2.5mm;
+            font-size: 9.5pt;
+          }
+          .signature-box {
+            border: 1px solid #cccccc;
+            height: 15mm;
+            padding: 2.5mm 3mm;
+            box-sizing: border-box;
+          }
+          .signature-label {
+            font-weight: 700;
+            font-size: 9.5pt;
+            color: #111;
+            line-height: 1.25;
+          }
+          .signature-sub {
+            margin-top: 1px;
+            font-size: 9.5pt;
+            font-weight: 700;
+            font-style: italic;
+            color: #111;
+            line-height: 1.25;
+          }
+          @media print {
+            body { background: none; }
+            .page {
+              width: auto;
+              min-height: auto;
+              padding: 21mm 26mm 20mm 19mm;
+              margin: 0;
+            }
+          }
+        </style>
+      </head>
+      <body class="${previewBodyClass(autoPrint)}">
+        <div class="page">
+          <div class="header">
+            <div class="brand-cell">
+              ${config.showLogo ? logoMarkup : ""}
+              ${showBrandName ? `<h1 class="brand-name">${brandName}</h1>` : ""}
+            </div>
+            <div class="contact-cell">
+              <div class="contact-inner">
+                <div class="biz-name">${escapeHtml(config.businessName)}</div>
+                <div>${escapeHtml(config.poBox)}</div>
+                <div>CONTACT: ${escapeHtml(config.contact)}</div>
+                <div>FAX: ${escapeHtml(config.fax)}</div>
+                <div>EMAIL: ${escapeHtml(config.email)}</div>
+                <div>ABN: ${escapeHtml(config.abn)}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="docket-title">DELIVERY DOCKET</div>
+          ${reprintCopy ? '<div class="reprint-badge">REPRINT / DUPLICATE COPY</div>' : ""}
+
+          <table class="meta-outer">
+            <tr>
+              <td class="meta-left">
+                <table class="meta-fields">
+                  ${metaField("TO", transaction.customerName)}
+                  ${metaField("PURCHASE ORDER", purchaseOrder)}
+                  ${metaField("TRANSPORT COMPANY", transaction.carrierName)}
+                  ${metaField("WEIGHBRIDGE LOCATION", weighbridgeSite)}
+                </table>
+              </td>
+              <td class="meta-right">
+                <table class="meta-fields">
+                  ${metaField("DATE", date)}
+                  ${metaField("TIME", time)}
+                  ${metaField("DOCKET NUMBER", transaction.ticketNo)}
+                  ${metaField("DESTINATION", destination)}
+                </table>
+              </td>
+            </tr>
+          </table>
+
+          <div class="load-table">
+            <div class="load-contact">${escapeHtml(tipperLabel)}</div>
+            <div class="load-product">
+              <div class="load-line"><span class="load-k">REG NO. :</span> ${escapeHtml(transaction.vehicleReg)}</div>
+              <div class="load-line"><span class="load-k">PRODUCT:</span> ${escapeHtml(transaction.productName)}</div>
+              <div class="load-line"><span class="load-k">LOT:</span> ${escapeHtml(transaction.lotNo || "N/A")}</div>
+              <div class="load-line"><span class="load-k">DRIVER:</span> ${escapeHtml(driverLabel)}</div>
+            </div>
+            <div class="load-weights">
+              <div class="load-line"><span class="load-k">GROSS :</span> ${gross}</div>
+              <div class="load-line"><span class="load-k">STORED TARE :</span> ${tare}</div>
+              <div class="load-line"><span class="load-k">NETT :</span> ${nett}</div>
+            </div>
+          </div>
+
+          <div class="section-heading">TOTAL ORDER WEIGHT :</div>
+          <div class="totals-wrap">
+            <table class="totals-table">
+              <tr class="totals-head">
+                <td>Gross</td>
+                <td>Tare</td>
+                <td>Net</td>
+              </tr>
+              <tr class="totals-body">
+                <td>${gross}</td>
+                <td>${tare}</td>
+                <td>${nett}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="cartage-line">
+            <div>CARTAGE INCLUDED : <span>${cartageIncluded}</span></div>
+            <div>CARTAGE PRICE: <span>${cartagePrice}</span></div>
+          </div>
+
+          <div class="payment-heading">PAYMENT :</div>
+          <div class="totals-wrap">
+            <table class="totals-table">
+              <tr class="totals-head">
+                <td>Amount (Ex GST)</td>
+                <td>GST</td>
+                <td>Total Amount (Incl GST)</td>
+              </tr>
+              <tr class="totals-body">
+                <td>${amountExGst.toFixed(2)}</td>
+                <td>${gst.toFixed(2)}</td>
+                <td>${totalInclGst.toFixed(2)}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="payment-type">PAYMENT TYPE : <span>${paymentTypeLabel}</span></div>
+
+          <div class="notes-box"></div>
+
+          <table class="eft-table">
+            <tr>
+              <td class="eft-label">EFT<br/>Payments</td>
+              <td class="eft-details">
+                <div><span class="eft-k">Account Name:</span> ${escapeHtml(config.eftAccountName)}</div>
+                <div><span class="eft-k">BSB:</span> ${escapeHtml(config.eftBsb)}</div>
+                <div><span class="eft-k">Account No.:</span> ${escapeHtml(config.eftAccountNo)}</div>
+              </td>
+            </tr>
+          </table>
+
+          <div class="customer-copy">Customer Copy:</div>
+          <div class="signature-box">
+            <div class="signature-label">Signature:</div>
+            <div class="signature-sub">(For ${escapeHtml(config.eftAccountName)})</div>
+          </div>
+        </div>
+        <script>
+          function sizeDocketLogo() {
+            var contact = document.querySelector('.contact-inner');
+            var logo = document.querySelector('.logo-img');
+            if (!contact || !logo) return;
+            var h = contact.offsetHeight;
+            if (h > 0) {
+              logo.style.height = h + 'px';
+              logo.style.width = 'auto';
+            }
+          }
+          var didPrint = false;
+          function readyPrint() {
+            sizeDocketLogo();
+            ${autoPrint ? `
+            if (!didPrint) {
+              didPrint = true;
+              window.print();
+            }` : ""}
+          }
+          window.addEventListener('load', function() {
+            var logo = document.querySelector('.logo-img');
+            if (logo && !logo.complete) {
+              logo.addEventListener('load', readyPrint, { once: true });
+              setTimeout(readyPrint, 500);
+            } else {
+              readyPrint();
+            }
+          });
+        </script>
+      </body>
+    </html>
+  `;
+}
+
+export function buildDeliveryDocketHtml(
+  transaction: Transaction,
+  config: DocketConfig,
+  options: DeliveryDocketPrintOptions = {}
+): string {
+  const resolved = resolveDocketConfig(config);
+  if (transaction.type === "Account") {
+    return buildAccountBillingDocketHtml(transaction, resolved, options);
+  }
+  return buildCashDeliveryDocketHtml(transaction, resolved, options);
 }
 
 export function openDeliveryDocketPrint(

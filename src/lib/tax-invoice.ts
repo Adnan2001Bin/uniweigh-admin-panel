@@ -1,7 +1,6 @@
 import { DocketConfig, Job, Transaction } from "../types";
 import { MODAL_PREVIEW_CSS, previewBodyClass } from "./print-preview";
 import { resolveDocketConfig } from "./delivery-docket";
-import { hasDocketLogo } from "./docket-logo";
 
 export interface TaxInvoiceContext {
   linkedJob?: Job | null;
@@ -14,18 +13,17 @@ export interface TaxInvoicePrintOptions {
 }
 
 function buildLogoMarkup(config: DocketConfig): string {
-  const accentColor = config.logoColor || "#2563eb";
   if (!config.showLogo) return "";
-  if (hasDocketLogo(config.logoUrl)) {
-    return `<img src="${config.logoUrl}" alt="Logo" style="max-height: 55px; max-width: 100px; object-fit: contain;" />`;
-  }
-  return `<svg width="50" height="50" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M50 5L90 35L75 90L25 90L10 35L50 5Z" fill="${accentColor}" opacity="0.15" />
-    <path d="M50 15L80 40H20L50 15Z" fill="${accentColor}" />
-    <path d="M45 40H55V85H45V40Z" fill="${accentColor}" />
-    <path d="M30 55L50 45L70 55L50 65L30 55Z" fill="#fff" opacity="0.9" />
-    <path d="M50 5L95 38L78 92H22L5 38L50 5ZM50 10L10 40L25 87H75L90 40L50 10Z" fill="${accentColor}" />
-  </svg>`;
+  const raw = (config.logoUrl || "/pdf-icon.png").trim();
+  const src =
+    raw.startsWith("data:") ||
+    raw.startsWith("blob:") ||
+    /^https?:\/\//i.test(raw)
+      ? raw
+      : typeof window !== "undefined"
+        ? new URL(raw, window.location.origin).href
+        : raw;
+  return `<img src="${src}" alt="Logo" style="max-height: 55px; max-width: 100px; object-fit: contain;" />`;
 }
 
 function buildContractHtml(

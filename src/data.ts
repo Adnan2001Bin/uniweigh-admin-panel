@@ -957,6 +957,7 @@ export const DEFAULT_DOCKET_CONFIG: DocketConfig = {
   themeColor: "#0f172a",
   weighbridgeLocation: "Iron Knob",
   showLogo: true,
+  logoUrl: "/pdf-icon.png",
   invoiceTitle: "Commercial Tax Invoice",
   cashInvoiceNotes: "Thank you for your business. For cash/card sales, EFT payments are processed prior to vehicle dispatch.",
   accountInvoiceNotes: "Tax Invoice raised directly against approved credit ledger. Contract Terms apply. Do not pay this document.",
